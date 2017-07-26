@@ -1,6 +1,9 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+# Author:HeSimin
 import numpy as np
 from scipy.ndimage.filters import sobel, gaussian_filter
-
+import cv2
 
 class FastRadialSymmetryTransform(object):
     def __init__(self, gradient_function=None):
@@ -19,15 +22,16 @@ class FastRadialSymmetryTransform(object):
         x, y = self.index_arrays(gmag.shape)
         gx = gx / gmag
         gy = gy / gmag
-        nx = np.rint(gx * n + 0.5).astype(np.int64)
-        ny = np.rint(gy * n + 0.5).astype(np.int64)
+        nx = np.rint(gx * n).astype(np.int64)
+        ny = np.rint(gy * n).astype(np.int64)
         posx = x + nx
         posy = y + ny
         negx = x - nx
         negy = y - ny
         return posx, posy, negx, negy
 
-    def transform_component(self, mag, gx, gy, n, sigma, alpha):
+    def transform(self, inputImage, alpha, n):
+        mag, gx, gy = self.gradient_function(inputImage)
         posx, posy, negx, negy = self.pixel_map(mag, gx, gy, n)
         orientation, magnitude = self.orientation_and_magnitude(
             posx, posy, negx, negy, mag)
@@ -35,23 +39,9 @@ class FastRadialSymmetryTransform(object):
         m_max = np.max(np.abs(magnitude))
         orientation = np.abs(orientation) / o_max
         magnitude = np.abs(magnitude) / m_max
-        F = self.compute_F(orientation, magnitude, alpha)
-
-        # from scipy.misc import imsave
-        # imsave('orientation.jpg', orientation * 255)
-        # imsave('magnitude.jpg', magnitude * 255)
-        # return F
-        return gaussian_filter(F, sigma, mode="constant")
-
-    def transform(self, image, ns, sigmas, alpha):
-        transform = np.zeros(image.shape)
-        mag, gx, gy = self.gradient_function(image)
-        sigmas = np.ones(len(ns)) * sigmas
-        insk = zip(range(len(ns)), ns, sigmas)
-        for i, n, s in insk:
-            transform += self.transform_component(
-                mag, gx, gy, n, s, alpha)
-        return transform
+        F  = (orientation ** alpha)* magnitude
+        outputImage = cv2.GaussianBlur(F, (7, 7), 5)
+        return outputImage
 
     def sobel_gradient(self, image):
         grad_y = sobel(image, 0)
@@ -75,18 +65,4 @@ class FastRadialSymmetryTransform(object):
         np.add.at(orientation, [negy, negx], -1)
         np.add.at(magnitude, [posy, posx], mag)
         np.add.at(magnitude, [negy, negx], -mag)
-
-        orientation[:,0] = 0
-        orientation[:, w - 1] = 0
-        orientation[0, :] = 0
-        orientation[h - 1, :] = 0
-        magnitude[:,0] = 0
-        magnitude[:, w - 1] = 0
-        magnitude[0, :] = 0
-        magnitude[h - 1, :] = 0
         return orientation, magnitude
-
-    def compute_F(self, orientation, magnitude, alpha):
-        s = (orientation ** alpha)* magnitude
-        s[s < 1e-1] = 0
-        return s
