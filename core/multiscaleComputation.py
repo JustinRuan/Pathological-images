@@ -87,7 +87,7 @@ ax[0].imshow(Gmag,cmap=plt.cm.gray)
 ax[0].set_title("Gmag")
 
 ax[1].imshow(Lmatrix, cmap=plt.cm.gray)
-ax[1].set_title("L")
+ax[1].set_title("Lmatrix")
 
 '''ax[2].imshow(markers)
 ax[2].set_title("markers")
