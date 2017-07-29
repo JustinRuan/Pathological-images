@@ -20,7 +20,7 @@ def post_process(Hdeconv, labels, r, STATS) :
        C = STATS[j].centroid
        Cx = C[0]
        Cy = C[1]
-       #WC = STATS[j].weighted_centroid
+       #WC = STATS[j].weighted_centroid   #这里无法计算重心
        #WCx = WC[0]
        #WCy = WC[1]
        #d = np.hypot(Cx - WCx, Cy - WCy)
@@ -32,14 +32,20 @@ def post_process(Hdeconv, labels, r, STATS) :
        else :
            #当前标记所在区域
            mask = labels == j
-           #输入为区域标记，原图像
-           #l = border_saliency(mask, Hdeconv)
-           #如果两种边缘的灰度差值小于20，则该区域不在边缘处
-           #if l < 20:
-           #记录最终找到的标记区域newL
            regions[nreg] = j
            newL[mask] = nreg
-           nreg+=1
+           nreg += 1
+
+           #输入为区域标记，原图像
+           '''l = border_saliency(mask, Hdeconv)
+           #如果两种边缘的灰度差值小于20，则该区域不在边缘处
+           if l < 20:
+               labels[labels == j] = 0
+           else:
+           #记录最终找到的标记区域newL
+               regions[nreg] = j
+               newL[mask] = nreg
+               nreg+=1'''
 
     #对newL进行椭圆拟合，得到LL（主程序中的frstLL）
     STATout = regionprops(newL)
