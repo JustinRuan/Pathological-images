@@ -12,7 +12,6 @@ def post_process(Hdeconv, labels, r, STATS) :
     regions = []
     nreg = 1
     newL = np.zeros(labels.shape, dtype=np.uint16)
-    j = 2
     for j in range(len(STATS)) :
        regions.append(0)
        A = STATS[j].area
@@ -39,7 +38,7 @@ def post_process(Hdeconv, labels, r, STATS) :
            #输入为区域标记，原图像
            '''l = border_saliency(mask, Hdeconv)
            #如果两种边缘的灰度差值小于20，则该区域不在边缘处
-           if l < 20:
+           if l < 1:
                labels[labels == j] = 0
            else:
            #记录最终找到的标记区域newL

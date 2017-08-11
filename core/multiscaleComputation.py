@@ -10,7 +10,7 @@ from sklearn import preprocessing
 from post_process import post_process
 from colorNormalization import colorNormalization
 from anisodiff2D import anisodiff2D
-from frst import FastRadialSymmetryTransform
+from core.frst import FastRadialSymmetryTransform
 
 ori = io.imread('E:/PythonProjects/Pathological-images/data/3950.tif')
 img = ori
@@ -40,7 +40,7 @@ morph = 1 - (morphology.reconstruction((1 - morph2), (1 - morph)))
 # 模板变小一半
 SE = morphology.disk(int(r / 2))
 morph2 = morphology.dilation(morph, SE)
-morph = 1 - (morphology.reconstruction(1 - morph2, 1 - morph))
+morph = 1 - (morphology.reconstruction((1 - morph2), (1 - morph)))
 morph[morph > 200 / 255] = 1
 # 快速径向变换
 frst = FastRadialSymmetryTransform()
@@ -49,8 +49,9 @@ S = frst.transform(morph, ns, 2, 0.5)
 min_max_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
 S = min_max_scaler.fit_transform(S)
 # 计算morph图像的Sobel梯度，得到灰度梯度图像Gmag
-Gmag = filters.rank.gradient(morph, morphology.disk(2)) #计算梯度
-#Gmag = filters.sobel(morph)
+Gmag = filters.sobel(morph)
+#Gmag = ndi.filters.sobel(morph)
+#Gmag = filters.rank.gradient(morph, morphology.disk(2)) #计算梯度
 # 对图像S进行extended maxima transform，得到BW图像
 BW = feature.peak_local_max(S, min_distance=10, indices=False)
 #BW = morphology.h_maxima(S, 102)
@@ -70,6 +71,8 @@ BW = morphology.dilation(BW, SE)
 # 将Gmag中BW（细胞核中心部分）和bak（非细胞核部分）所对应部分设成背景
 Gmag[BW] = 0
 Gmag[bak] = 0
+#Gmag[BW] = float('-inf')
+#Gmag[bak] = float('-inf')
 #基于梯度变换的分水岭算法
 L = morphology.watershed(Gmag, markers, mask=bak)
 # 对分水岭所标记的区域进行过滤，选择满足要求的区域
