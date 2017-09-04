@@ -4,7 +4,6 @@ from read import readSlider, readImage
 from core import FastRadialSymmetryTransform
 from sklearn import preprocessing
 from skimage import color,morphology,io,feature,filters, measure,segmentation,util
-from skimage.morphology import extrema
 
 rawImage = []
 HaeImage = []
