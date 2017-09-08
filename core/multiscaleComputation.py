@@ -99,7 +99,7 @@ for r in radius :
 
     # 对分水岭所标记的区域进行过滤，选择满足要求的区域
     # 计算各个标记区域的Area、Solidity，几何中心与重心的距离，椭圆离心率
-    STATS = measure.regionprops(L)
+    STATS = measure.regionprops(L, intensity_image = H)
     regfrst, frstLL, Lfrst, STATSfrst = post_process(H, L, r, STATS)
 
     # 进行多尺度的叠加
