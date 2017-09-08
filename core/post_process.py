@@ -24,14 +24,16 @@ def post_process(Hdeconv, labels, r, STATS) :
        #WCy = WC[1]
        #d = np.hypot(Cx - WCx, Cy - WCy)
        EC = STATS[j].eccentricity
+       tag = STATS[j].label
+
        #按条件进行过滤，面积不在【r，4r】圆面积之内，Solidity过小，d过小，EC太椭了（圆是0），这些区域置成背景
        if A < (r**2) * math.pi or A > ((4 * r)**2) * math.pi or S < 0.815 or EC > 0.9 :
            #labels为分水岭所标记的区域，置0
-           labels[labels == j] = 0
+           labels[labels == tag] = 0
        else :
            #当前标记所在区域
-           mask = labels == j
-           regions[nreg] = j
+           mask = labels == tag
+           regions[nreg] = tag
            newL[mask] = nreg
            nreg += 1
 
@@ -52,7 +54,7 @@ def post_process(Hdeconv, labels, r, STATS) :
     for i in range(len(STATout)):
         if STATout[i].major_axis_length != 0 and STATout[i].minor_axis_length != 0:
             rr, cc = ellipse(STATout[i].centroid[0], STATout[i].centroid[1],
-                             STATout[i].minor_axis_length, STATout[i].major_axis_length,
+                             STATout[i].minor_axis_length/2, STATout[i].major_axis_length/2,
                              rotation=STATout[i].orientation)
             if max(rr) < LL.shape[0] and max(cc) < LL.shape[1]:
                 LL[rr, cc] = 1
