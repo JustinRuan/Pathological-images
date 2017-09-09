@@ -31,7 +31,7 @@ def post_process(Hdeconv, labels, r, STATS) :
        if tag == 1: continue
 
        #按条件进行过滤，面积不在【r，4r】圆面积之内，Solidity过小，d过小，EC太椭了（圆是0），这些区域置成背景
-       if A < (r**2) * math.pi or A > ((4 * r)**2) * math.pi or S < 0.815 or EC > 0.9 or  d<0.08:
+       if A < (r**2) * math.pi or A > ((8 * r)**2) * math.pi or S < 0.5 or EC > 0.95 or  d<0.04:
            #labels为分水岭所标记的区域，置0
            labels[labels == tag] = 0
        else :

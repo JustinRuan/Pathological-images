@@ -74,7 +74,7 @@ class FastRadialSymmetryTransform(object):
         m_max = np.max(magnitude)
         o_min = 0    #np.min(orientation)
         m_min = 0    #np.min(magnitude)
-        orientation = 255 * (orientation - o_min) / (o_max - o_min)
+        orientation = 1 * (orientation - o_min) / (o_max - o_min)
         magnitude = 1 * (magnitude - m_min) / (m_max - m_min)
 
         F = self.compute_F(image, orientation, magnitude, alpha)
