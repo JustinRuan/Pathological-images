@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 # Author:HeSimin
-from skimage import io, filters, color, morphology, feature, measure,segmentation
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
 from scipy import ndimage as ndi
-from sklearn import preprocessing
+from skimage import io, filters, color, morphology, feature, measure
 
-from post_process import post_process
-from colorNormalization import colorNormalization
 from anisodiff2D import anisodiff2D
-from core.frst import FastRadialSymmetryTransform
+from frst import FastRadialSymmetryTransform
+from post_process import post_process
 
 ori = io.imread('../data/3950.tif')
 img = ori
