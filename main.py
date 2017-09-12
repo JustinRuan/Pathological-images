@@ -1,4 +1,4 @@
-import openslide
+# import openslide
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
@@ -9,18 +9,18 @@ from matplotlib.colors import LinearSegmentedColormap
 Normal_Path = 'D:\Study\TIF\Train_Normal_Part1'
 Tumor_Path = 'D:\Study\TIF\Train_Tumor_Part1'
 
-def readSlider(filename):
-    path = '{}\\{}'.format(Normal_Path, filename)
-    slide = openslide.OpenSlide(path)
-
-    [m, n] = slide.level_dimensions[0]
-    print('m = {}, n = {}'.format(m, n))
-
-    tile = np.array(slide.read_region((69000, 113000), 0, (1000, 1000)))
-    slide.close()
-
-    result = tile[:,:,1:4]
-    return result
+# def readSlider(filename):
+#     path = '{}\\{}'.format(Normal_Path, filename)
+#     slide = openslide.OpenSlide(path)
+#
+#     [m, n] = slide.level_dimensions[0]
+#     print('m = {}, n = {}'.format(m, n))
+#
+#     tile = np.array(slide.read_region((69000, 113000), 0, (1000, 1000)))
+#     slide.close()
+#
+#     result = tile[:,:,1:4]
+#     return result
 
 
 
@@ -33,8 +33,8 @@ cmap_dab = LinearSegmentedColormap.from_list('mycmap', ['white',
 cmap_eosin = LinearSegmentedColormap.from_list('mycmap', ['darkviolet',
                                                           'white'])
 
-# ihc_rgb = io.imread('../data/图像_3950.tif')
-ihc_rgb = readSlider('Normal_001.tif')
+ihc_rgb = io.imread('./data/3950.tif')
+# ihc_rgb = readSlider('Normal_001.tif')
 ihc_hed = rgb2hed(ihc_rgb)
 
 ## 预处理开始
