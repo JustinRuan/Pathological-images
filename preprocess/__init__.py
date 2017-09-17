@@ -1,4 +1,4 @@
-# from reader import readSlider, readImage
+# from slide import DigitalSlide
 #
-# __all__ = [readSlider, readImage]
-
+# __all__ = [DigitalSlide, ]
+#
