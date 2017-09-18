@@ -173,6 +173,15 @@ class DigitalSlide(object):
 
         return resultJPG
 
+    '''关于标注的说明：
+    1. 使用 FigureType="Polygon" 的曲线来进行区域边界的标记
+    2. 不同的 Color属性来区分 良恶性区域（绿色对应良性，蓝色对应恶性）
+    3. 为了提高标注的精度，使用多个分段来进行一个区域的标记，
+        这里使用Detail属性相同的曲线组成一个区域的边界, A01,
+         第一个字母代表区域编号，后面的数字代表连接顺序（顺时针方向）
+         
+     4. bug：每段曲线只能向一个方向来画, 各段都是顺或逆时针方向来画
+    '''
     def read_annotation(self, filename):
         # 使用minidom解析器打开 XML 文档
         fp = open(filename, 'r', encoding="utf-8")
@@ -186,13 +195,15 @@ class DigitalSlide(object):
 
         Regions = collection.getElementsByTagName("Region")
 
-        self.ano_TUMOR = []
-        self.ano_NORMAL = []
+        border_TUMOR = {}
+        border_NORMAL = {}
         for Region in Regions:
             if Region.hasAttribute("FigureType"):
                 if Region.getAttribute("FigureType") == "Polygon":
                     Vertices = Region.getElementsByTagName("Vertice")
                     posArray = np.zeros((len(Vertices), 2))
+                    range_type = int(Region.getAttribute("Color"))
+                    contour_id = Region.getAttribute("Detail")
 
                     i = 0
                     for item in Vertices:
@@ -200,12 +211,38 @@ class DigitalSlide(object):
                         posArray[i][1] = float(item.getAttribute("Y"))
                         i += 1
 
-                    range_type = int(Region.getAttribute("Color"))
                     if range_type == TUMOR_RANGE_COLOR:
-                        self.ano_TUMOR.append(posArray)
+                        border_TUMOR[contour_id] = posArray
                     elif range_type == NORMAL_RANGE_COLOR:
-                        self.ano_NORMAL.append(posArray)
+                        border_NORMAL[contour_id] = posArray
 
+        # merge
+        self.ano_TUMOR = []
+        self.ano_NORMAL = []
+
+        border_TUMOR = sorted(border_TUMOR.items(), key=lambda x: x[0], reverse=False)
+        self.merge_border(border_TUMOR, self.ano_TUMOR)
+
+        border_NORMAL = sorted(border_NORMAL.items(), key=lambda x: x[0], reverse=False)
+        self.merge_border(border_NORMAL, self.ano_NORMAL)
+        return
+
+    def merge_border(self, border, result):
+        data = []
+        pre_id = ''
+        for k in border:
+            id = k[0][0]
+            if len(pre_id) == 0:  # 刚开始，第一段
+                data = k[1]
+            elif pre_id == id:  # 同一段
+                data = np.concatenate((data, k[1]))
+            else:  # 新的一段开始
+                result.append(data)
+                data = k[1]
+            pre_id = id
+
+        if len(data) > 0:
+            result.append(data)
         return
 
     def create_mask_image(self, scale=20):
