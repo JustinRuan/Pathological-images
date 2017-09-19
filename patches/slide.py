@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+# Author: Justin
+
 import numpy as np
 import ctypes
 from ctypes.wintypes import LPARAM
@@ -91,6 +95,7 @@ class DigitalSlide(object):
         self.khiImageHeight = 0
         self.khiImageWidth = 0
         self.khiScanScale = 0
+        self.m_id = ""
 
     # def __del__(self):
     #     if self.img_pointer :
@@ -124,11 +129,15 @@ class DigitalSlide(object):
 
         return success
 
-    def open_slide(self, filename):
+    def open_slide(self, filename, id_string):
         tag = self.get_slide_pointer(filename)
+        self.m_id = id_string
         if tag:
             return self.get_header_info()
         return False
+
+    def get_id(self):
+        return self.m_id;
 
     def get_image_width_height_byScale(self, scale):
         if self.khiScanScale == 0:
@@ -142,7 +151,7 @@ class DigitalSlide(object):
         # if self.img_pointer :
         return self.UnInitImageFileFunc(byref(self.img_pointer))
 
-    def get_image_block(self, fScale, sp_x, sp_y, nWidth, nHeight):
+    def get_image_block(self, fScale, sp_x, sp_y, nWidth, nHeight, isFile=False):
         pBuffer = POINTER(c_ubyte)()
         DataLength = c_int()
         '''
@@ -169,9 +178,11 @@ class DigitalSlide(object):
         data = np.ctypeslib.as_array(
             (ctypes.c_ubyte * DataLength.value).from_address(ctypes.addressof(pBuffer.contents)))
 
-        resultJPG = Image.open(io.BytesIO(data))
-
-        return resultJPG
+        if isFile:
+            return data
+        else:
+            resultJPG = Image.open(io.BytesIO(data))
+            return resultJPG
 
     '''关于标注的说明：
     1. 使用 FigureType="Polygon" 的曲线来进行区域边界的标记
@@ -247,7 +258,7 @@ class DigitalSlide(object):
 
     def create_mask_image(self, scale=20):
         w, h = self.get_image_width_height_byScale(scale)
-        img = np.zeros((h, w), dtype=np.uint8)
+        img = np.zeros((h, w), dtype=np.byte)
 
         for contour in self.ano_TUMOR:
             tumor_range = np.rint(contour * scale).astype(np.int)

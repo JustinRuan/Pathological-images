@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+# Author: Justin
+
 import numpy as np
 from scipy.ndimage.filters import sobel, gaussian_filter
 

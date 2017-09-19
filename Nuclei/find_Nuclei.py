@@ -1,5 +1,6 @@
+#!/usr/bin/env python
 # -*- coding:utf-8 -*-
-
+# Author: Justin
 
 import numpy as np
 from matplotlib import pyplot as plt
