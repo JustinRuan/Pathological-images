@@ -4,7 +4,7 @@ import numpy as np
 
 
 slide = DigitalSlide()
-tag = slide.open_slide("D:/Study/breast/3Plus/17004930 HE_2017-07-29 09_45_09.kfb")
+tag = slide.open_slide("D:/Study/breast/3Plus/17004930 HE_2017-07-29 09_45_09.kfb", "17004930")
 
 if tag:
     ImageWidth, ImageHeight = slide.get_image_width_height_byScale(utils.GLOBAL_SCALE)
@@ -16,7 +16,7 @@ slide.read_annotation('D:/Study/breast/3Plus/17004930 HE_2017-07-29 09_45_09.kfb
 mask_img = slide.create_mask_image(utils.GLOBAL_SCALE)
 
 roi_img = get_roi(fullImage)
-seeds = get_seeds(roi_img, 1)
+seeds = get_seeds(roi_img, 10)
 
 patch_image = draw_seeds(fullImage, seeds, 32)
 
