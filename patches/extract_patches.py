@@ -37,3 +37,4 @@ class Patch(object):
             else:
                 patch_data.tofile(utils.PATCH_PATH_NORMAL + filename)
         return
+
