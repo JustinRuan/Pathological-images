@@ -18,7 +18,7 @@ slide.read_annotation('D:/Study/breast/3Plus/17004930 HE_2017-07-29 09_45_09.kfb
 mask_img = slide.create_mask_image(utils.GLOBAL_SCALE)
 
 ex_patch = Patch()
-ex_patch.get_roi_seeds(fullImage, 5)
+ex_patch.get_roi_seeds(fullImage, 1)
 
 ex_patch.extract_patches(slide, mask_img, utils.EXTRACT_SCALE, utils.PATCH_SIZE_HIGH)
 
