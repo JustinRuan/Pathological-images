@@ -7,6 +7,7 @@ from patches import DigitalSlide, Patch, get_roi, get_seeds, draw_seeds
 import utils
 import numpy as np
 from matplotlib import pyplot as plt
+import time
 
 deploy = 'D:/CloudSpace/DoingNow/WorkSpace/Pathological_Images/DetectCancer/models/googlenet/deploy.prototxt'
 # 训练好的caffemodel
@@ -33,18 +34,20 @@ def classify_slide():
     transformer.set_channel_swap('data', (2, 1, 0))  # 交换通道，将图片由RGB变为BGR
 
     result = []
-    space_patch = utils.PATCH_SIZE_LOW
-    # space_patch = 8
+    half_space = (np.rint(utils.PATCH_SIZE_LOW / 2)).astype(np.int32)
 
     if tag:
         ImageWidth, ImageHeight = slide.get_image_width_height_byScale(utils.GLOBAL_SCALE)
         fullImage = slide.get_image_block(utils.GLOBAL_SCALE, 0, 0, ImageWidth, ImageHeight)
-        result = np.zeros(
-            (np.rint(ImageHeight / space_patch).astype(np.int32), np.rint(ImageWidth / space_patch).astype(np.int32)),
-            dtype=np.uint8)
+        result = np.zeros((ImageHeight, ImageWidth), dtype=np.float)
 
         roi_img = get_roi(fullImage)
-        seeds = get_seeds(roi_img, 1)
+        seeds = get_seeds(roi_img, utils.CLASSIFY_PATCH_DIST)
+
+        c = len(seeds)
+        n = 0
+        m = 0
+        print(time.strftime('%H:%M:%S : ', time.localtime(time.time())), m, 'k/ ', c)
 
         # 低分辨率上的间隔为PATCH_SIZE_LOW 的坐标点
         for (x, y) in seeds:
@@ -58,17 +61,30 @@ def classify_slide():
             net.forward()
             prob = net.blobs['prob'].data[0].flatten()
             posmax = prob.argmax()
-            if posmax == 1:  # cancer
-                mx = (np.rint(x / space_patch)).astype(np.int32)
-                my = (np.rint(y / space_patch)).astype(np.int32)
-                # result[my, mx] = 1
-                result[my, mx] = prob[posmax] * 100
+            # if posmax == 1:  # cancer
+            #     mx = (np.rint(x / space_patch)).astype(np.int32)
+            #     my = (np.rint(y / space_patch)).astype(np.int32)
+            #     # result[my, mx] = 1
+            #     result[my, mx] = prob[1] * 1000
+            result[y - half_space: y + half_space, x - half_space: x + half_space] += prob[1]
+            n, m = count(n, m, c)
 
     tag = slide.release_slide_pointer()
     return fullImage, result
 
+
+def count(n, m, c):
+    n += 1
+    if n >= 1000:
+        m += 1
+        n = 0
+        print(time.strftime('%H:%M:%S : ', time.localtime(time.time())), m, 'k/ ', c)
+    return n, m
+
 if __name__ == '__main__':
     full_img, result_img = classify_slide()
+    print(result_img.shape)
+
     fig, axes = plt.subplots(1, 2, figsize=(4, 3))
     ax = axes.ravel()
 
@@ -83,4 +99,4 @@ if __name__ == '__main__':
 
     plt.show()
 
-    # result_img.tofile("he_result_img.bin")
+    result_img.tofile("he_result_img.bin")

@@ -28,7 +28,7 @@ def get_seeds(src_img, distance):
     seed_img = morphology.binary_erosion(src_img, square(patch_size))
     seed_img = morphology.binary_erosion(seed_img, square(8))  # 留边
 
-    space_patch = patch_size * distance
+    space_patch = distance
     pos = seed_img.nonzero()
     y = (np.rint(pos[0] / space_patch + 0.5) * space_patch).astype(np.int32)  # row
     x = (np.rint(pos[1] / space_patch + 0.5) * space_patch).astype(np.int32)  # col

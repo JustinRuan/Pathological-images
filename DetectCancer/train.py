@@ -18,10 +18,10 @@ def training(solver_proto):
 
     solver = caffe.SGDSolver(solver_proto)
     # 利用snapshot从断点恢复训练
-    solver.net.copy_from(pretrained_model)
+    # solver.net.copy_from(pretrained_model)
 
     solver.solve()
 
 
 if __name__ == '__main__':
-    training(solver_googlenet_proto)
+    training(solver_proto)
