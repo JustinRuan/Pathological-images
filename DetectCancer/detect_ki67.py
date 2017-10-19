@@ -3,49 +3,33 @@
 # Author: Justin
 
 import caffe
-from patches import DigitalSlide, Patch, get_roi, get_seeds, draw_seeds
+from patches import DigitalSlide, Patch, get_roi, get_seeds, draw_seeds, Match_Slide
 import utils
 import numpy as np
 from matplotlib import pyplot as plt
 from skimage import io, filters, color, morphology, feature, measure, segmentation, transform
 from scipy import signal
 
-def read_ki67(scale, left_x, top_y, width, height):
-    slide = DigitalSlide()
-    tag = slide.open_slide("D:/Study/breast/3Plus/17004930 KI-67_2017-07-29 09_48_32.kfb", "17004930")
 
-    if tag:
-        # ImageWidth, ImageHeight = slide.get_image_width_height_byScale(utils.GLOBAL_SCALE)
-        # print(ImageWidth, ImageHeight)
-        # space_patch = utils.PATCH_SIZE_LOW
+def read_ki67(roi_image):
+    A = color.rgb2hsv(roi_image)
+    C = A[:, :, 1] > 0.7
 
-        roi_image = slide.get_image_block(scale, left_x, top_y, width, height)
-        A = color.rgb2hsv(roi_image)
-        C = A[:, :, 1] > 0.7
+    B = color.rgb2lab(roi_image)
+    D = (B[:, :, 2] < -18)
 
-        B = color.rgb2lab(roi_image)
-        D = (B[:, :, 2] < -18)
-
-        SE = morphology.square(5)
-        C = morphology.binary_closing(C, SE)
-        D = morphology.binary_closing(D, SE)
-
-    tag = slide.release_slide_pointer()
-
-    return roi_image, C, D
+    SE = morphology.square(5)
+    C = morphology.binary_closing(C, SE)
+    D = morphology.binary_closing(D, SE)
+    return C, D
 
 
-def read_mask(mask, left_x, top_y, width, height):
-    slide = DigitalSlide()
-    tag = slide.open_slide("D:/Study/breast/3Plus/17004930 HE_2017-07-29 09_45_09.kfb", "17004930")
-    roi_image = slide.get_image_block(10, left_x, top_y, width, height)
-    slide.release_slide_pointer()
-
+def read_mask(mask, ratio, left_x, top_y, width, height):
     ImageHeight, ImageWidth = mask.shape
-    large_mask = transform.resize(mask, (ImageHeight * 8, ImageWidth * 8))
+    large_mask = transform.resize(mask, (ImageHeight * ratio, ImageWidth * ratio))
     roi_mask = large_mask[top_y:top_y + height, left_x:left_x + width]
     roi_mask = roi_mask > 0.175
-    return roi_image, roi_mask
+    return roi_mask
 
 
 def positive_hotmap(ki67, notki67, k):
@@ -64,13 +48,18 @@ def positive_hotmap(ki67, notki67, k):
 
 
 if __name__ == '__main__':
+    ms = Match_Slide("/17004930 HE_2017-07-29 09_45_09.kfb", "/17004930 KI-67_2017-07-29 09_48_32.kfb", "17004930")
+    x = 1800 * 4
+    y = 2000 * 4
+    he_img, ki67_img = ms.get_Matched_Region(10, x, y, 800 * 2, 600 * 2)
+
     mask = np.fromfile("he_result_img (2292, 2681).bin", dtype=np.float)  # (1834, 2145) (2292, 2681)
-    #
     mask = np.reshape(mask, (2292, 2681))
 
-    he_img, roi_mask = read_mask(mask, (1772 - 200) * 4, (2125 - 200) * 4, 400 * 4, 300 * 4)
+    r = np.rint(10 / utils.GLOBAL_SCALE).astype(np.int)
+    roi_mask = read_mask(mask, r, x, y, 800 * 2, 600 * 2)
 
-    ki67_img, ki67, notki67 = read_ki67(2.26 * 4, (963 - 200) * 4, (1589 - 200) * 4, 400 * 4, 300 * 4)
+    ki67, notki67 = read_ki67(ki67_img)
     ki67[~roi_mask] = 0
 
     result = positive_hotmap(ki67, notki67, 9)

@@ -9,18 +9,15 @@ import numpy as np
 from matplotlib import pyplot as plt
 import time
 
-deploy = 'D:/CloudSpace/DoingNow/WorkSpace/Pathological_Images/DetectCancer/models/googlenet/deploy.prototxt'
+# deploy = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/lenet/deploy.prototxt'
+deploy = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/googlenet/deploy.prototxt'
 # 训练好的caffemodel
-caffe_model = 'D:/CloudSpace/DoingNow/WorkSpace/Pathological_Images/DetectCancer/models/googlenet_iter_600.caffemodel'
+caffe_model = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/googlenet_iter_600.caffemodel'
 
-# def classify(net, img):
-#
-#
-#     return 0.1
 
-def classify_slide():
+def classify_slide(filename, file_id):
     slide = DigitalSlide()
-    tag = slide.open_slide("D:/Study/breast/3Plus/17004930 HE_2017-07-29 09_45_09.kfb", "17004930")
+    tag = slide.open_slide(filename, file_id)
 
     caffe.set_device(0)
     caffe.set_mode_gpu()
@@ -82,7 +79,10 @@ def count(n, m, c):
     return n, m
 
 if __name__ == '__main__':
-    full_img, result_img = classify_slide()
+    filename = utils.SLIDES_PATH + "/17004930 HE_2017-07-29 09_45_09.kfb"
+    file_id = "17004930"
+
+    full_img, result_img = classify_slide(filename, file_id)
     print(result_img.shape)
 
     fig, axes = plt.subplots(1, 2, figsize=(4, 3))
@@ -99,4 +99,5 @@ if __name__ == '__main__':
 
     plt.show()
 
-    result_img.tofile("he_result_img.bin")
+    save_filename = "he_result_img {}.bin".format(result_img.shape)
+    result_img.tofile(save_filename)

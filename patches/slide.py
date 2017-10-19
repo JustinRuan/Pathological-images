@@ -11,11 +11,10 @@ from PIL import Image
 import io
 import xml.dom.minidom
 from skimage import draw
+import utils
 
-KFB_SDK_PATH = "D:\CloudSpace\DoingNow\WorkSpace\lib\KFB_SDK"
 TUMOR_RANGE_COLOR = 4278190335
 NORMAL_RANGE_COLOR = 4278222848
-
 
 # 定义结构体
 class ImageInfoStruct(ctypes.Structure):
@@ -24,7 +23,7 @@ class ImageInfoStruct(ctypes.Structure):
 
 class DigitalSlide(object):
     def __init__(self):
-        self._Objdll_ = ctypes.windll.LoadLibrary(KFB_SDK_PATH + "/x64/ImageOperationLib")
+        self._Objdll_ = ctypes.windll.LoadLibrary(utils.KFB_SDK_PATH + "/x64/ImageOperationLib")
 
         '''
         bool InitImageFileFunc( ImageInfoStruct& sImageInfo, constchar* Path );
@@ -96,12 +95,12 @@ class DigitalSlide(object):
         self.khiImageWidth = 0
         self.khiScanScale = 0
         self.m_id = ""
+        self.control_point = [0, 0]
+
 
     # def __del__(self):
-    #     if self.img_pointer :
-    #         self.img_pointer = None
-    #     self = None
-    #     return
+    #     self._Objdll_ = []
+
 
     def get_slide_pointer(self, filename):
         self.img_pointer = ImageInfoStruct()
@@ -236,7 +235,41 @@ class DigitalSlide(object):
 
         border_NORMAL = sorted(border_NORMAL.items(), key=lambda x: x[0], reverse=False)
         self.merge_border(border_NORMAL, self.ano_NORMAL)
+
+        self.read_remark(Regions)
         return
+
+    def read_remark(self, filename):
+        # 使用minidom解析器打开 XML 文档
+        fp = open(filename, 'r', encoding="utf-8")
+        content = fp.read()
+        fp.close()
+
+        content = content.replace('encoding="gb2312"', 'encoding="UTF-8"')
+
+        DOMTree = xml.dom.minidom.parseString(content)
+        collection = DOMTree.documentElement
+
+        Regions = collection.getElementsByTagName("Region")
+
+        x = 0
+        y = 0
+        n = 0
+        for Region in Regions:
+            if Region.hasAttribute("FigureType"):
+                if Region.getAttribute("FigureType") == "Line":
+                    Vertices = Region.getElementsByTagName("Vertice")
+                    for item in Vertices:
+                        x += float(item.getAttribute("X"))
+                        y += float(item.getAttribute("Y"))
+                        n += 1
+
+        if n > 0:
+            x = x / n
+            y = y / n
+
+        self.control_point = [x, y]
+        return x, y
 
     def merge_border(self, border, result):
         data = []

@@ -38,3 +38,28 @@ class Patch(object):
                 patch_data.tofile(utils.PATCH_PATH_NORMAL + filename)
         return
 
+
+if __name__ == '__main__':
+    # 将要切分的数字切片文件
+    slide_filename = utils.SLIDES_PATH + "/17004930 HE_2017-07-29 09_45_09.kfb"
+    silde_id = "17004930"
+    silde_annotation_filename = slide_filename + ".Ano"
+
+    # 开始
+    slide = DigitalSlide()
+    tag = slide.open_slide(slide_filename, silde_id)
+
+    if tag:
+        ImageWidth, ImageHeight = slide.get_image_width_height_byScale(utils.GLOBAL_SCALE)
+        fullImage = slide.get_image_block(utils.GLOBAL_SCALE, 0, 0, ImageWidth, ImageHeight)
+
+    slide.read_annotation(silde_annotation_filename)
+
+    mask_img = slide.create_mask_image(utils.GLOBAL_SCALE)
+
+    ex_patch = Patch()
+    ex_patch.get_roi_seeds(fullImage, utils.EXTRACT_PATCH_DIST)
+
+    ex_patch.extract_patches(slide, mask_img, utils.EXTRACT_SCALE, utils.PATCH_SIZE_HIGH)
+
+    tag = slide.release_slide_pointer()

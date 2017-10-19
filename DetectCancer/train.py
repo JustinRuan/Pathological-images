@@ -4,12 +4,13 @@
 import caffe
 from caffe import layers as L, params as P, to_proto
 from caffe.proto import caffe_pb2
+import utils
 
 # 设定文件保存路径
-solver_proto = 'D:/CloudSpace/DoingNow/WorkSpace/Pathological_Images/DetectCancer/models/lenet/solver.prototxt'
-solver_googlenet_proto = 'D:/CloudSpace/DoingNow/WorkSpace/Pathological_Images/DetectCancer/models/googlenet/quick_solver.prototxt'
+solver_LeNet_proto = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/lenet/solver.prototxt'
+solver_GoogLeNet_proto = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/googlenet/quick_solver.prototxt'
 
-pretrained_model = 'D:/CloudSpace/DoingNow/WorkSpace/Pathological_Images/DetectCancer/models/googlenet_iter_600.caffemodel'
+pretrained_model = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/googlenet_iter_600.caffemodel'
 
 # 开始训练
 def training(solver_proto):
@@ -24,4 +25,4 @@ def training(solver_proto):
 
 
 if __name__ == '__main__':
-    training(solver_proto)
+    training(solver_GoogLeNet_proto)
