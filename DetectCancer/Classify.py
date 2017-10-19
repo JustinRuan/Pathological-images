@@ -12,7 +12,7 @@ import time
 # deploy = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/lenet/deploy.prototxt'
 deploy = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/googlenet/deploy.prototxt'
 # 训练好的caffemodel
-caffe_model = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/googlenet_iter_600.caffemodel'
+caffe_model = utils.PROJECT_PATH + '/Pathological_Images/DetectCancer/models/googlenet_iter_30000.caffemodel'
 
 
 def classify_slide(filename, file_id):
