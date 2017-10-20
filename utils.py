@@ -37,3 +37,6 @@ SLIDES_PATH = "D:/Study/breast/3Plus"
 
 # 项目所在路径，网络模型也在这个路径的/Pathological_Images/DetectCancer/models下
 PROJECT_PATH = "D:/CloudSpace/DoingNow/WorkSpace"
+
+# 训练测试网络用的切片所在路径
+TRAIN_TEST_PATCHES_PATH = "D:/Study/breast/Patches/S20_P256"

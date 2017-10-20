@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 from skimage import io, filters, color, morphology, feature, measure, segmentation, transform
 from scipy import signal
 from scipy.ndimage.filters import gaussian_filter
+import time
 
 def read_ki67(roi_image):
     A = color.rgb2hsv(roi_image)
@@ -41,6 +42,7 @@ def positive_hotmap(ki67, notki67, k):
     mean_ki67 = signal.convolve2d(ki67, m)
     mean_notki67 = signal.convolve2d(notki67, m)
 
+    # ratio_array = (mean_ki67) / (mean_notki67 + mean_ki67 + 1e-6)
     ratio_array = (mean_ki67) / (mean_notki67 + 1e-3)
     # max_value = np.max(ratio_array)
     # if max_value > 0:
@@ -86,10 +88,21 @@ def detect_ki67(ms):
             result = positive_hotmap(ki67, notki67, 9)
             small_reault = transform.resize(result, (small_height, small_width))
             global_result[n * small_height:(n + 1) * small_height, m * small_width:(m + 1) * small_width] = small_reault
-            print((n, m))
+            print(time.strftime('%H:%M:%S : ', time.localtime(time.time())), (n, m))
 
     return he_global_img, ki67_global_img, global_result
 
+
+def enhanced(result):
+    max_value = np.max(result)
+    if max_value > 0:
+        result = result / max_value
+
+    SE = morphology.disk(10)
+    morp_array = morphology.dilation(result, SE)
+
+    new_result = gaussian_filter(morp_array, sigma=5, truncate=4.0)
+    return new_result
 
 def test1(ms):
     x = 2500 * 4
@@ -140,6 +153,7 @@ if __name__ == '__main__':
     # test1(ms)
 
     he_global_img, ki67_global_img, global_result = detect_ki67(ms)
+    global_result = enhanced(global_result)
 
     fig, axes = plt.subplots(1, 3, figsize=(4, 3))
     ax = axes.ravel()
@@ -149,7 +163,7 @@ if __name__ == '__main__':
     ax[1].imshow(ki67_global_img)
     ax[1].set_title("ki67_global_img")
 
-    ax[2].imshow(global_result)
+    ax[2].imshow(global_result, cmap=plt.cm.jet)
     ax[2].set_title("global_result")
 
     for a in ax.ravel():
