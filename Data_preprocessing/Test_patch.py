@@ -1,4 +1,4 @@
-from Function import DigitalSlide, Patch
+from patches import DigitalSlide, Patch
 
 import utils
 

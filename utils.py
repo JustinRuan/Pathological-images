@@ -2,7 +2,7 @@
 
 """
    1. 最高分辨率图像使用scale = 20进行采集，这时每个Patch边长为256
-   2. 全图使用scale = 2.5进行采集，对应的Patch的边长为32
+   2. 全图使用scale = 1.23进行采集，对应的Patch的边长为16
 """
 # googleNet
 EXTRACT_SCALE = 20

@@ -145,7 +145,7 @@ def main():
 
         ######################################################################################
 
-    fig, axes = plt.subplots(2, 3, figsize=(4, 3))
+    fig, axes = plt.subplots(2, 3, figsize=(4, 3), dpi=80)
     ax = axes.ravel()
     # ax[0].imshow(H_diff, cmap=plt.cm.gray)
     # ax[0].set_title("H_diff")
