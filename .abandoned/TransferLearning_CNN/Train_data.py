@@ -9,7 +9,7 @@ import utils
 
 # 路径设置
 # 分类deploy
-deploy =utils.MODEL_PATH + '/alexnet/deploy.prototxt'
+deploy = utils.MODEL_PATH + '/alexnet/deploy.prototxt'
 # 训练好的模型
 caffe_model = utils.MODEL_PATH + '/Accurate_model/alexnet_iter_4000.caffemodel'
 # 训练正样本图片路径

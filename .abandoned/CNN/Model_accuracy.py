@@ -5,7 +5,7 @@ import os
 import shutil
 import utils
 
-deploy =utils.MODEL_PATH + 'alexnet/deploy.prototxt'
+deploy = utils.MODEL_PATH + 'alexnet/deploy.prototxt'
 # 训练好的caffemodel
 caffe_model = utils.MODEL_PATH + 'Accurate_model/alexnet_iter_4000.caffemodel'
 # 样本测试集

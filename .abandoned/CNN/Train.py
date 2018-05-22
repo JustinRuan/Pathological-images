@@ -3,7 +3,7 @@ import utils
 
 # 设定文件保存路径
 
-solver_proto =utils.MODEL_PATH + 'alexnet/solver.prototxt'
+solver_proto = utils.MODEL_PATH + 'alexnet/solver.prototxt'
 #pretrained_model = 'H:/PYPROJECT/WorkSpace/Pathological-images/DetectCancer/models/alexnet/bvlc_reference_caffenet.caffemodel'
 
 # 开始训练
