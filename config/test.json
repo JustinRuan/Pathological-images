@@ -1,0 +1,14 @@
+[
+  {
+    "CLASSIFY_PATCH_DIST": 8,
+    "EXTRACT_SCALE": 20,
+    "PATCH_SIZE_LOW": 16,
+    "PATCH_SIZE_HIGH": 256,
+    "EXTRACT_PATCH_DIST": 4
+  },
+  {
+    "SLICES_ROOT_PATH": "D:/Study/breast/3Plus",
+    "PATCHS_ROOT_PATH": "D:/Study/breast/Patches/S20",
+    "KFB_SDK_PATH": "D:/CloudSpace/DoingNow/WorkSpace/lib/KFB_SDK"
+  }
+]

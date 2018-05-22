@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/DetectCancer" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/preprocess" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/test" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.abandoned" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.5" jdkType="Python SDK" />
