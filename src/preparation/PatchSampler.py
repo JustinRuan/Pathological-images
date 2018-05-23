@@ -110,6 +110,27 @@ class PatchSampler(object):
 
         return
 
-    def extract_patches_RZone(self):
+    def extract_patches_RZone(self, sourceCone, scale):
+        if (scale != self.extract_scale):
+            print("\a", "scale error!")
+            return
+
+        Root_path = self._params.PATCHS_ROOT_PATH
+        intScale = np.rint(self.extract_scale * 100).astype(np.int)
+
+        pathCancer = "{}/S{}_{}".format(Root_path,intScale, "cancerR")
+        pathNormal = "{}/S{}_{}".format(Root_path,intScale, "normalR")
+        pathUnsure = "{}/S{}_{}".format(Root_path,intScale, "unsure")
+
+        if (not os.path.exists(pathCancer)):
+            os.makedirs(pathCancer)
+
+        if (not os.path.exists(pathNormal)):
+            os.makedirs(pathNormal)
+
+        if (not os.path.exists(pathUnsure)):
+            os.makedirs(pathUnsure)
+
+        patch_size = self._params.PATCH_SIZE_HIGH
 
         return
