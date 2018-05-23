@@ -15,7 +15,7 @@ class TestImageCone(unittest.TestCase):
 
     def test_load(self):
         c = Params.Params()
-        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/Pathological_Images/config/justin.json")
+        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
         imgCone = ImageCone.ImageCone(c)
 
         # 读取数字全扫描切片图像
@@ -30,6 +30,8 @@ class TestImageCone(unittest.TestCase):
             mask2 = imgCone.create_mask_image(scale, "TR")
             mask3 = imgCone.create_mask_image(scale, "NA")
             mask4 = imgCone.create_mask_image(scale, "NR")
+            mask5 = imgCone.get_roi(scale)
+            mask4 = mask4 & mask5
 
             fig, axes = plt.subplots(2, 3, figsize=(4, 3), dpi=300)
             ax = axes.ravel()
@@ -45,6 +47,8 @@ class TestImageCone(unittest.TestCase):
             ax[3].set_title("NA")
             ax[4].imshow(mask4)
             ax[4].set_title("NR")
+            ax[5].imshow(mask5)
+            ax[5].set_title("ROI")
 
             for a in ax.ravel():
                 a.axis('off')

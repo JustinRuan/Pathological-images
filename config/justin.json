@@ -1,14 +1,14 @@
 [
   {
-    "CLASSIFY_PATCH_DIST": 8,
-    "EXTRACT_SCALE": 20,
-    "PATCH_SIZE_LOW": 16,
     "PATCH_SIZE_HIGH": 256,
-    "EXTRACT_PATCH_DIST": 4
+    "EXTRACT_PATCH_INTERVAL": 4,
+    "EXTRACT_SCALE": 20,
+    "CLASSIFY_PATCH_INTERVAL": 8,
+    "GLOBAL_SCALE": 1.25
   },
   {
-    "SLICES_ROOT_PATH": "D:/Study/breast/3Plus",
+    "KFB_SDK_PATH": "D:/CloudSpace/DoingNow/WorkSpace/lib/KFB_SDK",
     "PATCHS_ROOT_PATH": "D:/Study/breast/Patches/S20",
-    "KFB_SDK_PATH": "D:/CloudSpace/DoingNow/WorkSpace/lib/KFB_SDK"
+    "SLICES_ROOT_PATH": "D:/Study/breast/3Plus"
   }
 ]

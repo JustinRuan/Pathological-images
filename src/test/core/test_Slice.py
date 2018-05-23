@@ -15,7 +15,7 @@ class TestSlice(unittest.TestCase):
 
     def test_load_annotation(self):
         c = Params.Params()
-        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/Pathological_Images/config/justin.json")
+        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholoImage/config/justin.json")
         slice = Slice.Slice(c.KFB_SDK_PATH)
 
         # 读取数字全扫描切片图像

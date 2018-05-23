@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 __author__ = 'Justin'
-__mtime__ = '2018-05-20'
+__mtime__ = '2018-05-23'
 
 """
 
@@ -11,13 +11,9 @@ from core import *
 import matplotlib.pyplot as plt
 
 
-class TestBlock(unittest.TestCase):
+class TestPatchSampler(unittest.TestCase):
 
-    def test_Block(self):
-        b = Block.Block("17004930", 13824, 17600, 20, 0, 256, 256)
-        print(b.encoding())
-
-    def test_getBlock(self):
+    def test_load(self):
         c = Params.Params()
         c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
         imgCone = ImageCone.ImageCone(c)
@@ -27,13 +23,13 @@ class TestBlock(unittest.TestCase):
                                  '17004930 HE_2017-07-29 09_45_09.kfb.Ano', "17004930")
         self.assertTrue(tag)
 
-        block = imgCone.get_image_block(20, 12000, 20000, 256, 256)
-        img = block.get_img()
+        if tag:
+            ps = PatchSampler.PatchSampler(c)
+            highScale = c.EXTRACT_SCALE
+            lowScale = c.GLOBAL_SCALE
 
-        plt.imshow(img)
-        plt.show()
-
-        block.save_img(c.PATCHS_ROOT_PATH)
+            result = ps.generate_seeds4_high(imgCone, lowScale, highScale)
+            print(result)
 
 
 if __name__ == '__main__':

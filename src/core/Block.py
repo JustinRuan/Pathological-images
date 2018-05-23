@@ -21,6 +21,12 @@ class Block(object):
         self.opcode = opcode
         self.width = w
         self.height = h
+        self.img_file = None
+        self.img = None
+
+    def updateXY(self, x ,y):
+        self.x = x
+        self.y = y
 
     def encoding(self):
         intScale = np.rint(self.scale * 100).astype(np.int)
@@ -30,8 +36,14 @@ class Block(object):
     def set_img_file(self, image_file):
         self.img_file = image_file
 
+    def set_img(self, img):
+        self.img = img
+
     def get_img(self):
-        return Image.open(io.BytesIO(self.img_file))
+        if self.img == None:
+            self.img = Image.open(io.BytesIO(self.img_file))
+
+        return self.img
 
     def save_img(self, path):
         filename = '/{}.jpg'.format(self.encoding())

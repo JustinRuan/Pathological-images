@@ -31,7 +31,7 @@ class TestConfigMethods(unittest.TestCase):
 
     def test_load(self):
         c = Params.Params()
-        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/Pathological_Images/config/test.json")
+        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/test.json")
         self.assertEqual(c.EXTRACT_SCALE, 20)
 
 

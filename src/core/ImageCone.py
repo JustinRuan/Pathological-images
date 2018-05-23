@@ -8,7 +8,8 @@ __mtime__ = '2018-05-17'
 from core import Slice, Block
 import numpy as np
 from skimage import draw
-
+from skimage import color, morphology
+from skimage.morphology import square
 
 class ImageCone(object):
 
@@ -50,7 +51,7 @@ class ImageCone(object):
 
     def create_mask_image(self, scale, mode):
         w, h = self._slice.get_image_width_height_byScale(scale)
-        img = np.zeros((h, w), dtype=np.byte)
+        img = np.zeros((h, w), dtype=np.bool)
         '''
         癌变精标区代号 TA， ano_TUMOR_A，在标记中直接给出。
         癌变粗标区代号 TR， ano_TUMOR_R，最终的区域从标记中计算得出， 
@@ -79,7 +80,7 @@ class ImageCone(object):
                 rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
                 img[rr, cc] = 1
         else:  # mode == 'NR'
-            img = np.ones((h, w), dtype=np.byte)
+            img = np.ones((h, w), dtype=np.bool)
 
             for contour in self._slice.ano_TUMOR_R:
                 tumor_range = np.rint(contour * scale).astype(np.int)
@@ -92,3 +93,17 @@ class ImageCone(object):
                 img[rr, cc] = 1
 
         return img
+
+    def get_roi(self, scale):
+        fullImg = self.get_fullimage_byScale(scale)
+
+        img = color.rgb2hsv(fullImg)
+        # mask = np.ones(img.Shape, dtype=np.uint8)
+        mask1 = (img[:, :, 2] < 0.9) & (img[:, :, 2] > 0.15)
+        mask2 = (img[:, :, 1] < 0.9) & (img[:, :, 1] > 0.10)
+        mask3 = (img[:, :, 0] < 0.9) & (img[:, :, 0] > 0.10)
+        result = mask1 & mask2 & mask3
+
+        result = morphology.binary_opening(result, square(20))
+        result = morphology.binary_closing(result, square(5))
+        return result
