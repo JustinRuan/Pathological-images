@@ -31,6 +31,7 @@ class TestPatchSampler(unittest.TestCase):
             result = ps.generate_seeds4_high(imgCone, lowScale, highScale)
             print(result)
 
+            ps.extract_patches_AZone(imgCone, highScale)
 
 if __name__ == '__main__':
     unittest.main()
