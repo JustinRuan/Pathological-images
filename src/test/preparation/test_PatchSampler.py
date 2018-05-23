@@ -8,6 +8,7 @@ __mtime__ = '2018-05-23'
 
 import unittest
 from core import *
+from preparation import *
 import matplotlib.pyplot as plt
 
 
