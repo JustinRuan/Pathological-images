@@ -157,7 +157,7 @@ class PatchSampler(object):
             if (tag == 1):
                 block.save_img(pathCancer)
             elif (tag == 0):
-                print("Find Normal patch in TR Zone, ", block.encoding())
+                print("{} / {} Find Normal patch in TR Zone, {}".format(idx, lenTR, block.encoding()))
                 block.save_img(pathFalseCancer)
             else:
                 print("Find Unsure patch in TR Zone, ", block.encoding(), predicted[0])
