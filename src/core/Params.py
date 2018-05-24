@@ -33,6 +33,7 @@ class Params(object):
         self.KFB_SDK_PATH = data[1]['KFB_SDK_PATH']
         self.SLICES_ROOT_PATH = data[1]['SLICES_ROOT_PATH']
         self.PATCHS_ROOT_PATH = data[1]['PATCHS_ROOT_PATH']
+        self.PROJECT_ROOT = data[1]['PROJECT_ROOT']
 
         return
 
@@ -46,7 +47,8 @@ class Params(object):
              'CLASSIFY_PATCH_INTERVAL': 8},
             {'KFB_SDK_PATH': 'D:/CloudSpace/DoingNow/WorkSpace/lib/KFB_SDK',
              'SLICES_ROOT_PATH': 'D:/Study/breast/3Plus',
-             'PATCHS_ROOT_PATH': 'D:/Study/breast/Patches/S20'
+             'PATCHS_ROOT_PATH': 'D:/Study/breast/Patches/P0523',
+             'PROJECT_ROOT': 'D:/CloudSpace/DoingNow/WorkSpace/PatholImage'
              }
         )
 

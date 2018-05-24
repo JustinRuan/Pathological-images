@@ -25,15 +25,14 @@ class TestConfigMethods(unittest.TestCase):
     #     with self.assertRaises(TypeError):
     #         s.split(2)
 
-    def test_save(self):
-        c = Params.Params()
-        c.save_default_value("test.json")
-
     def test_load(self):
         c = Params.Params()
         c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/test.json")
         self.assertEqual(c.EXTRACT_SCALE, 20)
 
+    def test_save(self):
+        c = Params.Params()
+        c.save_default_value("test.json")
 
 if __name__ == '__main__':
     unittest.main()

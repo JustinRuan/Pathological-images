@@ -36,5 +36,17 @@ class TestBlock(unittest.TestCase):
         block.save_img(c.PATCHS_ROOT_PATH)
 
 
+    def test_loadBlock(self):
+        filename = "D:/Study/breast/Patches/P0523/17004930_012000_020000_2000_0.jpg"
+        block = Block.Block()
+        block.load_img(filename)
+        print(block.encoding())
+
+        img = block.get_img()
+        plt.imshow(img)
+        plt.show()
+
+        return
+
 if __name__ == '__main__':
     unittest.main()

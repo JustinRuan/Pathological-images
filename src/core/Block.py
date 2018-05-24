@@ -13,7 +13,7 @@ import io
 
 class Block(object):
     # x is col, y is row
-    def __init__(self, snumber, x, y, scale, opcode, w, h):
+    def __init__(self, snumber="", x=0, y=0, scale=0, opcode=0, w=0, h=0):
         self.slice_number = snumber
         self.x = x
         self.y = y
@@ -24,9 +24,21 @@ class Block(object):
         self.img_file = None
         self.img = None
 
-    def updateXY(self, x ,y):
-        self.x = x
-        self.y = y
+    def decoding(self, filename, w, h):
+        left = filename.rfind("/")
+        right = filename.index(".")
+        file_code = filename[left + 1 : right]
+        code = file_code.split("_")
+
+        self.slice_number = code[0]
+        self.x = int(code[1])
+        self.y = int(code[2])
+        self.scale = float(code[3])/100
+        self.opcode = int(code[4])
+        self.w = w
+        self.h = h
+
+        return
 
     def encoding(self):
         intScale = np.rint(self.scale * 100).astype(np.int)
@@ -48,3 +60,10 @@ class Block(object):
     def save_img(self, path):
         filename = '/{}.jpg'.format(self.encoding())
         self.img_file.tofile(path + filename)
+        return
+
+    def load_img(self, filename):
+        self.img = Image.open(filename)
+        (w, h) = self.img.size
+        self.decoding(filename, w, h)
+        return
