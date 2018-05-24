@@ -29,7 +29,7 @@ class PatchFeature(object):
         for line in f:
             items = line.split(" ")
             patch_file = "{}/{}".format(root_path, items[0])
-            img = io.imread(patch_file, as_grey=True)
+            img = io.imread(patch_file, as_grey=False)
             tag = int(items[1])
             fvector = fe.extract_glcm_feature(img)
 

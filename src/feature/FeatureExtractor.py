@@ -22,8 +22,8 @@ class FeatureExtractor(object):
         # 存储单张图片的glcm特征
         textural_feature = []
         # 以灰度模式读取图片
-        # image =  util.img_as_ubyte(color.rgb2gray(src_img))
-        image = util.img_as_ubyte(src_img)
+        image =  util.img_as_ubyte(color.rgb2gray(src_img))
+        # image = util.img_as_ubyte(src_img)
         # 计算灰度共生矩阵
         glcm = feature.greycomatrix(image, [5], [0], 256, symmetric=True, normed=True)
         # 得到不同统计量

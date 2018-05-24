@@ -53,7 +53,7 @@ class Block(object):
 
     def get_img(self):
         if self.img == None:
-            self.img = Image.open(io.BytesIO(self.img_file))
+            self.img = np.array(Image.open(io.BytesIO(self.img_file)))
 
         return self.img
 

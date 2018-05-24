@@ -10,6 +10,8 @@ import numpy as np
 from skimage import color, morphology
 from skimage.morphology import square
 import os
+from preparation import PatchFeature
+from feature import FeatureExtractor
 
 class PatchSampler(object):
     def __init__(self, params):
@@ -121,6 +123,8 @@ class PatchSampler(object):
         pathCancer = "{}/S{}_{}".format(Root_path,intScale, "cancerR")
         pathNormal = "{}/S{}_{}".format(Root_path,intScale, "normalR")
         pathUnsure = "{}/S{}_{}".format(Root_path,intScale, "unsure")
+        pathFalseCancer = "{}/S{}_{}".format(Root_path,intScale, "falseCancerR")
+        pathFalseNormal = "{}/S{}_{}".format(Root_path, intScale, "falseNormalR")
 
         if (not os.path.exists(pathCancer)):
             os.makedirs(pathCancer)
@@ -131,6 +135,64 @@ class PatchSampler(object):
         if (not os.path.exists(pathUnsure)):
             os.makedirs(pathUnsure)
 
+        if (not os.path.exists(pathFalseCancer)):
+            os.makedirs(pathFalseCancer)
+
+        if (not os.path.exists(pathFalseNormal)):
+            os.makedirs(pathFalseNormal)
+
         patch_size = self._params.PATCH_SIZE_HIGH
 
+        pf = PatchFeature.PatchFeature(self._params)
+        classifier = pf.load_svm_model()
+        extractor = FeatureExtractor.FeatureExtractor()
+
+        lenTR = len(self.seeds_TR)
+        for idx, (x, y) in enumerate(self.seeds_TR):
+            block = sourceCone.get_image_block(self.extract_scale, x, y, patch_size, patch_size)
+            img = block.get_img()
+            feature = extractor.extract_glcm_feature(img)
+            predicted = classifier.predict_proba([feature])
+            tag = self.detect_patch_byProb(predicted[0])
+            if (tag == 1):
+                block.save_img(pathCancer)
+            elif (tag == 0):
+                print("Find Normal patch in TR Zone, ", block.encoding())
+                block.save_img(pathFalseCancer)
+            else:
+                print("Find Unsure patch in TR Zone, ", block.encoding(), predicted[0])
+                block.save_img(pathUnsure)
+
+            if (idx % 1000 == 0):
+                print("TR -> Processing: {} / {}".format(idx, lenTR))
+
+        lenNR = len(self.seeds_NR)
+        for idx, (x, y) in enumerate(self.seeds_NR):
+            block = sourceCone.get_image_block(self.extract_scale, x, y, patch_size, patch_size)
+            img = block.get_img()
+            feature = extractor.extract_glcm_feature(img)
+            predicted = classifier.predict_proba([feature])
+            tag = self.detect_patch_byProb(predicted[0])
+            if (tag == 1):
+                print("Find Cancer patch in NR Zone, ", block.encoding())
+                block.save_img(pathFalseNormal)
+            elif (tag == 0):
+                block.save_img(pathNormal)
+            else:
+                print("Find Unsure patch in NR Zone, ", block.encoding(), predicted[0])
+                block.save_img(pathUnsure)
+
+            if (idx % 1000 == 0):
+                print("NR -> Processing: {} / {}".format(idx, lenNR))
+
         return
+
+    def detect_patch_byProb(self, probs):
+        normal_prob = probs[0]
+        cancer_prob = probs[1]
+        if (normal_prob > 0.90):
+            return 0
+        elif (cancer_prob > 0.90):
+            return 1
+        else:
+            return -1
