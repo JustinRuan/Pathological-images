@@ -6,4 +6,4 @@ __mtime__ = '2018-05-23'
 
 """
 
-__all__ = ["PatchSampler", "PatchPack"]
+__all__ = ["PatchSampler", "PatchPack", "PatchFeature"]
