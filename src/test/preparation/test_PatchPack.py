@@ -21,7 +21,7 @@ class TestPatchPack(unittest.TestCase):
 
         print(result)
 
-        pack.create_train_test_data(300, 300, "ZoneA")
+        pack.create_train_test_data(300, 300, 500, 500, "ZoneA")
 
 if __name__ == '__main__':
         unittest.main()

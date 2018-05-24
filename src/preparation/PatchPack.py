@@ -44,7 +44,7 @@ class PatchPack(object):
                     L.append((rfile, tag))
         return L
 
-    def create_train_test_data(self, pos_count, neg_count, t):
+    def create_train_test_data(self, pos_count, neg_count, pos_test_count, neg_test_count, fileTag):
         root_path = self._params.PATCHS_ROOT_PATH
 
         random.shuffle(self.pos)
@@ -54,18 +54,18 @@ class PatchPack(object):
         train_data.extend(self.neg[:neg_count])
         random.shuffle(train_data)
 
-        test_data = self.pos[pos_count:]
-        test_data.extend(self.neg[neg_count:])
+        test_data = self.pos[pos_count : pos_count + pos_test_count]
+        test_data.extend(self.neg[neg_count : neg_count + neg_test_count])
         random.shuffle(test_data)
 
-        full_filename = "{0}/{1}_{2}.txt".format(root_path, t,"train")
+        full_filename = "{0}/{1}_{2}.txt".format(root_path, fileTag,"train")
 
         f = open(full_filename, "w")
         for item, tag in train_data:
             f.write("{} {}\n".format(item, tag))
         f.close()
 
-        full_filename = "{0}/{1}_{2}.txt".format(root_path, t,"test")
+        full_filename = "{0}/{1}_{2}.txt".format(root_path, fileTag,"test")
 
         f = open(full_filename, "w")
         for item, tag in test_data:
