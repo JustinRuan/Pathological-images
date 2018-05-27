@@ -160,7 +160,7 @@ class PatchSampler(object):
                 print("{} / {} Find Normal patch in TR Zone, {}".format(idx, lenTR, block.encoding()))
                 block.save_img(pathFalseCancer)
             else:
-                print("Find Unsure patch in TR Zone, ", block.encoding(), predicted[0])
+                print("{} / {} Find Unsure patch in TR Zone, {} {}".format(idx, lenTR, block.encoding(), predicted[0]))
                 block.save_img(pathUnsure)
 
             if (idx % 1000 == 0):
@@ -174,12 +174,12 @@ class PatchSampler(object):
             predicted = classifier.predict_proba([feature])
             tag = self.detect_patch_byProb(predicted[0])
             if (tag == 1):
-                print("Find Cancer patch in NR Zone, ", block.encoding())
+                print("{} / {} Find Cancer patch in NR Zone, {}".format(idx, lenNR, block.encoding()))
                 block.save_img(pathFalseNormal)
             elif (tag == 0):
                 block.save_img(pathNormal)
             else:
-                print("Find Unsure patch in NR Zone, ", block.encoding(), predicted[0])
+                print("{} / {} Find Unsure patch in NR Zone, {} {}".format(idx,  lenNR, block.encoding(), predicted[0]))
                 block.save_img(pathUnsure)
 
             if (idx % 1000 == 0):
