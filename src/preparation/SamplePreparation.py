@@ -61,10 +61,13 @@ class SamplePreparation(object):
 
         print(pos, neg)
 
-        posTrain = int(pos * 0.7)
-        negTrain = int(neg * 0.7)
-
-        pack.create_train_test_data(posTrain, negTrain, pos - posTrain, neg - negTrain, "ZoneR")
+        posTrain = int(pos * 0.6)
+        negTrain = int(neg * 0.6)
+        posTest = int(pos * 0.2)
+        negTest = int(neg * 0.2)
+        posCheck = pos - posTrain - posTest
+        negCheck = neg - negTrain - negTest
+        pack.create_train_test_data(posTrain, negTrain, posTest, negTest, posCheck, negCheck, "ZoneR")
 
 
 if __name__ == '__main__':

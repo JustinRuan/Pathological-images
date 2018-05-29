@@ -46,9 +46,9 @@ class cnn_caffe(object):
         s = caffe_pb2.SolverParameter()
         s.train_net = train_net
         s.test_net.append(test_net)
-        s.test_interval = 11400  # 60000/64，测试间隔参数：训练完一次所有的图片，进行一次测试
-        s.test_iter.append(1200)  # 50000/100 测试迭代次数，需要迭代500次，才完成一次所有数据的测试
-        s.max_iter = 114000  # 10 epochs , 938*10，最大训练次数
+        s.test_interval = 2400  # 60000/64，测试间隔参数：训练完一次所有的图片，进行一次测试
+        s.test_iter.append(800)  # 50000/100 测试迭代次数，需要迭代500次，才完成一次所有数据的测试
+        s.max_iter = 2400*3  # 10 epochs , 938*10，最大训练次数
         s.base_lr = 0.001  # 基础学习率
         s.momentum = 0.900  # 动量
         s.weight_decay = 0.0002000  # 权值衰减项
