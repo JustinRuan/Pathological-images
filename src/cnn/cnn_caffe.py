@@ -9,6 +9,9 @@ from core import Params
 import caffe
 from caffe import layers as L, params as P, to_proto
 from caffe.proto import caffe_pb2
+from skimage import io
+import numpy as np
+from sklearn import metrics
 
 class cnn_caffe(object):
     # model_name = "googlenet_caffe'
@@ -19,6 +22,7 @@ class cnn_caffe(object):
         self.model_root = "{}/models/{}/".format(self._params.PROJECT_ROOT, model_name)
         self.train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         self.test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        self.check_list = "{}/{}_check.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         self.train_proto_template = self.model_root + "train_template.prototxt"
         self.train_proto = self.model_root +  "train.prototxt"
@@ -80,4 +84,58 @@ class cnn_caffe(object):
         # 利用snapshot从断点恢复训练
         # solver.net.copy_from(pretrained_model)
         solver.solve()
+
+    def testing(self, caffe_model):
+        caffe.set_device(0)
+        caffe.set_mode_gpu()
+        net = caffe.Net(self.deploy_proto, caffe_model, caffe.TEST)
+
+        # 设定图片的shape格式(1,3,28,28)
+        transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape})
+        # 改变维度的顺序，由原始图片(28,28,3)变为(3,28,28)
+        transformer.set_transpose('data', (2, 0, 1))
+        # 减去均值，若训练时未用到均值文件，则不需要此步骤
+        # transformer.set_mean('data', np.load(mean_file).mean(1).mean(1))
+        # 缩放到【0，255】之间
+        transformer.set_raw_scale('data', 255)
+        # 交换通道，将图片由RGB变为BGR
+        transformer.set_channel_swap('data', (2, 1, 0))
+
+        expected_tags = []
+        predicted_tags = []
+
+        f = open(self.check_list, "r")
+        for line in f:
+            items = line.split(" ")
+
+            tag = int(items[1])
+            expected_tags.append(tag)
+
+            patch_file = "{}/{}".format(self._params.PATCHS_ROOT_PATH, items[0])
+            img = io.imread(patch_file, as_grey=False)
+            # 样本矩阵化
+            # patch = np.array(img)
+            net.blobs['data'].data[...] = transformer.preprocess('data', patch)
+            net.forward()
+            # 样本类别的输出概率值
+            prob = net.blobs['prob'].data[0].flatten()
+            # 提取难样本
+
+            # 样本识别率大于85%则分类正确
+            if prob[0] > 0.85:
+               tag = 0
+            elif prob[1] > 0.85:
+                tag = 1
+            else:
+                tag = -1
+
+            predicted_tags.append(tag)
+
+        f.close()
+
+        print("Classification report for classifier %s:\n%s\n"
+              % (net, metrics.classification_report(expected_tags, predicted_tags)))
+        print("Confusion matrix:\n%s" % metrics.confusion_matrix(expected_tags, predicted_tags))
+
+        return
 
