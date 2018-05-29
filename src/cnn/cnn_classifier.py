@@ -12,8 +12,9 @@ from caffe.proto import caffe_pb2
 from skimage import io
 import numpy as np
 from sklearn import metrics
+from PIL import Image
 
-class cnn_caffe(object):
+class cnn_classifier(object):
     # model_name = "googlenet_caffe'
     # samples_name = "ZoneR"
     def __init__(self, params, model_name, samples_name):
@@ -36,9 +37,9 @@ class cnn_caffe(object):
         with open(self.train_proto_template, 'r') as f1:
             train_temp = f1.read()
             train_temp = train_temp.replace("<train.txt>", self.train_list)
-            train_temp = train_temp.replace("<train_folder>", self._params.PATCHS_ROOT_PATH)
+            train_temp = train_temp.replace("<train_folder>", self._params.PATCHS_ROOT_PATH + "/")
             train_temp = train_temp.replace("<test.txt>", self.test_list)
-            train_temp = train_temp.replace("<test_folder>", self._params.PATCHS_ROOT_PATH)
+            train_temp = train_temp.replace("<test_folder>", self._params.PATCHS_ROOT_PATH + "/")
 
         # 写入train.prototxt
         with open(self.train_proto, 'w') as f:
@@ -57,16 +58,16 @@ class cnn_caffe(object):
         s.momentum = 0.900  # 动量
         s.weight_decay = 0.0002000  # 权值衰减项
 
-        # s.lr_policy = 'step'  # 学习率变化规则
-        # s.stepsize = 3000  # 学习率变化频率
-        # s.gamma = 0.1  # 学习率变化指数
+        s.lr_policy = 'step'  # 学习率变化规则
+        s.stepsize = 3000  # 学习率变化频率
+        s.gamma = 0.1  # 学习率变化指数
 
-        s.lr_policy = 'poly'
-        s.power = 0.5
+        # s.lr_policy = 'poly'
+        # s.power = 0.5
 
         s.average_loss = 40
         s.display = 20  # 屏幕显示间隔
-        s.snapshot = 20000  # 保存caffemodel的间隔
+        s.snapshot = 2400  # 保存caffemodel的间隔
         s.snapshot_prefix = self.model_root + self.model_name  # caffemodel前缀
         s.type = 'SGD'  # 优化算法
         # s.solver_mode = proto.caffe_pb2.SolverParameter.CPU  # 加速
@@ -95,7 +96,7 @@ class cnn_caffe(object):
         # 改变维度的顺序，由原始图片(28,28,3)变为(3,28,28)
         transformer.set_transpose('data', (2, 0, 1))
         # 减去均值，若训练时未用到均值文件，则不需要此步骤
-        # transformer.set_mean('data', np.load(mean_file).mean(1).mean(1))
+        transformer.set_mean('data', np.array([104,117,123]))
         # 缩放到【0，255】之间
         transformer.set_raw_scale('data', 255)
         # 交换通道，将图片由RGB变为BGR
@@ -112,13 +113,16 @@ class cnn_caffe(object):
             expected_tags.append(tag)
 
             patch_file = "{}/{}".format(self._params.PATCHS_ROOT_PATH, items[0])
-            img = io.imread(patch_file, as_grey=False)
-            # 样本矩阵化
+            # img = io.imread(patch_file, as_grey=False)
+            # img = Image.open(patch_file)
+            # # 样本矩阵化
             # patch = np.array(img)
-            net.blobs['data'].data[...] = transformer.preprocess('data', patch)
-            net.forward()
+            img = caffe.io.load_image(patch_file)  # 加载图片
+            net.blobs['data'].data[...] = transformer.preprocess('data', img)
+            output = net.forward()
             # 样本类别的输出概率值
             prob = net.blobs['prob'].data[0].flatten()
+            print(tag, prob[0:4])
             # 提取难样本
 
             # 样本识别率大于85%则分类正确
@@ -128,6 +132,10 @@ class cnn_caffe(object):
                 tag = 1
             else:
                 tag = -1
+            # if prob[0] > prob[1]:
+            #     tag = 0
+            # else:
+            #     tag = 1
 
             predicted_tags.append(tag)
 

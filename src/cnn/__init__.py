@@ -6,4 +6,4 @@ __mtime__ = '2018-05-28'
 
 """
 
-__all__ = ["cnn_caffe"]
+__all__ = ["cnn_classifier"]
