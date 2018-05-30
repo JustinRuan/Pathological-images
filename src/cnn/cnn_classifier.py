@@ -102,42 +102,51 @@ class cnn_classifier(object):
         # 交换通道，将图片由RGB变为BGR
         transformer.set_channel_swap('data', (2, 1, 0))
 
+        batch_count = net.blobs['data'].num
+
         expected_tags = []
         predicted_tags = []
-
+        n = 0
         f = open(self.check_list, "r")
-        for line in f:
-            items = line.split(" ")
+        sizehint = len(f.readline()) * batch_count - 1
+        f.seek(0)
 
-            tag = int(items[1])
-            expected_tags.append(tag)
+        while 1:
+            lines = f.readlines(sizehint)
+            if not lines or len(lines)!=batch_count:
+                break
+            images = []
+            for line in lines:
+                items = line.split(" ")
 
-            patch_file = "{}/{}".format(self._params.PATCHS_ROOT_PATH, items[0])
-            # img = io.imread(patch_file, as_grey=False)
-            # img = Image.open(patch_file)
-            # # 样本矩阵化
-            # patch = np.array(img)
-            img = caffe.io.load_image(patch_file)  # 加载图片
-            net.blobs['data'].data[...] = transformer.preprocess('data', img)
+                tag = int(items[1])
+                expected_tags.append(tag)
+
+                patch_file = "{}/{}".format(self._params.PATCHS_ROOT_PATH, items[0])
+
+                img = caffe.io.load_image(patch_file)  # 加载图片
+                images.append(transformer.preprocess('data', img))
+
+            net.blobs['data'].data[...] = images
             output = net.forward()
-            # 样本类别的输出概率值
-            prob = net.blobs['prob'].data[0].flatten()
-            print(tag, prob[0:4])
-            # 提取难样本
 
-            # 样本识别率大于85%则分类正确
-            if prob[0] > 0.85:
-               tag = 0
-            elif prob[1] > 0.85:
-                tag = 1
-            else:
-                tag = -1
-            # if prob[0] > prob[1]:
-            #     tag = 0
-            # else:
-            #     tag = 1
+            for prob in output['prob']:
+                # 样本类别的输出概率值
 
-            predicted_tags.append(tag)
+                # 提取难样本
+
+                # 样本识别率大于85%则分类正确
+                if prob[0] > 0.85:
+                   tag = 0
+                elif prob[1] > 0.85:
+                    tag = 1
+                else:
+                    tag = -1
+
+                predicted_tags.append(tag)
+
+                print("{} --> e:p = {}:{}, {}".format(n, expected_tags[n], tag, prob[0:4]))
+                n += 1
 
         f.close()
 
