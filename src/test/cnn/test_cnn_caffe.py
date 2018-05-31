@@ -35,8 +35,8 @@ class Test_cnn_caffe(unittest.TestCase):
         c = Params.Params()
         c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
 
-        cnn = cnn_classifier.cnn_classifier(c, "googlenet_caffe", "ZoneR")
-        cnn.testing("D:/CloudSpace/DoingNow/WorkSpace/PatholImage\models/googlenet_caffe/googlenet_caffe_iter_7200.caffemodel")
+        cnn = cnn_classifier.cnn_classifier(c, "googlenet_caffe", "Small500")
+        cnn.testing("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/models/googlenet_caffe/googlenet_caffe_iter_7200.caffemodel")
 
         return
 

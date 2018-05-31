@@ -14,26 +14,25 @@ import numpy as np
 from sklearn import metrics
 from feature import FeatureExtractor
 from skimage import io
-from sklearn.svm import NuSVC
+from sklearn.svm import NuSVC, SVC
 from sklearn.externals import joblib
 import pandas as pd
 
 class transfer_cnn(object):
 
-    def __init__(self, params, model_filename, model_prototxt,extract_layer_name, samples_name):
+    def __init__(self, params, model_filename, model_prototxt,extract_layer_name):
         self._params = params
+        self.model_filename = model_filename
         self.extract_layer_name = extract_layer_name
         self.transfer_model = "{}/models/ImageNet/{}".format(self._params.PROJECT_ROOT, model_filename)
-
-        self.train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        # self.test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        self.check_list = "{}/{}_check.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-
         self.deploy_proto = "{}/models/ImageNet/{}".format(self._params.PROJECT_ROOT, model_prototxt)
 
         return
 
     def loading_data(self, data_list):
+        root_path = self._params.PATCHS_ROOT_PATH
+        data_file = "{}/{}".format(root_path, data_list)
+
         caffe.set_device(0)
         caffe.set_mode_gpu()
         net = caffe.Net(self.deploy_proto, self.transfer_model, caffe.TEST)
@@ -43,7 +42,7 @@ class transfer_cnn(object):
         # 改变维度的顺序，由原始图片(28,28,3)变为(3,28,28)
         transformer.set_transpose('data', (2, 0, 1))
         # 减去均值，若训练时未用到均值文件，则不需要此步骤
-        transformer.set_mean('data', np.array([104,117,123]))
+        transformer.set_mean('data', np.array([103.939, 116.779, 123.68]))
         # 缩放到【0，255】之间
         transformer.set_raw_scale('data', 255)
         # 交换通道，将图片由RGB变为BGR
@@ -57,7 +56,7 @@ class transfer_cnn(object):
         tags = []
         n = 0
 
-        f = open(data_list, "r")
+        f = open(data_file, "r")
 
         sizehint = len(f.readline()) * batch_count - 1
         f.seek(0)
@@ -77,8 +76,8 @@ class transfer_cnn(object):
                 fvector1 = fe.extract_glcm_feature(img)
                 glcm_features.append(fvector1)
 
-                img = caffe.io.load_image(patch_file)  # 加载图片
-                images.append(transformer.preprocess('data', img))
+                img2 = caffe.io.load_image(patch_file)  # 加载图片
+                images.append(transformer.preprocess('data', img2))
 
             net.blobs['data'].data[...] = images
             output = net.forward()
@@ -98,47 +97,54 @@ class transfer_cnn(object):
         df = pd.DataFrame(data)
 
         diff = df.groupby(0).mean()
-        absDiff = abs(diff.iloc[0,1:] - diff.iloc[1,1:]).sort_values(ascending=False)
+        # print(diff)
+        absDiff = abs(diff.iloc[0,:] - diff.iloc[1,:]).sort_values(ascending=False)
+        # print(abs(diff.iloc[0,:] - diff.iloc[1,:]))
         print(absDiff[:100])
 
-        top100_index = absDiff[:100].index.values
-        index_filename = "{}_{}".format(self.transfer_model, "top100_index")
-        np.save(index_filename, top100_index)
-        return top100_index
+        top_index = absDiff[:100].index.values - 1 # 将index 从1开始移到0开始
+        index_filename = "{}_{}".format(self.transfer_model, "top_index")
+        np.save(index_filename, top_index)
+        return top_index
 
     # x = features, y = tags
-    def train_svm(self, glcm_features, cnn_features, tags, top100_index):
+    def train_svm(self, glcm_features, cnn_features, tags, top_index):
         y = tags
-        new_cnn_features = np.array(cnn_features)[...,top100_index]
-        X = np.column_stack((glcm_features, new_cnn_features))
 
-        clf = NuSVC(nu=0.5, kernel='rbf', probability=True)
+        new_cnn_features = np.array(cnn_features)[:, top_index]
+        # X = np.column_stack((glcm_features, new_cnn_features))
+        X = new_cnn_features
+
+        # clf = NuSVC(nu=0.05, kernel='rbf', probability=True) # nu=0.5,
+        # clf = SVC(kernel='poly', degree=3, C=1)
+        clf = SVC(kernel='rbf', gamma=0.7, C=1)
         rf = clf.fit(X ,y)
 
-        model_file = self._params.PROJECT_ROOT + "/models/svm_cnn.model"
+        model_file = "{}/models/svm_{}.model".format(self._params.PROJECT_ROOT, self.model_filename)
         joblib.dump(rf, model_file)
         return clf
 
     def load_svm_model(self):
-        model_file = self._params.PROJECT_ROOT + "/models/svm_cnn.model"
+        model_file = "{}/models/svm_{}.model".format(self._params.PROJECT_ROOT, self.model_filename)
         clf = joblib.load(model_file)
 
         return clf
 
-    def test_svm(self):
+    def test_svm(self, test_filename):
 
-        index_filename = "{}_{}.npy".format(self.transfer_model, "top100_index")
+        index_filename = "{}_{}.npy".format(self.transfer_model, "top_index")
         top100_index = np.load(index_filename)
         classifier = self.load_svm_model()
 
-        glcm_features, cnn_features, expected_tags = self.loading_data(self.check_list)
+        glcm_features, cnn_features, expected_tags = self.loading_data(test_filename)
 
-        new_cnn_features = np.array(cnn_features)[..., top100_index]
-        features = np.column_stack((glcm_features, new_cnn_features))
+        new_cnn_features = np.array(cnn_features)[:, top100_index]
+        # features = np.column_stack((glcm_features, new_cnn_features))
+        features = new_cnn_features
         predicted_tags = classifier.predict(features)
 
-        predicted_result = classifier.predict_proba(features)
+        # predicted_result = classifier.predict_proba(features)
         print("Classification report for classifier %s:\n%s\n"
               % (classifier, metrics.classification_report(expected_tags, predicted_tags)))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(expected_tags, predicted_tags))
-        return predicted_result
+        # return predicted_result
