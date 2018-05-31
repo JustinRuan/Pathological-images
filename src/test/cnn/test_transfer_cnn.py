@@ -18,15 +18,15 @@ class Test_transfer_cnn(unittest.TestCase):
         c = Params.Params()
         c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
         # tc = transfer_cnn.transfer_cnn(c, "my_googlenet.caffemodel",
-        #                                "my_googlenet_deploy.prototxt", 'loss3/classifier', "ZoneA")
+        #                                "my_googlenet_deploy.prototxt", 'loss3/classifier')
         tc = transfer_cnn.transfer_cnn(c, "bvlc_googlenet.caffemodel",
                                        "deploy_GoogLeNet.prototxt", 'loss3/classifier')
 
-        glcm_features, cnn_features, tags = tc.loading_data("Small500_train.txt")
+        glcm_features, cnn_features, tags = tc.loading_data("Small_train.txt")
         top_index = tc.select_features(cnn_features, tags)
 
         tc.train_svm(glcm_features,cnn_features,tags,top_index)
-        tc.test_svm("Small500_train.txt")
+        tc.test_svm("Small_test.txt")
         return
 
     def test_testSVM(self):
@@ -35,8 +35,8 @@ class Test_transfer_cnn(unittest.TestCase):
         tc = transfer_cnn.transfer_cnn(c, "bvlc_googlenet.caffemodel",
                                        "deploy_GoogLeNet.prototxt", 'loss3/classifier')
         # tc = transfer_cnn.transfer_cnn(c, "my_googlenet.caffemodel",
-        #                                "my_googlenet_deploy.prototxt", 'loss3/classifier', "ZoneA")
-        tc.test_svm("Small500_train.txt")
+        #                                "my_googlenet_deploy.prototxt", 'loss3/classifier')
+        tc.test_svm("Small_test.txt")
         return
 
     def test_01(self):
