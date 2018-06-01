@@ -189,7 +189,7 @@ class transfer_cnn(object):
 
         if img_count > self.batch_count  :
             prior = 0
-            for next in range(self.batch_c, img_count, self.batch_count):
+            for next in range(self.batch_count, img_count, self.batch_count):
                 glcm_subset, cnn_subset = self.extract_cnn_feature(src_img_list[prior:next])
                 glcm_features.extend(glcm_subset)
                 cnn_features.extend(cnn_subset)

@@ -11,6 +11,7 @@ from core import *
 from cnn import *
 import pandas as pd
 import numpy as np
+from skimage import io
 
 class Test_transfer_cnn(unittest.TestCase):
 
@@ -35,6 +36,26 @@ class Test_transfer_cnn(unittest.TestCase):
         # tc = transfer_cnn.transfer_cnn(c, "my_googlenet.caffemodel",
         #                                "my_googlenet_deploy.prototxt", 'loss3/classifier')
         tc.test_svm("Small_test.txt")
+        return
+
+    def test_extract_cnn_feature(self):
+        c = Params.Params()
+        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
+
+        f = open(c.PATCHS_ROOT_PATH + "/Small_test.txt", "r")
+        images = []
+        for line in f:
+            items = line.split(" ")
+            patch_file = "{}/{}".format(c.PATCHS_ROOT_PATH, items[0])
+            images.append(io.imread(patch_file))
+            if len(images) > 22:
+                break
+
+        tc = transfer_cnn.transfer_cnn(c, "googlenet", "bvlc_googlenet.caffemodel",
+                                       "deploy_GoogLeNet.prototxt")
+        tc.start_caffe()
+        glcm_features, cnn_features = tc.extract_cnn_feature(images)
+        print(np.array(cnn_features)[:, 0:3])
         return
 
     def test_01(self):
