@@ -30,7 +30,7 @@ class TestImageCone(unittest.TestCase):
             mask2 = imgCone.create_mask_image(scale, "TR")
             mask3 = imgCone.create_mask_image(scale, "NA")
             mask4 = imgCone.create_mask_image(scale, "NR")
-            mask5 = imgCone.get_roi(scale)
+            mask5 = imgCone.get_effective_zone(scale)
             mask4 = mask4 & mask5
 
             fig, axes = plt.subplots(2, 3, figsize=(4, 3), dpi=300)

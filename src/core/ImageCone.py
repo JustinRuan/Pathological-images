@@ -30,13 +30,18 @@ class ImageCone(object):
         return False
 
     def get_fullimage_byScale(self, scale):
+        w, h = self.get_image_width_height_byScale(scale)
+
+        fullImage = self._slice.get_image_block(scale, 0, 0, w, h)
+        return fullImage
+
+    def get_image_width_height_byScale(self, scale):
         if scale > 3:
             print("\a", "The size of image is too large")
             return
 
         w, h = self._slice.get_image_width_height_byScale(scale)
-        fullImage = self._slice.get_image_block(scale, 0, 0, w, h)
-        return fullImage
+        return w, h
 
     def get_image_block(self, fScale, sp_x, sp_y, nWidth, nHeight):
         data = self._slice.get_image_block_file(fScale, sp_x, sp_y, nWidth, nHeight)
@@ -94,7 +99,7 @@ class ImageCone(object):
 
         return img
 
-    def get_roi(self, scale):
+    def get_effective_zone(self, scale):
         fullImg = self.get_fullimage_byScale(scale)
 
         img = color.rgb2hsv(fullImg)
