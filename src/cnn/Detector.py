@@ -38,7 +38,9 @@ class Detector(object):
 
     def get_ROI_img(self, x1, y1, x2, y2, coordinate_scale, img_scale):
         xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * img_scale / coordinate_scale).astype(np.int)
-        block = self.imgCone.get_image_block(img_scale, xx1, yy1, xx2 - xx1, yy2 - yy1)
+        w = xx2 - xx1
+        h = yy2 - yy1
+        block = self.imgCone.get_image_block(img_scale, xx1, yy1, w, h)
         return block.get_img()
 
     def set_ROI(self, x1, y1, x2, y2, scale):
@@ -55,7 +57,7 @@ class Detector(object):
         return
 
     def get_points_ROI(self, highScale, patch_size_high, spacingHigh):
-        return get_seeds(self.ROI, self._params.GLOBAL_SCALE, highScale,patch_size_high, spacingHigh, margin=0)
+        return get_seeds(self.ROI, self._params.GLOBAL_SCALE, highScale,patch_size_high, spacingHigh, margin=8)
 
     # highScale, spacingHigh, block_size 都是在高分辨率下的值
     def get_imagelist_ROI(self, highScale, spacingHigh, block_size):
@@ -92,8 +94,8 @@ class Detector(object):
         block_size_low = int(block_size_high * GLOBAL_SCALE / seeds_scale)
 
         for ((x, y), tag) in zip(seeds, tags):
-            xx = int(x * GLOBAL_SCALE / seeds_scale) - xx1
-            yy = int(y * GLOBAL_SCALE / seeds_scale) - yy1
+            xx = int(x * GLOBAL_SCALE / seeds_scale - xx1)
+            yy = int(y * GLOBAL_SCALE / seeds_scale - yy1)
             print(xx, yy)
             rr, cc = rectangle((yy, xx), extent=(block_size_low, block_size_low))
             rr[rr >= self.ROI_height] = self.ROI_height -1

@@ -24,7 +24,7 @@ class Test_detector(unittest.TestCase):
         dtor.set_ROI(630, 630, 720, 720, 1)
 
         seeds, tags = dtor.detect_ROI(20, 256)
-        print(tags)
+        # print(tags)
 
         result = dtor.draw_result(seeds,20,256,tags,630,630, 1)
 

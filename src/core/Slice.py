@@ -155,7 +155,6 @@ class Slice(object):
         # if self.img_pointer :
         return self.UnInitImageFileFunc(byref(self.img_pointer))
 
-    # def get_image_block(self, fScale, sp_x, sp_y, nWidth, nHeight, isFile=False):
     def get_image_block_file(self, fScale, sp_x, sp_y, nWidth, nHeight):
         pBuffer = POINTER(c_ubyte)()
         DataLength = c_int()
