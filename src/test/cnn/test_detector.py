@@ -19,14 +19,17 @@ class Test_detector(unittest.TestCase):
                                "17004930 HE_2017-07-29 09_45_09.kfb",
                                '17004930 HE_2017-07-29 09_45_09.kfb.Ano', "17004930"
                                )
-
-        roi_img = dtor.get_ROI_img(630, 630, 720, 720, 1, 5)
-        dtor.set_ROI(630, 630, 720, 720, 1)
+        x1 = 600
+        y1 = 610
+        x2 = 720
+        y2 = 720
+        roi_img = dtor.get_ROI_img(x1, y1, x2, y2, 1, 5)
+        dtor.set_ROI(x1, y1, x2, y2, 1)
 
         seeds, tags = dtor.detect_ROI(20, 256)
         # print(tags)
 
-        result = dtor.draw_result(seeds,20,256,tags,630,630, 1)
+        result = dtor.draw_result(seeds,20,256,tags,x1,y1, 1)
 
         fig, axes = plt.subplots(1, 2, figsize=(4, 3), dpi=300)
         ax = axes.ravel()

@@ -86,7 +86,7 @@ class Detector(object):
         return seeds, predicted_tags
 
     def draw_result(self, seeds, seeds_scale, block_size_high, tags, x1, y1, xy_scale):
-        result = 255 * np.ones((self.ROI_width, self.ROI_height), dtype=np.int)
+        result = np.zeros((self.ROI_height, self.ROI_width), dtype=np.int)
         GLOBAL_SCALE = self._params.GLOBAL_SCALE
         # 所有坐标都统一到 GLOBAL_SCALE 下
         xx1 = int(x1 * GLOBAL_SCALE / xy_scale)
@@ -98,8 +98,11 @@ class Detector(object):
             yy = int(y * GLOBAL_SCALE / seeds_scale - yy1)
             print(xx, yy)
             rr, cc = rectangle((yy, xx), extent=(block_size_low, block_size_low))
-            rr[rr >= self.ROI_height] = self.ROI_height -1
-            cc[cc >= self.ROI_width] = self.ROI_width - 1
-            result[rr, cc] = tag * 128
+
+            if tag > -1 :
+                select_y = (rr >= 0) & (rr < self.ROI_height)
+                select_x = (cc >= 0) & (cc < self.ROI_width)
+                select = select_x & select_y
+                result[rr[select], cc[select]] = 128 + tag * 128
 
         return result
