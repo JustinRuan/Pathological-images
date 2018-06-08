@@ -14,9 +14,12 @@ from feature import FeatureExtractor
 from skimage import io, util
 from sklearn.svm import NuSVC, SVC
 from sklearn.externals import joblib
+from skimage import segmentation
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds
 from cnn import transfer_cnn
+import random
+
 
 class Detector(object):
 
@@ -96,13 +99,63 @@ class Detector(object):
         for ((x, y), tag) in zip(seeds, tags):
             xx = int(x * GLOBAL_SCALE / seeds_scale - xx1)
             yy = int(y * GLOBAL_SCALE / seeds_scale - yy1)
-            print(xx, yy)
+            # print(xx, yy)
             rr, cc = rectangle((yy, xx), extent=(block_size_low, block_size_low))
 
             if tag > -1 :
                 select_y = (rr >= 0) & (rr < self.ROI_height)
                 select_x = (cc >= 0) & (cc < self.ROI_width)
                 select = select_x & select_y
-                result[rr[select], cc[select]] = 128 + tag * 128
+                result[rr[select], cc[select]] = result[rr[select], cc[select]] + tag
 
         return result
+
+    def segment_image(self, src_img, count):
+        segments = segmentation.slic(src_img, n_segments=count,compactness=20, sigma=3)
+        return segments
+
+    # 先聚类再抽样识别
+    def detect_ROI_regions(self, x1, y1, x2, y2, coordinate_scale, regions_count, extract_scale, block_size):
+        ###########################################################
+        tc = transfer_cnn.transfer_cnn(self._params, "googlenet", "bvlc_googlenet.caffemodel",
+                                       "deploy_GoogLeNet.prototxt")
+        tc.start_caffe()
+
+        classifier = tc.load_svm_model()
+        ###########################################################
+        result = np.zeros((self.ROI_height, self.ROI_width), dtype=np.float)
+
+        spacing = block_size / 2
+        GLOBAL_SCALE = self._params.GLOBAL_SCALE
+
+        roi_img = self.get_ROI_img(x1, y1, x2, y2, coordinate_scale, GLOBAL_SCALE)
+        regions = self.segment_image(roi_img, regions_count)
+
+        # 计算在extract时的左上解坐标
+        xx1 = int(x1 * extract_scale / coordinate_scale)
+        yy1 = int(y1 * extract_scale / coordinate_scale)
+
+        regions_count = np.max(regions)
+        for index in range(regions_count + 1):
+            self.ROI = (regions == index)
+            seeds = self.get_points_ROI(extract_scale, block_size, spacing)
+            list_seeds = list(seeds)
+            if len(list_seeds) > 30:
+                # 抽取
+                random.shuffle(list_seeds)
+                list_seeds = list_seeds[:30]
+
+            images = []
+            for (x, y) in list_seeds:
+                block = self.imgCone.get_image_block(extract_scale, x + xx1 , y + yy1, block_size, block_size)
+                images.append(block.get_img())
+
+            glcm_features, cnn_features = tc.extract_cnn_feature(images)
+            features = tc.comobine_features(glcm_features, cnn_features)
+
+            predicted_tags = classifier.predict(features)
+            mean_tags = np.mean(predicted_tags)
+            print(index, "->", mean_tags, predicted_tags)
+            result[self.ROI] = mean_tags
+
+        return regions, result
