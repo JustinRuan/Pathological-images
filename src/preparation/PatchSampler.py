@@ -44,6 +44,13 @@ class PatchSampler(object):
     #     return resultHigh
 
     def generate_seeds4_high(self, sourceCone, lowScale, highScale ):
+        '''
+        根据切片文件的四种标注区域对应的Mask图像，在高分辨率上提取图块种子点（左上角）的坐标
+        :param sourceCone: 切片
+        :param lowScale: 生成mask图像的分辨率，即GLOBAL_SCALE
+        :param highScale: 提取图块的种子点的分辨率，即EXTRACT_SCALE
+        :return: 返回四个种子点的集合的大小
+        '''
         self.extract_scale = highScale
 
         mask1 = sourceCone.create_mask_image(lowScale, "TA")
@@ -70,6 +77,16 @@ class PatchSampler(object):
         return (len(self.seeds_TA), len(self.seeds_TR), len(self.seeds_NA), len(self.seeds_NR))
 
     def detect_patch_byMask(self, mask_img, x, y, patch_width_High, lowScale, highScale):
+        '''
+        根据Mask图像来判断图块是否处于癌变区域
+        :param mask_img: Mask图像
+        :param x: 图块在高分辨率下，左上角x
+        :param y: 左上角y
+        :param patch_width_High: 高分辨下图块大小
+        :param lowScale: mask图像所对应的分辨率
+        :param highScale: 图块所在的高分辨率
+        :return: 是否属于癌
+        '''
         amp = highScale / lowScale
         patch_width = patch_width_High / amp
         xlow = int(x / amp)
@@ -82,6 +99,12 @@ class PatchSampler(object):
         return r > 0.85
 
     def extract_patches_AZone(self, sourceCone, scale):
+        '''
+        从精标区提取图块，并存到对应目录
+        :param sourceCone: 切片
+        :param scale: 提取图块所用分辨率
+        :return: cancerA，normalA两个文件夹的图块文件
+        '''
         if (scale != self.extract_scale):
             print("\a", "scale error!")
             return
@@ -115,6 +138,13 @@ class PatchSampler(object):
         return
 
     def extract_patches_RZone(self, sourceCone, scale):
+        '''
+        从粗标区提取图块，并根据 SVM的分类结果存到对应目录。
+
+        :param sourceCone: 切片
+        :param scale: 提取图块所用分辨率
+        :return: 五种文件夹的图块文件
+        '''
         if (scale != self.extract_scale):
             print("\a", "scale error!")
             return
@@ -149,6 +179,7 @@ class PatchSampler(object):
         classifier = pf.load_svm_model()
         extractor = FeatureExtractor.FeatureExtractor()
 
+        # 对于癌变粗标区进行处理
         lenTR = len(self.seeds_TR)
         for idx, (x, y) in enumerate(self.seeds_TR):
             block = sourceCone.get_image_block(self.extract_scale, x, y, patch_size, patch_size)
@@ -168,6 +199,7 @@ class PatchSampler(object):
             if (idx % 1000 == 0):
                 print("TR -> Processing: {} / {}".format(idx, lenTR))
 
+        # 对于正常粗标区进行处理
         lenNR = len(self.seeds_NR)
         for idx, (x, y) in enumerate(self.seeds_NR):
             block = sourceCone.get_image_block(self.extract_scale, x, y, patch_size, patch_size)
@@ -190,11 +222,16 @@ class PatchSampler(object):
         return
 
     def detect_patch_byProb(self, probs):
+        '''
+        根据 给定阈值判定图块的类型
+        :param probs: 对应分类（0：正常，1：癌）的概率值
+        :return: -1，0，1
+        '''
         normal_prob = probs[0]
         cancer_prob = probs[1]
-        if (normal_prob > 0.90):
+        if (normal_prob > 0.90): # 正常
             return 0
-        elif (cancer_prob > 0.90):
+        elif (cancer_prob > 0.90): # 癌变
             return 1
-        else:
+        else:   # 不能确定
             return -1

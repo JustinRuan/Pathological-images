@@ -20,6 +20,11 @@ class Params(object):
         self.PATCH_SIZE_LOW = 0
 
     def load_config_file(self, filename):
+        '''
+        读取配置文件
+        :param filename: 配置文件名
+        :return:
+        '''
         # 读取数据
         with open(filename, 'r') as f:
             data = json.load(f)
@@ -38,6 +43,11 @@ class Params(object):
         return
 
     def save_default_value(self, filename):
+        '''
+        生成一个默认的配置文件，以便进行修改
+        :param filename: 存盘的文件名
+        :return:
+        '''
         filePath = CONFIG_PATH + filename
         data = (
             {'EXTRACT_SCALE': 20,

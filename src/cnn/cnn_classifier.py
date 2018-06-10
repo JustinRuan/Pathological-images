@@ -18,6 +18,12 @@ class cnn_classifier(object):
     # model_name = "googlenet_caffe'
     # samples_name = "ZoneR"
     def __init__(self, params, model_name, samples_name):
+        '''
+        初始化CNN分类器
+        :param params: 参数
+        :param model_name: 使用的模型文件
+        :param samples_name: 使用的标本集的关键字（标记符）
+        '''
         self._params = params
         self.model_name = model_name
         self.model_root = "{}/models/{}/".format(self._params.PROJECT_ROOT, model_name)
@@ -33,6 +39,10 @@ class cnn_classifier(object):
         return
 
     def write_net(self):
+        '''
+        按模板生成 需要的proto文件，并存盘
+        :return:
+        '''
         # 读入train_template.prototxt
         with open(self.train_proto_template, 'r') as f1:
             train_temp = f1.read()
@@ -48,6 +58,13 @@ class cnn_classifier(object):
         return
 
     def gen_solver(self, solver_file, train_net, test_net):
+        '''
+        生成solver.prototxt文件
+        :param solver_file: solver.prototxt文件名
+        :param train_net: 训练时用的prototxt
+        :param test_net: 测试时用的prototxt
+        :return: 存盘文件
+        '''
         s = caffe_pb2.SolverParameter()
         s.train_net = train_net
         s.test_net.append(test_net)
@@ -78,6 +95,11 @@ class cnn_classifier(object):
 
     # 开始训练
     def training(self, solver_proto):
+        '''
+        进行CNN的训练
+        :param solver_proto: 文件名
+        :return:
+        '''
         caffe.set_device(0)
         caffe.set_mode_gpu()
 
@@ -87,6 +109,11 @@ class cnn_classifier(object):
         solver.solve()
 
     def testing(self, caffe_model):
+        '''
+        进行验证集的测试
+        :param caffe_model: model的路径和文件名
+        :return:
+        '''
         caffe.set_device(0)
         caffe.set_mode_gpu()
         net = caffe.Net(self.deploy_proto, caffe_model, caffe.TEST)

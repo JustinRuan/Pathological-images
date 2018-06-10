@@ -18,6 +18,13 @@ class ImageCone(object):
         self._params = params
 
     def open_slide(self, filename, ano_filename, id_string):
+        '''
+        打开切片文件
+        :param filename: 切片文件名
+        :param ano_filename: 切片所对应的标注文件名
+        :param id_string: 切片编号
+        :return: 是否成功打开切片
+        '''
         path = "{}/{}".format(self._params.SLICES_ROOT_PATH, filename)
         self.slice_id = id_string
         tag = self._slice.open_slide(path, id_string)
@@ -30,12 +37,22 @@ class ImageCone(object):
         return False
 
     def get_fullimage_byScale(self, scale):
+        '''
+        得到指定倍镜下的全图
+        :param scale: 倍镜数
+        :return:
+        '''
         w, h = self.get_image_width_height_byScale(scale)
 
         fullImage = self._slice.get_image_block(scale, 0, 0, w, h)
         return fullImage
 
     def get_image_width_height_byScale(self, scale):
+        '''
+        得到指定倍镜下，全图的大小
+        :param scale: 倍镜数
+        :return: 全图的宽，高
+        '''
         if scale > 3:
             print("\a", "The size of image is too large")
             return
@@ -44,17 +61,28 @@ class ImageCone(object):
         return w, h
 
     def get_image_block(self, fScale, sp_x, sp_y, nWidth, nHeight):
+        '''
+        在指定坐标和倍镜下，提取切片的图块
+        :param fScale: 倍镜数
+        :param sp_x: 左上角x
+        :param sp_y: 左上角y
+        :param nWidth: 图块的宽
+        :param nHeight: 图块的高
+        :return: 返回一个图块对象
+        '''
         data = self._slice.get_image_block_file(fScale, sp_x, sp_y, nWidth, nHeight)
 
         newBlock = Block.Block(self.slice_id, sp_x, sp_y, fScale, 0, nWidth, nHeight)
         newBlock.set_img_file(data)
         return newBlock
 
-    def get_image_blocks(self, fScale, sp_x, sp_y, nWidth, nHeight, block_size):
-
-        return
-
     def create_mask_image(self, scale, mode):
+        '''
+        在设定的倍镜下，生成四种标注区的mask图像
+        :param scale: 指定的倍镜数
+        :param mode: 标注区类型
+        :return: 对应的Mask图像
+        '''
         w, h = self._slice.get_image_width_height_byScale(scale)
         img = np.zeros((h, w), dtype=np.bool)
         '''
@@ -100,6 +128,11 @@ class ImageCone(object):
         return img
 
     def get_effective_zone(self, scale):
+        '''
+        得到切片中，有效处理区域的Mask图像
+        :param scale: 指定的倍镜
+        :return: Mask图像
+        '''
         fullImg = self.get_fullimage_byScale(scale)
 
         img = color.rgb2hsv(fullImg)

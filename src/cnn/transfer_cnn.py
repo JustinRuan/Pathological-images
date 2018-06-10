@@ -21,6 +21,13 @@ from sklearn.model_selection import GridSearchCV
 class transfer_cnn(object):
 
     def __init__(self, params, model_name, model_filename, model_prototxt):
+        '''
+        初始化 迁移学习模型
+        :param params: 参数
+        :param model_name: 迁移学习所使用的模型代号GoogLeNet等
+        :param model_filename: 模型model的文件名
+        :param model_prototxt: 模型prototxt的文件名
+        '''
         self._params = params
         self.model_name = model_name
         self.model_filename = model_filename
@@ -41,6 +48,10 @@ class transfer_cnn(object):
         return
 
     def start_caffe(self):
+        '''
+        启动Caffe GPU运行环境，并设定数据输入的初始化
+        :return:
+        '''
         caffe.set_device(0)
         caffe.set_mode_gpu()
 
@@ -64,6 +75,11 @@ class transfer_cnn(object):
         return
 
     def loading_data(self, data_list):
+        '''
+        从文件列表中，加载图块，计算GLCM特征，以及用CNN抽取特征
+        :param data_list: 文件列表
+        :return: GLCM特征，以及 CNN抽取的特征
+        '''
         root_path = self._params.PATCHS_ROOT_PATH
         data_file = "{}/{}".format(root_path, data_list)
 
@@ -121,6 +137,12 @@ class transfer_cnn(object):
         return glcm_features, cnn_features, tags
 
     def select_features(self, cnn_features, tags):
+        '''
+        根据变化程度的Top 100，进行CNN抽取特征的优化选择
+        :param cnn_features: CNN抽取的特征向量集合
+        :param tags: 对应的标签Tag集合
+        :return: TopK 个特征对应的索引号，并存盘
+        '''
         data = np.column_stack((tags, cnn_features))
         df = pd.DataFrame(data)
 
@@ -137,6 +159,14 @@ class transfer_cnn(object):
 
     # x = features, y = tags
     def train_svm(self, glcm_features, cnn_features, tags, top_index):
+        '''
+        使用glcm和cnn得到的特征进行SVM训练
+        :param glcm_features: glcm特征
+        :param cnn_features: ccn抽取的特征（全部）
+        :param tags: 对应的Tag
+        :param top_index: cnn_features中变化最大的Top K的索引号
+        :return:
+        '''
         y = tags
         X = self.comobine_features(glcm_features, cnn_features, top_index)
 
@@ -151,12 +181,21 @@ class transfer_cnn(object):
         return clf
 
     def load_svm_model(self):
+        '''
+        加载SVM
+        :return:
+        '''
         model_file = "{}/models/svm_{}.model".format(self._params.PROJECT_ROOT, self.model_filename)
         clf = joblib.load(model_file)
 
         return clf
 
     def test_svm(self, test_filename):
+        '''
+        使用文件列表中的图块测试SVM
+        :param test_filename:文件列表 的文件名
+        :return:
+        '''
 
         glcm_features, cnn_features, expected_tags = self.loading_data(test_filename)
         features = self.comobine_features(glcm_features, cnn_features)
@@ -171,6 +210,13 @@ class transfer_cnn(object):
         # return predicted_result
 
     def comobine_features(self, glcm_features, cnn_features, top_index = []):
+        '''
+        特征的组合
+        :param glcm_features: glcm特征
+        :param cnn_features: ccn抽取的特征（全部）
+        :param top_index: cnn_features中变化最大的Top K的索引号
+        :return:
+        '''
         if len(top_index) == 0:
             index_filename = "{}_{}.npy".format(self.transfer_model, "top_index")
             top_index = np.load(index_filename)
@@ -179,8 +225,12 @@ class transfer_cnn(object):
         features = np.column_stack((glcm_features, new_cnn_features))
         return features
 
-    # img_list 是 io.imread得到图像的List
     def extract_cnn_feature(self, src_img_list):
+        '''
+        从内存中的image list提取cnn 特征
+        :param src_img_list: img_list 是 io.imread得到图像的List
+        :return:两种特征集
+        '''
         fe = FeatureExtractor.FeatureExtractor()
         glcm_features = []
         cnn_features = []

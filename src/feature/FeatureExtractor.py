@@ -13,12 +13,23 @@ class FeatureExtractor(object):
         return
 
     def extract_feature(self, src_img, code):
+        '''
+        对输入图像进行特征提取
+        :param src_img: 输入图像
+        :param code: 特征的编号
+        :return: 特征向量
+        '''
         if code == "glcm":
             return self.extract_glcm_feature(src_img)
         elif code == "blp":
             return
 
     def extract_glcm_feature(self, src_img):
+        '''
+        提取图像的GLCM特征
+        :param src_img: 输入图像
+        :return: GLCM特征
+        '''
         # 存储单张图片的glcm特征
         textural_feature = []
         # 以灰度模式读取图片

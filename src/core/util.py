@@ -9,8 +9,18 @@ import numpy as np
 from skimage import color, morphology
 from skimage.morphology import square
 
-# MaksLow 低分辨率Mask图像，种子点在高分辨率图像之间的间隔spacingHigh
 def get_seeds(MaskLow, lowScale, highScale, patch_size_high, spacingHigh, margin = -8):
+    '''
+    得到Mask图像中为True位置在高分辨率下的坐标值
+    :param MaskLow: 低分辨率Mask图像
+    :param lowScale: 低分辨率值
+    :param highScale: 种子点坐标所在的高分辨率值
+    :param patch_size_high: 在高分辨率图块的大小
+    :param spacingHigh: 种子点在高分辨率图像之间的间隔spacingHigh
+    :param margin: 边界参数
+    :return: 在高分辨率中的种子点坐标
+    '''
+
     amp = highScale / lowScale
     patch_size = int(patch_size_high / amp)  # patch size low
 

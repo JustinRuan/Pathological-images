@@ -12,6 +12,8 @@ from core import *
 import matplotlib.pyplot as plt
 from cnn import *
 import numpy as np
+from skimage.color import label2rgb
+from skimage.measure import label
 
 class Test_detector(unittest.TestCase):
 
@@ -80,13 +82,13 @@ class Test_detector(unittest.TestCase):
                                '17004930 HE_2017-07-29 09_45_09.kfb.Ano', "17004930"
                                )
         x1 = 600
-        y1 = 610
+        y1 = 600
         x2 = 720
         y2 = 720
         roi_img = dtor.get_ROI_img(x1, y1, x2, y2, 1, 1.25)
         dtor.set_ROI(x1, y1, x2, y2, 1)
 
-        regions,result = dtor.detect_ROI_regions(x1, y1, x2, y2, 1, 20, 20, 256)
+        regions,result = dtor.detect_ROI_regions(x1, y1, x2, y2, 1, 50, 20, 256)
 
         fig, axes = plt.subplots(2, 2, figsize=(4, 4), dpi=300)
         ax = axes.ravel()
@@ -94,9 +96,10 @@ class Test_detector(unittest.TestCase):
         ax[0].imshow(roi_img)
         ax[0].set_title("roi_img")
 
-        # ax[1].imshow(roi_img, alpha=0.5)
-        # ax[1].contour(regions, [0.5], linewidths=0.5, colors='r')
-        ax[1].imshow(regions, cmap="rainbow")
+        # label image regions
+        label_image = label(regions)
+        image_label_overlay = label2rgb(label_image, alpha=0.3, image=roi_img)
+        ax[1].imshow(image_label_overlay)
         ax[1].set_title("regions")
 
         ax[2].imshow(result, alpha=1)

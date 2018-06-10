@@ -26,6 +26,10 @@ class ImageInfoStruct(ctypes.Structure):
 
 class Slice(object):
     def __init__(self, SDK_path):
+        '''
+        初始化过程
+        :param SDK_path: SDK 的所在路径
+        '''
         # KFB_SDK_PATH = "D:/CloudSpace/DoingNow/WorkSpace/lib/KFB_SDK"
         KFB_SDK_PATH = SDK_path
         self._Objdll_ = ctypes.windll.LoadLibrary(KFB_SDK_PATH + "/x64/ImageOperationLib")
@@ -108,12 +112,21 @@ class Slice(object):
     #     return
 
     def get_slide_pointer(self, filename):
+        '''
+        得到切片指针
+        :param filename: 切片文件路径
+        :return:
+        '''
         self.img_pointer = ImageInfoStruct()
         path_buf = ctypes.c_char_p(filename.encode())  # byte array
 
         return self.InitImageFileFunc(byref(self.img_pointer), path_buf)
 
     def get_header_info(self):
+        '''
+        读文件的头信息
+        :return: bool 是否打开
+        '''
         khiImageHeight = c_int()
         khiImageWidth = c_int()
         khiScanScale = c_int()
@@ -134,6 +147,12 @@ class Slice(object):
         return success
 
     def open_slide(self, filename, id_string):
+        '''
+        打开切片文件
+        :param filename: 切片文件
+        :param id_string: 切片编号
+        :return: 是否成功打开
+        '''
         tag = self.get_slide_pointer(filename)
         self._id = id_string
         if tag:
@@ -141,9 +160,18 @@ class Slice(object):
         return False
 
     def get_id(self):
+        '''
+        得取切片的编号
+        :return: 返回切片编号
+        '''
         return self._id;
 
     def get_image_width_height_byScale(self, scale):
+        '''
+        得到指定倍镜下，整个切片图像的大小
+        :param scale: 提取图像所在的倍镜数
+        :return: 图像的大小，宽（x）高（y）
+        '''
         if self.khiScanScale == 0:
             return 0, 0
 
@@ -156,6 +184,15 @@ class Slice(object):
         return self.UnInitImageFileFunc(byref(self.img_pointer))
 
     def get_image_block_file(self, fScale, sp_x, sp_y, nWidth, nHeight):
+        '''
+        提取所在位置的图块文件流
+        :param fScale: 所使用倍镜数
+        :param sp_x: 左上角x坐标
+        :param sp_y: 左上角y坐标
+        :param nWidth: 图块的宽
+        :param nHeight: 图块的高
+        :return: 图块的文件流，保存它就成为JPG文件
+        '''
         pBuffer = POINTER(c_ubyte)()
         DataLength = c_int()
         '''
@@ -182,6 +219,15 @@ class Slice(object):
         return data
 
     def get_image_block(self, fScale, sp_x, sp_y, nWidth, nHeight):
+        '''
+        提取指定位置的图块
+        :param fScale: 所使用倍镜数
+        :param sp_x: 左上角x坐标
+        :param sp_y: 左上角y坐标
+        :param nWidth: 图块的宽
+        :param nHeight: 图块的高
+        :return: 图块的矩阵，用于算法的处理
+        '''
         data = self.get_image_block_file(fScale, sp_x, sp_y, nWidth, nHeight)
         return Image.open(io.BytesIO(data))
 
@@ -210,6 +256,11 @@ class Slice(object):
     '''
 
     def read_annotation(self, filename):
+        '''
+        读取标注文件
+        :param filename: 切片标注文件名
+        :return:
+        '''
         self.ano_TUMOR_A = []
         self.ano_TUMOR_R = []
         self.ano_NORMAL_A = []
