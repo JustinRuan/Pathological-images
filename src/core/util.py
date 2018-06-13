@@ -27,7 +27,7 @@ def get_seeds(MaskLow, lowScale, highScale, patch_size_high, spacingHigh, margin
     if margin < 0:
         # 灰度图像腐蚀，图像中物体会收缩/细化：https://wenku.baidu.com/view/c600c8d1360cba1aa811da73.html
         seed_img = morphology.binary_erosion(MaskLow, square(patch_size))
-        seed_img = morphology.binary_erosion(seed_img, square(margin))  # 收缩边界
+        seed_img = morphology.binary_erosion(seed_img, square(abs(margin)))  # 收缩边界
     elif margin > 0:
         seed_img = morphology.binary_dilation(MaskLow, square(patch_size))
         seed_img = morphology.binary_dilation(seed_img, square(margin))  # 扩展边界

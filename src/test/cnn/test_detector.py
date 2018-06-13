@@ -60,7 +60,7 @@ class Test_detector(unittest.TestCase):
         x2 = 750
         y2 = 750
         roi_img = dtor.get_ROI_img(x1, y1, x2, y2, 1, 5)
-        segments = dtor.segment_image(roi_img, 10)
+        segments = dtor.segment_image(roi_img,30)
         print(np.max(segments))
 
         fig, axes = plt.subplots(1, 2, figsize=(4, 3), dpi=300)
@@ -83,12 +83,12 @@ class Test_detector(unittest.TestCase):
                                )
         x1 = 600
         y1 = 600
-        x2 = 720
-        y2 = 720
+        x2 = 1420
+        y2 = 1420
         roi_img = dtor.get_ROI_img(x1, y1, x2, y2, 1, 1.25)
         dtor.set_ROI(x1, y1, x2, y2, 1)
 
-        regions,result = dtor.detect_ROI_regions(x1, y1, x2, y2, 1, 50, 20, 256)
+        regions,result = dtor.detect_ROI_regions(x1, y1, x2, y2, 1, 100, 20, 256)
 
         fig, axes = plt.subplots(2, 2, figsize=(4, 4), dpi=300)
         ax = axes.ravel()

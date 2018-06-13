@@ -21,7 +21,7 @@ class TestPatchPack(unittest.TestCase):
 
         print(result)
 
-        pack.create_train_test_data(900, 900, 1000, 1000, "ZoneA")
+        pack.create_train_test_data(900, 900, 1000, 1000, 0 , 0,  "ZoneA")
 
     def test_packR(self):
         c = Params.Params()

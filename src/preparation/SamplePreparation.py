@@ -57,7 +57,7 @@ class SamplePreparation(object):
         result = pack.loading("normalA", "cancerA")
 
         print(result)
-        pack.create_train_test_data(900, 900, 1000, 1000, "ZoneA")
+        pack.create_train_test_data(900, 900, 1000, 1000, 0, 0, "ZoneA")
 
     def train_svm_zoneA(self):
         '''

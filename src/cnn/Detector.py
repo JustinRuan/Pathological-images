@@ -178,7 +178,7 @@ class Detector(object):
         :param count: 分割区域的最大数量
         :return: 聚类后的Mask矩阵
         '''
-        segments = segmentation.slic(src_img, n_segments=count,compactness=0.5, sigma=3)
+        segments = segmentation.slic(src_img, n_segments=count,compactness=5, sigma=3)
         return segments
 
     def detect_ROI_regions(self, x1, y1, x2, y2, coordinate_scale, regions_count, extract_scale, block_size):
@@ -234,7 +234,7 @@ class Detector(object):
 
             predicted_tags = classifier.predict(features)
             mean_tags = np.mean(predicted_tags)
-            print(index, "->", mean_tags, predicted_tags)
+            print(index,'/',regions_count, "->", mean_tags, predicted_tags)
             result[self.ROI] = mean_tags
 
         return regions, result
