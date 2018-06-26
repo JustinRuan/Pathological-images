@@ -75,6 +75,32 @@ class ImageCone(object):
         newBlock = Block.Block(self.slice_id, sp_x, sp_y, fScale, 0, nWidth, nHeight)
         newBlock.set_img_file(data)
         return newBlock
+    
+    def get_image_blocks_itor(self, fScale, set_x, set_y, nWidth, nHeight, batch_size):
+        '''
+        获得以种子点为左上角的图块的迭代器
+        :param fScale: 倍镜数
+        :param set_x: 左上角x的集合
+        :param set_y: 左上角y的集合
+        :param nWidth: 图块的宽
+        :param nHeight: 图块的高
+        :param batch_size: 每批的数量
+        :return: 返回图块集合的迭代器
+        '''
+        n = 0
+        images = []
+        for x, y in zip(set_x, set_y):
+            block = self.get_image_block(fScale, x, y, nWidth, nHeight)
+            images.append(block.get_img())
+            n = n + 1
+            if n >= batch_size:
+                yield images
+
+                images = []
+                n = 0
+
+        if n > 0:
+            return images
 
     def create_mask_image(self, scale, mode):
         '''

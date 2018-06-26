@@ -181,6 +181,64 @@ class Detector(object):
         segments = segmentation.slic(src_img, n_segments=count,compactness=5, sigma=3)
         return segments
 
+    # def detect_ROI_regions(self, x1, y1, x2, y2, coordinate_scale, regions_count, extract_scale, block_size):
+    #     '''
+    #     在聚类的基础上，对每个区域进行抽样检测，用检测得到的平均值对区域进行打分
+    #     :param x1: ROI区域的左上角x
+    #     :param y1: ROI区域的左上角y
+    #     :param x2: ROI区域的右下角x
+    #     :param y2: ROI区域的右下角y
+    #     :param coordinate_scale: 生成ROI区域所用倍镜
+    #     :param regions_count: 分割出区域的最大数量
+    #     :param extract_scale: 提取图块所使用的倍镜
+    #     :param block_size: 提取图块的大小（在extract_scale下）
+    #     :return: 聚类区域，打分图像
+    #     '''
+    #     ###########################################################
+    #     tc = transfer_cnn.transfer_cnn(self._params, "googlenet", "bvlc_googlenet.caffemodel",
+    #                                    "deploy_GoogLeNet.prototxt")
+    #     tc.start_caffe()
+    #
+    #     classifier = tc.load_svm_model()
+    #     ###########################################################
+    #     result = np.zeros((self.ROI_height, self.ROI_width), dtype=np.float)
+    #
+    #     spacing = block_size / 2
+    #     GLOBAL_SCALE = self._params.GLOBAL_SCALE
+    #
+    #     roi_img = self.get_ROI_img(x1, y1, x2, y2, coordinate_scale, GLOBAL_SCALE)
+    #     regions = self.segment_image(roi_img, regions_count)
+    #
+    #     # 计算在extract时的左上解坐标
+    #     xx1 = int(x1 * extract_scale / coordinate_scale)
+    #     yy1 = int(y1 * extract_scale / coordinate_scale)
+    #
+    #     regions_count = np.max(regions)
+    #     thresh = 30
+    #     for index in range(regions_count + 1):
+    #         self.ROI = (regions == index)
+    #         seeds = self.get_points_ROI(extract_scale, block_size, spacing)
+    #         list_seeds = list(seeds)
+    #         if len(list_seeds) > thresh:
+    #             # 抽取
+    #             random.shuffle(list_seeds)
+    #             list_seeds = list_seeds[:thresh]
+    #
+    #         images = []
+    #         for (x, y) in list_seeds:
+    #             block = self.imgCone.get_image_block(extract_scale, x + xx1 , y + yy1, block_size, block_size)
+    #             images.append(block.get_img())
+    #
+    #         glcm_features, cnn_features = tc.extract_cnn_feature(images)
+    #         features = tc.comobine_features(glcm_features, cnn_features)
+    #
+    #         predicted_tags = classifier.predict(features)
+    #         mean_tags = np.mean(predicted_tags)
+    #         print(index,'/',regions_count, "->", mean_tags, predicted_tags)
+    #         result[self.ROI] = mean_tags
+    #
+    #     return regions, result
+
     def detect_ROI_regions(self, x1, y1, x2, y2, coordinate_scale, regions_count, extract_scale, block_size):
         '''
         在聚类的基础上，对每个区域进行抽样检测，用检测得到的平均值对区域进行打分
@@ -224,12 +282,16 @@ class Detector(object):
                 random.shuffle(list_seeds)
                 list_seeds = list_seeds[:thresh]
 
-            images = []
-            for (x, y) in list_seeds:
-                block = self.imgCone.get_image_block(extract_scale, x + xx1 , y + yy1, block_size, block_size)
-                images.append(block.get_img())
+            # images = []
+            # for (x, y) in list_seeds:
+            #     block = self.imgCone.get_image_block(extract_scale, x + xx1 , y + yy1, block_size, block_size)
+            #     images.append(block.get_img())
+            seeds_array = np.array(list_seeds)
+            img_itor = self.imgCone.get_image_blocks_itor(extract_scale, seeds_array[:,0] + xx1 , seeds_array[:,1] + yy1,
+                                                          block_size, block_size, tc.batch_count)
 
-            glcm_features, cnn_features = tc.extract_cnn_feature(images)
+            # glcm_features, cnn_features = tc.extract_cnn_feature(images)
+            glcm_features, cnn_features = tc.extract_cnn_feature_with_iterator(img_itor)
             features = tc.comobine_features(glcm_features, cnn_features)
 
             predicted_tags = classifier.predict(features)

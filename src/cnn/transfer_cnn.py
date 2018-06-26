@@ -274,3 +274,33 @@ class transfer_cnn(object):
                 cnn_features.append(fvector2.copy()) # 神坑，花费一天时间爬出
 
             return glcm_features, cnn_features
+
+    def extract_cnn_feature_with_iterator(self, src_img_iterator):
+        fe = FeatureExtractor.FeatureExtractor()
+        glcm_features = []
+        cnn_features = []
+
+        for image_list in src_img_iterator:
+            images = []
+            for img in image_list:
+                fvector1 = fe.extract_glcm_feature(img)
+                glcm_features.append(fvector1)
+
+                images.append(self.transformer.preprocess('data', util.img_as_float(img).astype(np.float32)))
+
+            # 用全0矩阵 补齐不足一个批次的不足部分
+            img_count = len(images)
+            if img_count < self.batch_count:
+                aligned_count = self.batch_count - img_count
+                for i in range(aligned_count):
+                    images.append(self.transformer.preprocess('data', np.zeros(img.shape)))
+
+            self.net.blobs['data'].data[...] = images
+            output = self.net.forward()
+
+            for index, fvector2 in enumerate(self.net.blobs[self.extract_layer_name].data):
+                if index >= img_count:
+                    break
+                cnn_features.append(fvector2.copy()) # 神坑，花费一天时间爬出
+
+        return glcm_features, cnn_features

@@ -111,3 +111,14 @@ class Test_detector(unittest.TestCase):
         plt.show()
 
         return
+
+    def test_test02(self):
+        myList = []
+        myList.append((1,3))
+        myList.append((2,4))
+        myList.append((3,7))
+
+        x = (np.array(myList))[:,0]
+        print(x)
+
+
