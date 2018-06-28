@@ -5,13 +5,14 @@ __author__ = 'Justin'
 __mtime__ = '2018-06-26'
 
 """
-# import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import numpy as np
 import tensorflow as tf
 from sklearn import metrics
 from skimage import io, util
+from core import *
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -20,10 +21,10 @@ width = 256
 height = 256
 channel = 3
 learning_rate = 0.000005
-n_epoch = 70  # 所有训练集数据训练n_epoch代
-train_batch_size = 2
-val_batch_size = 2
-num_classes = 10
+# n_epoch = 70  # 所有训练集数据训练n_epoch代
+# train_batch_size = 2
+# val_batch_size = 2
+num_classes = 2
 # -------------------参数------------------------
 
 def alexnet_model_fn(features, labels, mode):
@@ -32,7 +33,7 @@ def alexnet_model_fn(features, labels, mode):
     # x = tf.placeholder(tf.float32, shape=[None, width, height, channel], name='x')
     # y_ = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_')
 
-    input_layer = tf.reshape(features, [-1, width, height, channel])
+    input_layer = tf.reshape(features["x"], [-1, width, height, channel])
 
     # ********AlexNet有八层网络结构********
 
@@ -127,7 +128,7 @@ def alexnet_model_fn(features, labels, mode):
     W_fc1 = tf.Variable(tf.truncated_normal([4096, num_classes], stddev=0.1))  # weight：正态分布，标准差为0.1，默认最大为1，最小为-1，均值为0
     b_fc1 = tf.Variable(tf.constant(0.1, shape=[num_classes]))  # bias：创建一个结构为shape矩阵也可以说是数组shape声明其行列，初始化所有值为0.1
     softmax = tf.nn.softmax(tf.matmul(dense2, W_fc1) + b_fc1, name="softmax_tensor")
-    # ---------------------------网络结束---------------------------
+    # ---------------------------网络结束-------------num_classes--------------
 
     predictions = {
         # Generate predictions (for PREDICT and EVAL mode)
@@ -139,7 +140,10 @@ def alexnet_model_fn(features, labels, mode):
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     # Calculate Loss (for both TRAIN and EVAL modes)
-    loss = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(softmax), reduction_indices=[1]))  # 交叉熵（损失值）
+    # loss = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(softmax), reduction_indices=[1]))  # 交叉熵（损失值）
+    # labels = tf.cast(labels, tf.int64)
+    temp = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=softmax)
+    loss = tf.reduce_mean(temp, name="loss")
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
@@ -217,9 +221,37 @@ class alexnet_tensor(object):
         image_string = tf.read_file(filename)
         image_decoded = tf.image.decode_image(image_string)
         image_float = tf.cast(image_decoded, dtype=tf.float32)
-        return image_float, label
+        return {"x":image_float}, label
 
-    def csv_input_fn(self, csv_path, batch_size):
+    # def csv_input_fn(self, csv_path, batch_size):
+    #     filenames_list = []
+    #     labels_list = []
+    #
+    #     f = open(csv_path, "r")
+    #     lines = f.readlines()
+    #     for line in lines:
+    #         items = line.split(" ")
+    #
+    #         tag = int(items[1])
+    #         labels_list.append(tag)
+    #
+    #         patch_file = "{}/{}".format(self._params.PATCHS_ROOT_PATH, items[0])
+    #         filenames_list.append(patch_file)
+    #
+    #     # A vector of filenames.
+    #     filenames = tf.constant(filenames_list)
+    #
+    #     # `labels[i]` is the label for the image in `filenames[i].
+    #     labels = tf.constant(labels_list)
+    #
+    #     dataset = tf.data.Dataset.from_tensor_slices((filenames, labels))
+    #     dataset = dataset.map(self._parse_function)
+    #     dataset = dataset.repeat().prefetch(batch_size)
+    #     dataset = dataset.batch(batch_size)
+    #
+    #     return dataset
+
+    def read_csv_file(self, csv_path, batch_size):
         filenames_list = []
         labels_list = []
 
@@ -228,11 +260,15 @@ class alexnet_tensor(object):
         for line in lines:
             items = line.split(" ")
 
-            tag = float(items[1])
+            tag = int(items[1])
             labels_list.append(tag)
 
             patch_file = "{}/{}".format(self._params.PATCHS_ROOT_PATH, items[0])
             filenames_list.append(patch_file)
+        return filenames_list, labels_list
+
+    def eval_input_fn(self, csv_path, batch_size):
+        filenames_list, labels_list = self.read_csv_file(csv_path, batch_size)
 
         # A vector of filenames.
         filenames = tf.constant(filenames_list)
@@ -244,27 +280,63 @@ class alexnet_tensor(object):
         dataset = dataset.map(self._parse_function)
         dataset = dataset.prefetch(batch_size)
         dataset = dataset.batch(batch_size)
+        return dataset
 
+    def train_input_fn(self, csv_path, batch_size, repeat_count):
+        filenames_list, labels_list = self.read_csv_file(csv_path, batch_size)
+
+        # A vector of filenames.
+        filenames = tf.constant(filenames_list)
+
+        # `labels[i]` is the label for the image in `filenames[i].
+        labels = tf.constant(labels_list)
+
+        dataset = tf.data.Dataset.from_tensor_slices((filenames, labels))
+        dataset = dataset.map(self._parse_function)
+        dataset = dataset.repeat(repeat_count).prefetch(batch_size)
+        dataset = dataset.batch(batch_size)
         return dataset
 
     def training(self):
+        GPU = False
+        if GPU:
+            gpu_config = tf.ConfigProto()
+            gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.5  # 程序最多只能占用指定gpu %的显存
+            gpu_config.gpu_options.allow_growth = True  # 程序按需申请内存
+
+            config = tf.estimator.RunConfig(keep_checkpoint_max=1, session_config=gpu_config)
+        else:
+            config = tf.estimator.RunConfig(keep_checkpoint_max=1)
+
         # Create the Estimator
         classifier = tf.estimator.Estimator(
-            model_fn=alexnet_model_fn, model_dir=self.model_root)
+            model_fn=alexnet_model_fn, model_dir=self.model_root, config=config)
 
         # Set up logging for predictions
         # Log the values in the "Softmax" tensor with label "probabilities"
-        tensors_to_log = {"probabilities": "softmax_tensor"}
+        # tensors_to_log = {"probabilities": "softmax_tensor", "loss":"loss"}
+        tensors_to_log = {"loss": "loss"}
+
         logging_hook = tf.train.LoggingTensorHook(
-            tensors=tensors_to_log, every_n_iter=50)
+            tensors=tensors_to_log, every_n_iter=10)
 
         # Train the model
         batch_size = 10
         classifier.train(
-            input_fn=lambda:self.csv_input_fn(self.train_list, batch_size),
-            steps=3,
+            input_fn=lambda:self.train_input_fn(self.train_list, batch_size, 3),
+            steps=30,
             hooks=[logging_hook])
+
+        # Evaluate the model and print results
+        eval_results = classifier.evaluate(input_fn=lambda:self.eval_input_fn(self.check_list, batch_size))
+        print(eval_results)
 
         return
 
 
+if __name__ == '__main__':
+    c = Params.Params()
+    c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
+
+    cnn = alexnet_tensor(c, "Small")
+    cnn.training()
