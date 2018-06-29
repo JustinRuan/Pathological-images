@@ -251,7 +251,7 @@ class alexnet_tensor(object):
     #
     #     return dataset
 
-    def read_csv_file(self, csv_path, batch_size):
+    def read_csv_file(self, csv_path):
         filenames_list = []
         labels_list = []
 
@@ -268,7 +268,7 @@ class alexnet_tensor(object):
         return filenames_list, labels_list
 
     def eval_input_fn(self, csv_path, batch_size):
-        filenames_list, labels_list = self.read_csv_file(csv_path, batch_size)
+        filenames_list, labels_list = self.read_csv_file(csv_path)
 
         # A vector of filenames.
         filenames = tf.constant(filenames_list)
@@ -283,7 +283,7 @@ class alexnet_tensor(object):
         return dataset
 
     def train_input_fn(self, csv_path, batch_size, repeat_count):
-        filenames_list, labels_list = self.read_csv_file(csv_path, batch_size)
+        filenames_list, labels_list = self.read_csv_file(csv_path)
 
         # A vector of filenames.
         filenames = tf.constant(filenames_list)
@@ -328,7 +328,7 @@ class alexnet_tensor(object):
             hooks=[logging_hook])
 
         # Evaluate the model and print results
-        eval_results = classifier.evaluate(input_fn=lambda:self.eval_input_fn(self.check_list, batch_size))
+        eval_results = classifier.evaluate(input_fn=lambda:self.eval_input_fn(self.test_list, batch_size))
         print(eval_results)
 
         return
