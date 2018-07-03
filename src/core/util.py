@@ -42,3 +42,20 @@ def get_seeds(MaskLow, lowScale, highScale, patch_size_high, spacingHigh, margin
         resultHigh.add((xx, yy))
 
     return resultHigh
+
+
+def read_csv_file(root_path, csv_path):
+    filenames_list = []
+    labels_list = []
+
+    f = open(csv_path, "r")
+    lines = f.readlines()
+    for line in lines:
+        items = line.split(" ")
+
+        tag = int(items[1])
+        labels_list.append(tag)
+
+        patch_file = "{}/{}".format(root_path, items[0])
+        filenames_list.append(patch_file)
+    return filenames_list, labels_list

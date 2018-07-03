@@ -45,7 +45,7 @@ class transfer_cnn(object):
         else:
             self._model_id = ""
             self.extract_layer_name = "None"
-        return
+            return
 
     def start_caffe(self):
         '''

@@ -13,6 +13,7 @@ import tensorflow as tf
 from sklearn import metrics
 from skimage import io, util
 from core import *
+from core.util import read_csv_file
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -223,52 +224,8 @@ class alexnet_tensor(object):
         image_float = tf.cast(image_decoded, dtype=tf.float32)
         return {"x":image_float}, label
 
-    # def csv_input_fn(self, csv_path, batch_size):
-    #     filenames_list = []
-    #     labels_list = []
-    #
-    #     f = open(csv_path, "r")
-    #     lines = f.readlines()
-    #     for line in lines:
-    #         items = line.split(" ")
-    #
-    #         tag = int(items[1])
-    #         labels_list.append(tag)
-    #
-    #         patch_file = "{}/{}".format(self._params.PATCHS_ROOT_PATH, items[0])
-    #         filenames_list.append(patch_file)
-    #
-    #     # A vector of filenames.
-    #     filenames = tf.constant(filenames_list)
-    #
-    #     # `labels[i]` is the label for the image in `filenames[i].
-    #     labels = tf.constant(labels_list)
-    #
-    #     dataset = tf.data.Dataset.from_tensor_slices((filenames, labels))
-    #     dataset = dataset.map(self._parse_function)
-    #     dataset = dataset.repeat().prefetch(batch_size)
-    #     dataset = dataset.batch(batch_size)
-    #
-    #     return dataset
-
-    def read_csv_file(self, csv_path):
-        filenames_list = []
-        labels_list = []
-
-        f = open(csv_path, "r")
-        lines = f.readlines()
-        for line in lines:
-            items = line.split(" ")
-
-            tag = int(items[1])
-            labels_list.append(tag)
-
-            patch_file = "{}/{}".format(self._params.PATCHS_ROOT_PATH, items[0])
-            filenames_list.append(patch_file)
-        return filenames_list, labels_list
-
     def eval_input_fn(self, csv_path, batch_size):
-        filenames_list, labels_list = self.read_csv_file(csv_path)
+        filenames_list, labels_list = read_csv_file(self._params.PATCHS_ROOT_PATH, csv_path)
 
         # A vector of filenames.
         filenames = tf.constant(filenames_list)
@@ -283,7 +240,7 @@ class alexnet_tensor(object):
         return dataset
 
     def train_input_fn(self, csv_path, batch_size, repeat_count):
-        filenames_list, labels_list = self.read_csv_file(csv_path)
+        filenames_list, labels_list = read_csv_file(self._params.PATCHS_ROOT_PATH, csv_path)
 
         # A vector of filenames.
         filenames = tf.constant(filenames_list)
@@ -304,9 +261,9 @@ class alexnet_tensor(object):
             gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.5  # 程序最多只能占用指定gpu %的显存
             gpu_config.gpu_options.allow_growth = True  # 程序按需申请内存
 
-            config = tf.estimator.RunConfig(keep_checkpoint_max=1, session_config=gpu_config)
+            config = tf.estimator.RunConfig(keep_checkpoint_max=3, session_config=gpu_config)
         else:
-            config = tf.estimator.RunConfig(keep_checkpoint_max=1)
+            config = tf.estimator.RunConfig(keep_checkpoint_max=3)
 
         # Create the Estimator
         classifier = tf.estimator.Estimator(
