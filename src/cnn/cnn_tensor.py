@@ -125,7 +125,8 @@ if __name__ == '__main__':
     c = Params.Params()
     c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
 
-    cnn = cnn_tensor(c,"alexnet", "Small")
+    # cnn = cnn_tensor(c,"alexnet", "Small")
+    cnn = cnn_tensor(c, "googlenet", "Small")
     cnn.training()
 
 
