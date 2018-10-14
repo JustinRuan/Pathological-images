@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 __author__ = 'Justin'
-__mtime__ = '2018-05-20'
+__mtime__ = '2018-10-13'
 
 """
 
@@ -10,15 +10,15 @@ import numpy as np
 from PIL import Image
 import io
 
-
+# Block坐标中心化，不同是以前的左上角，以方便在多分辨率中进行对应
 class Block(object):
     # x is col, y is row
     def __init__(self, snumber="", x=0, y=0, scale=0, opcode=0, w=0, h=0):
         '''
         初始化图块信息
         :param snumber: 切片的编号
-        :param x: 图块左上角x
-        :param y: 图块左上角y
+        :param x: 图块中心点x
+        :param y: 图块中心点y
         :param scale: 所在倍镜
         :param opcode: 操作码
         :param w: 图块宽度

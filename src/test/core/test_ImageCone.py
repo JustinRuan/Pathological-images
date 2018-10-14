@@ -15,7 +15,7 @@ class TestImageCone(unittest.TestCase):
 
     def test_load(self):
         c = Params.Params()
-        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
         imgCone = ImageCone.ImageCone(c)
 
         # 读取数字全扫描切片图像
@@ -26,29 +26,26 @@ class TestImageCone(unittest.TestCase):
         if tag:
             scale = c.GLOBAL_SCALE
             fullImage = imgCone.get_fullimage_byScale(scale)
-            mask1 = imgCone.create_mask_image(scale, "TA")
-            mask2 = imgCone.create_mask_image(scale, "TR")
-            mask3 = imgCone.create_mask_image(scale, "NA")
-            mask4 = imgCone.create_mask_image(scale, "NR")
-            mask5 = imgCone.get_effective_zone(scale)
-            mask4 = mask4 & mask5
+            C_mask, N_mask, E_mask = imgCone.create_mask_image(scale,64)
+            mask1 = imgCone.get_effective_zone(scale)
+            mask2 = N_mask & mask1
 
-            fig, axes = plt.subplots(2, 3, figsize=(4, 3), dpi=300)
+            fig, axes = plt.subplots(2, 3, figsize=(6, 3), dpi=400)
             ax = axes.ravel()
 
             ax[0].imshow(fullImage)
             ax[0].set_title("full")
 
-            ax[1].imshow(mask1)
-            ax[1].set_title("TA")
-            ax[2].imshow(mask2)
-            ax[2].set_title("TR")
-            ax[3].imshow(mask3)
-            ax[3].set_title("NA")
-            ax[4].imshow(mask4)
-            ax[4].set_title("NR")
-            ax[5].imshow(mask5)
-            ax[5].set_title("ROI")
+            ax[1].imshow(C_mask)
+            ax[1].set_title("C_mask")
+            ax[2].imshow(N_mask)
+            ax[2].set_title("N_mask")
+            ax[3].imshow(E_mask)
+            ax[3].set_title("E_mask")
+            ax[4].imshow(mask1)
+            ax[4].set_title("ROI")
+            ax[5].imshow(mask2)
+            ax[5].set_title("ROI&N_mask")
 
             for a in ax.ravel():
                 a.axis('off')

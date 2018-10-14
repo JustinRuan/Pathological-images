@@ -27,8 +27,8 @@ class TestConfigMethods(unittest.TestCase):
 
     def test_load(self):
         c = Params.Params()
-        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/test.json")
-        self.assertEqual(c.EXTRACT_SCALE, 20)
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/test.json")
+        self.assertEqual(c.GLOBAL_SCALE, 1.25)
 
     def test_save(self):
         c = Params.Params()

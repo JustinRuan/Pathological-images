@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 __author__ = 'Justin'
-__mtime__ = '2018-05-16'
+__mtime__ = '2018-10-13'
 
 """
 
@@ -183,12 +183,12 @@ class Slice(object):
         # if self.img_pointer :
         return self.UnInitImageFileFunc(byref(self.img_pointer))
 
-    def get_image_block_file(self, fScale, sp_x, sp_y, nWidth, nHeight):
+    def get_image_block_file(self, fScale, c_x, c_y, nWidth, nHeight):
         '''
         提取所在位置的图块文件流
         :param fScale: 所使用倍镜数
-        :param sp_x: 左上角x坐标
-        :param sp_y: 左上角y坐标
+        :param c_x: 中心x坐标
+        :param c_y: 中心y坐标
         :param nWidth: 图块的宽
         :param nHeight: 图块的高
         :return: 图块的文件流，保存它就成为JPG文件
@@ -212,23 +212,27 @@ class Slice(object):
         9.	flag：true
 
         '''
+        #从中心坐标移动到左上角坐标
+        sp_x = c_x - (nWidth >> 1)
+        sp_y = c_y - (nHeight >> 1)
+
         tag = self.GetImageDataRoiFunc(self.img_pointer, fScale, sp_x, sp_y, nWidth, nHeight, byref(pBuffer),
                                        byref(DataLength), True)
         data = np.ctypeslib.as_array(
             (ctypes.c_ubyte * DataLength.value).from_address(ctypes.addressof(pBuffer.contents)))
         return data
 
-    def get_image_block(self, fScale, sp_x, sp_y, nWidth, nHeight):
+    def get_image_block(self, fScale, c_x, c_y, nWidth, nHeight):
         '''
         提取指定位置的图块
         :param fScale: 所使用倍镜数
-        :param sp_x: 左上角x坐标
-        :param sp_y: 左上角y坐标
+        :param c_x: 中心x坐标
+        :param c_y: 中心y坐标
         :param nWidth: 图块的宽
         :param nHeight: 图块的高
         :return: 图块的矩阵，用于算法的处理
         '''
-        data = self.get_image_block_file(fScale, sp_x, sp_y, nWidth, nHeight)
+        data = self.get_image_block_file(fScale, c_x, c_y, nWidth, nHeight)
         return Image.open(io.BytesIO(data))
 
         # if isFile:
@@ -237,6 +241,56 @@ class Slice(object):
         #     resultJPG = Image.open(io.BytesIO(data))
         #     return resultJPG
 
+    ############################## v.03 代码 #################################
+    '''
+    关于标注的说明：
+    1. 使用 FigureType="Polygon" 的曲线来进行区域边界的标记
+    2. 不同的 Color属性来区分 良恶性区域（绿色对应良性，蓝色对应恶性）
+    3. 每个区域用一段封闭曲线进行标注。
+    '''
+    def read_annotation(self, filename):
+        '''
+        读取标注文件
+        :param filename: 切片标注文件名
+        :return:
+        '''
+        self.ano_TUMOR = []
+        self.ano_NORMAL = []
+
+        # 使用minidom解析器打开 XML 文档
+        fp = open(filename, 'r', encoding="utf-8")
+        content = fp.read()
+        fp.close()
+
+        content = content.replace('encoding="gb2312"', 'encoding="UTF-8"')
+
+        DOMTree = xml.dom.minidom.parseString(content)
+        collection = DOMTree.documentElement
+
+        Regions = collection.getElementsByTagName("Region")
+
+        for Region in Regions:
+            if Region.hasAttribute("FigureType"):
+                if Region.getAttribute("FigureType") == "Polygon" :
+                    Vertices = Region.getElementsByTagName("Vertice")
+                    range_type = int(Region.getAttribute("Color"))
+                    # contour_id = Region.getAttribute("Detail")
+
+                    posArray = np.zeros((len(Vertices), 2))
+                    i = 0
+                    for item in Vertices:
+                        posArray[i][0] = float(item.getAttribute("X"))
+                        posArray[i][1] = float(item.getAttribute("Y"))
+                        i += 1
+
+                    if range_type == TUMOR_RANGE_COLOR:
+                        self.ano_TUMOR.append(posArray)
+                    elif range_type == NORMAL_RANGE_COLOR:
+                        self.ano_NORMAL.append(posArray)
+
+        return
+
+    ############################## v.02 代码 #################################
     '''关于标注的说明：
     1. 使用 FigureType="Polygon" 或 FigureType="Rectangle" 的曲线来进行区域边界的标记
     2. 不同的 Color属性来区分 良恶性区域（绿色对应良性，蓝色对应恶性）
@@ -254,68 +308,67 @@ class Slice(object):
         正常精标区代号 NA， ano_NORMAL_A，在标记中直接给出。
         正常粗标区代号 NR， ano_NORMAL_R，ano_NORMAL_R = ALL有效区域 - 最终CR
     '''
+    # def read_annotation(self, filename):
+    #     '''
+    #     读取标注文件
+    #     :param filename: 切片标注文件名
+    #     :return:
+    #     '''
+    #     self.ano_TUMOR_A = []
+    #     self.ano_TUMOR_R = []
+    #     self.ano_NORMAL_A = []
+    #     self.ano_NORMAL_R = []
+    #
+    #     # 使用minidom解析器打开 XML 文档
+    #     fp = open(filename, 'r', encoding="utf-8")
+    #     content = fp.read()
+    #     fp.close()
+    #
+    #     content = content.replace('encoding="gb2312"', 'encoding="UTF-8"')
+    #
+    #     DOMTree = xml.dom.minidom.parseString(content)
+    #     collection = DOMTree.documentElement
+    #
+    #     Regions = collection.getElementsByTagName("Region")
+    #
+    #     for Region in Regions:
+    #         if Region.hasAttribute("FigureType"):
+    #             if Region.getAttribute("FigureType") == "Polygon" or \
+    #                     Region.getAttribute("FigureType") == "Rectangle":
+    #                 Vertices = Region.getElementsByTagName("Vertice")
+    #                 range_type = int(Region.getAttribute("Color"))
+    #                 contour_id = Region.getAttribute("Detail")
+    #
+    #                 if Region.getAttribute("FigureType") == "Polygon":
+    #                     posArray = np.zeros((len(Vertices), 2))
+    #                     i = 0
+    #                     for item in Vertices:
+    #                         posArray[i][0] = float(item.getAttribute("X"))
+    #                         posArray[i][1] = float(item.getAttribute("Y"))
+    #                         i += 1
+    #                 else:  # "Rectangle"
+    #                     x1 = float(Vertices[0].getAttribute("X"))
+    #                     y1 = float(Vertices[0].getAttribute("Y"))
+    #                     x2 = float(Vertices[1].getAttribute("X"))
+    #                     y2 = float(Vertices[1].getAttribute("Y"))
+    #
+    #                     # posArray = np.zeros(4, 2)
+    #                     posArray = np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2]])
+    #
+    #                 if range_type == TUMOR_RANGE_COLOR:
+    #                     if contour_id == 'A':
+    #                         self.ano_TUMOR_A.append(posArray)
+    #                     else:  # contour_id == 'R'
+    #                         self.ano_TUMOR_R.append(posArray)
+    #                 elif range_type == NORMAL_RANGE_COLOR:
+    #                     if contour_id == 'A':
+    #                         self.ano_NORMAL_A.append(posArray)
+    #                     else:  # contour_id == 'R'
+    #                         self.ano_NORMAL_R.append(posArray)
+    #
+    #     return
 
-    def read_annotation(self, filename):
-        '''
-        读取标注文件
-        :param filename: 切片标注文件名
-        :return:
-        '''
-        self.ano_TUMOR_A = []
-        self.ano_TUMOR_R = []
-        self.ano_NORMAL_A = []
-        self.ano_NORMAL_R = []
-
-        # 使用minidom解析器打开 XML 文档
-        fp = open(filename, 'r', encoding="utf-8")
-        content = fp.read()
-        fp.close()
-
-        content = content.replace('encoding="gb2312"', 'encoding="UTF-8"')
-
-        DOMTree = xml.dom.minidom.parseString(content)
-        collection = DOMTree.documentElement
-
-        Regions = collection.getElementsByTagName("Region")
-
-        for Region in Regions:
-            if Region.hasAttribute("FigureType"):
-                if Region.getAttribute("FigureType") == "Polygon" or \
-                        Region.getAttribute("FigureType") == "Rectangle":
-                    Vertices = Region.getElementsByTagName("Vertice")
-                    range_type = int(Region.getAttribute("Color"))
-                    contour_id = Region.getAttribute("Detail")
-
-                    if Region.getAttribute("FigureType") == "Polygon":
-                        posArray = np.zeros((len(Vertices), 2))
-                        i = 0
-                        for item in Vertices:
-                            posArray[i][0] = float(item.getAttribute("X"))
-                            posArray[i][1] = float(item.getAttribute("Y"))
-                            i += 1
-                    else:  # "Rectangle"
-                        x1 = float(Vertices[0].getAttribute("X"))
-                        y1 = float(Vertices[0].getAttribute("Y"))
-                        x2 = float(Vertices[1].getAttribute("X"))
-                        y2 = float(Vertices[1].getAttribute("Y"))
-
-                        # posArray = np.zeros(4, 2)
-                        posArray = np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2]])
-
-                    if range_type == TUMOR_RANGE_COLOR:
-                        if contour_id == 'A':
-                            self.ano_TUMOR_A.append(posArray)
-                        else:  # contour_id == 'R'
-                            self.ano_TUMOR_R.append(posArray)
-                    elif range_type == NORMAL_RANGE_COLOR:
-                        if contour_id == 'A':
-                            self.ano_NORMAL_A.append(posArray)
-                        else:  # contour_id == 'R'
-                            self.ano_NORMAL_R.append(posArray)
-
-        return
-
-    ############################## 上一版 代码 #################################
+    ############################## v.01 代码 #################################
     '''关于标注的说明：
     1. 使用 FigureType="Polygon" 的曲线来进行区域边界的标记
     2. 不同的 Color属性来区分 良恶性区域（绿色对应良性，蓝色对应恶性）

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 __author__ = 'Justin'
-__mtime__ = '2018-05-17'
+__mtime__ = '2018-10-13'
 
 """
 from core import Slice, Block
@@ -44,7 +44,7 @@ class ImageCone(object):
         '''
         w, h = self.get_image_width_height_byScale(scale)
 
-        fullImage = self._slice.get_image_block(scale, 0, 0, w, h)
+        fullImage = self._slice.get_image_block(scale, w>>1, h>>1, w, h)
         return fullImage
 
     def get_image_width_height_byScale(self, scale):
@@ -60,19 +60,19 @@ class ImageCone(object):
         w, h = self._slice.get_image_width_height_byScale(scale)
         return w, h
 
-    def get_image_block(self, fScale, sp_x, sp_y, nWidth, nHeight):
+    def get_image_block(self, fScale, c_x, c_y, nWidth, nHeight):
         '''
         在指定坐标和倍镜下，提取切片的图块
         :param fScale: 倍镜数
-        :param sp_x: 左上角x
-        :param sp_y: 左上角y
+        :param c_x: 中心x
+        :param c_y: 中心y
         :param nWidth: 图块的宽
         :param nHeight: 图块的高
         :return: 返回一个图块对象
         '''
-        data = self._slice.get_image_block_file(fScale, sp_x, sp_y, nWidth, nHeight)
+        data = self._slice.get_image_block_file(fScale, c_x, c_y, nWidth, nHeight)
 
-        newBlock = Block.Block(self.slice_id, sp_x, sp_y, fScale, 0, nWidth, nHeight)
+        newBlock = Block.Block(self.slice_id, c_x, c_y, fScale, 0, nWidth, nHeight)
         newBlock.set_img_file(data)
         return newBlock
     
@@ -80,8 +80,8 @@ class ImageCone(object):
         '''
         获得以种子点为左上角的图块的迭代器
         :param fScale: 倍镜数
-        :param set_x: 左上角x的集合
-        :param set_y: 左上角y的集合
+        :param set_x: 中心点x的集合
+        :param set_y: 中心点y的集合
         :param nWidth: 图块的宽
         :param nHeight: 图块的高
         :param batch_size: 每批的数量
@@ -102,56 +102,38 @@ class ImageCone(object):
         if n > 0:
             return images
 
-    def create_mask_image(self, scale, mode):
+    def create_mask_image(self, scale, width):
         '''
-        在设定的倍镜下，生成四种标注区的mask图像
+        在设定的倍镜下，生成三种标注区的mask图像（NEC）
         :param scale: 指定的倍镜数
-        :param mode: 标注区类型
+        :param width: 边缘区单边宽度
         :return: 对应的Mask图像
         '''
         w, h = self._slice.get_image_width_height_byScale(scale)
-        img = np.zeros((h, w), dtype=np.bool)
+        # C_img = np.zeros((h, w), dtype=np.bool)
+        # N_img = np.zeros((h, w), dtype=np.bool)
+        # E_img = np.zeros((h, w), dtype=np.bool)
         '''
-        癌变精标区代号 TA， ano_TUMOR_A，在标记中直接给出。
-        癌变粗标区代号 TR， ano_TUMOR_R，最终的区域从标记中计算得出， 
-                            ano_TUMOR_R = 标记的TR - NR，即在CR中排除NR区域
-        正常精标区代号 NA， ano_NORMAL_A，在标记中直接给出。
-        正常粗标区代号 NR， ano_NORMAL_R，ano_NORMAL_R = ALL(有效区域) - 最终TR
+        癌变区代号 C， ano_TUMOR，将对应的标记区域，再腐蚀width宽。
+        正常区代号 N， ano_NORMAL，将对应的标记区域，再腐蚀width宽。
+        边缘区代号 E， 在C和N之间的一定宽度的边缘，= ALL(有效区域) - C - N
        '''
-        if mode == 'TA':
-            for contour in self._slice.ano_TUMOR_A:
-                tumor_range = np.rint(contour * scale).astype(np.int)
-                rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-                img[rr, cc] = 1
-        elif mode == 'TR':
-            for contour in self._slice.ano_TUMOR_R:
-                tumor_range = np.rint(contour * scale).astype(np.int)
-                rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-                img[rr, cc] = 1
+        img = np.zeros((h, w), dtype=np.bool)
+        for contour in self._slice.ano_TUMOR:
+            tumor_range = np.rint(contour * scale).astype(np.int)
+            rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
+            img[rr, cc] = 1
 
-            for contour in self._slice.ano_NORMAL_R:
-                tumor_range = np.rint(contour * scale).astype(np.int)
-                rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-                img[rr, cc] = 0
-        elif mode == 'NA':
-            for contour in self._slice.ano_NORMAL_A:
-                tumor_range = np.rint(contour * scale).astype(np.int)
-                rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-                img[rr, cc] = 1
-        else:  # mode == 'NR'
-            img = np.ones((h, w), dtype=np.bool)
+        for contour in self._slice.ano_NORMAL:
+            tumor_range = np.rint(contour * scale).astype(np.int)
+            rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
+            img[rr, cc] = 0
 
-            for contour in self._slice.ano_TUMOR_R:
-                tumor_range = np.rint(contour * scale).astype(np.int)
-                rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-                img[rr, cc] = 0
+        C_img = morphology.binary_erosion(img, selem=square(width))
+        N_img = ~ morphology.binary_dilation(img, selem=square(width))
+        E_img = np.ones((h, w), dtype=np.bool) - C_img - N_img
 
-            for contour in self._slice.ano_NORMAL_R:
-                tumor_range = np.rint(contour * scale).astype(np.int)
-                rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-                img[rr, cc] = 1
-
-        return img
+        return C_img, N_img, E_img
 
     def get_effective_zone(self, scale):
         '''
