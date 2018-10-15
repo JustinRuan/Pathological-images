@@ -49,7 +49,7 @@ class PatchSampler(object):
         Root_path = self._params.PATCHS_ROOT_PATH
         intScale = np.rint(extract_scale * 100).astype(np.int)
 
-        pathPatch = "{}/S{}_{}".format(Root_path, intScale, seeds_name)
+        pathPatch = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size, seeds_name)
 
         if (not os.path.exists(pathPatch)):
             os.makedirs(pathPatch)
