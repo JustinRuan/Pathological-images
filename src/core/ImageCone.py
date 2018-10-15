@@ -131,7 +131,8 @@ class ImageCone(object):
 
         C_img = morphology.binary_erosion(img, selem=square(width))
         N_img = ~ morphology.binary_dilation(img, selem=square(width))
-        E_img = np.ones((h, w), dtype=np.bool) - C_img - N_img
+        # E_img = np.ones((h, w), dtype=np.bool) - C_img - N_img
+        E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or( C_img, N_img))
 
         return C_img, N_img, E_img
 

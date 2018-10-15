@@ -18,14 +18,14 @@ class TestPatchPack(unittest.TestCase):
 
         pack = PatchPack.PatchPack(c)
         data_tag = []
-        result = pack.loading_filename_tags("S500_256_cancer", 1)
+        result = pack.loading_filename_tags("S500_64_cancer", 1)
         data_tag.extend(result)
-        result = pack.loading_filename_tags("S500_256_normal", 0)
+        result = pack.loading_filename_tags("S500_64_normal", 0)
         data_tag.extend(result)
 
         print(len(data_tag))
 
-        pack.create_train_test_data(data_tag, 0.7, 0.3, "test_5x256")
+        pack.create_train_test_data(data_tag, 0.7, 0.3, "A2_5x64")
 
     # def test_packR(self):
     #     c = Params.Params()
