@@ -17,7 +17,7 @@ import xml.dom.minidom
 
 TUMOR_RANGE_COLOR = 4278190335
 NORMAL_RANGE_COLOR = 4278222848
-
+LYMPH_RANGE_COLOR = 4294967040
 
 # 定义结构体
 class ImageInfoStruct(ctypes.Structure):
@@ -245,8 +245,9 @@ class Slice(object):
     '''
     关于标注的说明：
     1. 使用 FigureType="Polygon" 的曲线来进行区域边界的标记
-    2. 不同的 Color属性来区分 良恶性区域（绿色对应良性，蓝色对应恶性）
+    2. 不同的 Color属性来区分 良恶性区域（绿色对应良性，蓝色对应恶性（包括原位）, 黄色对应淋巴细胞区域））
     3. 每个区域用一段封闭曲线进行标注。
+    4. 绿色区域标注在癌变区域内正常区域，黄色区域标注在正常区域内的淋巴细胞区域。
     '''
     def read_annotation(self, filename):
         '''
@@ -256,6 +257,7 @@ class Slice(object):
         '''
         self.ano_TUMOR = []
         self.ano_NORMAL = []
+        self.ano_LYMPH = []
 
         # 使用minidom解析器打开 XML 文档
         fp = open(filename, 'r', encoding="utf-8")
@@ -287,6 +289,8 @@ class Slice(object):
                         self.ano_TUMOR.append(posArray)
                     elif range_type == NORMAL_RANGE_COLOR:
                         self.ano_NORMAL.append(posArray)
+                    elif range_type == LYMPH_RANGE_COLOR:
+                        self.ano_LYMPH.append(posArray)
 
         return
 

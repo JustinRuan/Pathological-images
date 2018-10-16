@@ -17,33 +17,17 @@ class TestPatchPack(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         pack = PatchPack.PatchPack(c)
-        data_tag = []
-        result = pack.loading_filename_tags("S500_64_cancer", 1)
-        data_tag.extend(result)
-        result = pack.loading_filename_tags("S500_64_normal", 0)
-        data_tag.extend(result)
+        data_tag = pack.initialize_sample_tags_NC(["S500_64_cancer"],["S500_64_normal"])
 
         print(len(data_tag))
+        pack.create_train_test_data(data_tag, 0.4, 0.6, "A3_5x64")
 
-        pack.create_train_test_data(data_tag, 0.7, 0.3, "A2_5x64")
+    def test_pack_refine_sample_tags_NC(self):
+        c = Params.Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
-    # def test_packR(self):
-    #     c = Params.Params()
-    #     c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
-    #
-    #     pack = PatchPack.PatchPack(c)
-    #     (pos, neg) = pack.loading("normal", "cancer")
-    #
-    #     print(pos, neg)
-    #
-    #     posTrain = int(pos * 0.6)
-    #     negTrain = int(neg * 0.6)
-    #     posTest = int(pos * 0.2)
-    #     negTest = int(neg * 0.2)
-    #     posCheck = pos - posTrain - posTest
-    #     negCheck = neg - negTrain - negTest
-    #
-    #     pack.create_train_test_data(posTrain, negTrain, posTest, negTest, posCheck, negCheck, "ZoneR")
+        pack = PatchPack.PatchPack(c)
+        pack.refine_sample_tags_NC(["S500_64_cancer"],["S500_64_normal"])
 
 # if __name__ == '__main__':
 #         unittest.main()

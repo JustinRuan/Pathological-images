@@ -17,7 +17,7 @@ class TestPatchFeature(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         pf = PatchFeature.PatchFeature(c)
-        features, tags = pf.loading_data("A2_5x64_train.txt")
+        features, tags = pf.loading_data("A3_5x64_train.txt")
         print(len(features))
 
         pf.train_svm(features, tags)
@@ -27,7 +27,7 @@ class TestPatchFeature(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         pf = PatchFeature.PatchFeature(c)
-        result = pf.test_svm("A2_5x64_test.txt")
+        result = pf.test_svm("A3_5x64_test.txt")
         print(result)
 
 if __name__ == '__main__':

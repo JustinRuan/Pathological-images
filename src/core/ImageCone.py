@@ -104,19 +104,17 @@ class ImageCone(object):
 
     def create_mask_image(self, scale, width):
         '''
-        在设定的倍镜下，生成三种标注区的mask图像（NEC）
+        在设定的倍镜下，生成四种标注区的mask图像（NECL）
         :param scale: 指定的倍镜数
         :param width: 边缘区单边宽度
         :return: 对应的Mask图像
         '''
         w, h = self._slice.get_image_width_height_byScale(scale)
-        # C_img = np.zeros((h, w), dtype=np.bool)
-        # N_img = np.zeros((h, w), dtype=np.bool)
-        # E_img = np.zeros((h, w), dtype=np.bool)
         '''
         癌变区代号 C， ano_TUMOR，将对应的标记区域，再腐蚀width宽。
-        正常区代号 N， ano_NORMAL，将对应的标记区域，再腐蚀width宽。
-        边缘区代号 E， 在C和N之间的一定宽度的边缘，= ALL(有效区域) - C - N
+        正常间质区代号 N， ano_NORMAL，将对应的标记区域，再腐蚀width宽。
+        淋巴区代号 L, ano_LYMPH, 将对应的标记区域,良性区域。
+        边缘区代号 E， 在C和N，L之间的一定宽度的边缘，= ALL(有效区域) - C
        '''
         img = np.zeros((h, w), dtype=np.bool)
         for contour in self._slice.ano_TUMOR:
@@ -130,11 +128,18 @@ class ImageCone(object):
             img[rr, cc] = 0
 
         C_img = morphology.binary_erosion(img, selem=square(width))
-        N_img = ~ morphology.binary_dilation(img, selem=square(width))
-        # E_img = np.ones((h, w), dtype=np.bool) - C_img - N_img
-        E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or( C_img, N_img))
+        NL_img = ~ morphology.binary_dilation(img, selem=square(width)) #淋巴区域包括在内
+        E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, NL_img))
 
-        return C_img, N_img, E_img
+        img = np.zeros((h, w), dtype=np.bool)
+        for contour in self._slice.ano_LYMPH:
+            tumor_range = np.rint(contour * scale).astype(np.int)
+            rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
+            img[rr, cc] = 1
+        L_img = img
+        N_img = np.bitwise_xor(NL_img, L_img)
+
+        return C_img, N_img, E_img, L_img
 
     def get_effective_zone(self, scale):
         '''

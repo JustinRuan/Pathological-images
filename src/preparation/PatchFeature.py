@@ -58,10 +58,10 @@ class PatchFeature(object):
         :param y: 标签tag
         :return: SVM
         '''
-        clf = NuSVC(nu=0.5, kernel='rbf', probability=True)
+        clf = NuSVC(nu=0.5, kernel='rbf', probability=True) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
         rf = clf.fit(X ,y)
 
-        model_file = self._params.PROJECT_ROOT + "/models/svm_5z64_NC.model"
+        model_file = self._params.PROJECT_ROOT + "/models/svm_5x64_NC.model"
         joblib.dump(rf, model_file)
         return clf
 
@@ -70,7 +70,7 @@ class PatchFeature(object):
         从存盘文件中，加载SVM
         :return: 所加载的SVM
         '''
-        model_file = self._params.PROJECT_ROOT + "/models/svm_5z64_NC.model"
+        model_file = self._params.PROJECT_ROOT + "/models/svm_5x64_NC.model"
         clf = joblib.load(model_file)
 
         return clf
@@ -84,9 +84,9 @@ class PatchFeature(object):
         features, expected_tags = self.loading_data(test_filename)
         classifier = self.load_svm_model()
         predicted_tags = classifier.predict(features)
-        # predicted_result = classifier.predict_proba(features)
+        predicted_result = classifier.predict_proba(features)
         print("Classification report for classifier %s:\n%s\n"
               % (classifier, metrics.classification_report(expected_tags, predicted_tags)))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(expected_tags, predicted_tags))
-        return
-        # return predicted_result
+        # return
+        return predicted_result

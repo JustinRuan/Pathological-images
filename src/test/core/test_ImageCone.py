@@ -26,7 +26,7 @@ class TestImageCone(unittest.TestCase):
         if tag:
             scale = c.GLOBAL_SCALE
             fullImage = imgCone.get_fullimage_byScale(scale)
-            C_mask, N_mask, E_mask = imgCone.create_mask_image(scale,64)
+            C_mask, N_mask, E_mask, L_mask = imgCone.create_mask_image(scale,64)
             mask1 = imgCone.get_effective_zone(scale)
             mask2 = N_mask & mask1
 
@@ -44,8 +44,8 @@ class TestImageCone(unittest.TestCase):
             ax[3].set_title("E_mask")
             ax[4].imshow(mask1)
             ax[4].set_title("ROI")
-            ax[5].imshow(mask2)
-            ax[5].set_title("ROI&N_mask")
+            ax[5].imshow(L_mask)
+            ax[5].set_title("L_mask")
 
             for a in ax.ravel():
                 a.axis('off')
