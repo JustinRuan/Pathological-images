@@ -5,7 +5,7 @@ __author__ = 'Justin'
 __mtime__ = '2018-05-24'
 
 """
-import  os
+import time
 from feature import FeatureExtractor
 from skimage import io
 from sklearn.svm import NuSVC
@@ -30,6 +30,8 @@ class PatchFeature(object):
         fe = FeatureExtractor.FeatureExtractor()
         features = []
         tags = []
+        count = 0
+
         f = open(data_file, "r")
         for line in f:
             items = line.split(" ")
@@ -40,6 +42,10 @@ class PatchFeature(object):
 
             features.append(fvector)
             tags.append(tag)
+
+            if (0 == count%200):
+                print("{} extract glcm feature >>> {}".format(time.asctime( time.localtime()), count))
+            count += 1
 
         f.close()
         return features, tags
@@ -55,7 +61,7 @@ class PatchFeature(object):
         clf = NuSVC(nu=0.5, kernel='rbf', probability=True)
         rf = clf.fit(X ,y)
 
-        model_file = self._params.PROJECT_ROOT + "/models/svm_zoneA.model"
+        model_file = self._params.PROJECT_ROOT + "/models/svm_5z64_NC.model"
         joblib.dump(rf, model_file)
         return clf
 
@@ -64,7 +70,7 @@ class PatchFeature(object):
         从存盘文件中，加载SVM
         :return: 所加载的SVM
         '''
-        model_file = self._params.PROJECT_ROOT + "/models/svm_zoneA.model"
+        model_file = self._params.PROJECT_ROOT + "/models/svm_5z64_NC.model"
         clf = joblib.load(model_file)
 
         return clf
@@ -78,8 +84,9 @@ class PatchFeature(object):
         features, expected_tags = self.loading_data(test_filename)
         classifier = self.load_svm_model()
         predicted_tags = classifier.predict(features)
-        predicted_result = classifier.predict_proba(features)
+        # predicted_result = classifier.predict_proba(features)
         print("Classification report for classifier %s:\n%s\n"
               % (classifier, metrics.classification_report(expected_tags, predicted_tags)))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(expected_tags, predicted_tags))
-        return predicted_result
+        return
+        # return predicted_result

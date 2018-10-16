@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 __author__ = 'Justin'
-__mtime__ = '2018-05-24'
+__mtime__ = '2018-10-16'
 
 """
 from skimage import feature, color, util
+import numpy as np
 
 class FeatureExtractor(object):
     def __init__(self):
@@ -36,13 +37,13 @@ class FeatureExtractor(object):
         image =  util.img_as_ubyte(color.rgb2gray(src_img))
         # image = util.img_as_ubyte(src_img)
         # 计算灰度共生矩阵
-        glcm = feature.greycomatrix(image, [5], [0], 256, symmetric=True, normed=True)
+        # glcm = feature.greycomatrix(image, [1,3,5], [0, np.pi/4, np.pi/2, 3*np.pi/4], 256, symmetric=True, normed=True)
+        glcm = feature.greycomatrix(image, [5], [0], 256, symmetric=True,
+                                    normed=True)
+        feaprops_names = ('contrast', 'dissimilarity',  'homogeneity','ASM','energy','correlation')
         # 得到不同统计量
-        textural_feature.append(feature.greycoprops(glcm, 'contrast')[0, 0])
-        textural_feature.append(feature.greycoprops(glcm, 'dissimilarity')[0, 0])
-        textural_feature.append(feature.greycoprops(glcm, 'homogeneity')[0, 0])
-        textural_feature.append(feature.greycoprops(glcm, 'ASM')[0, 0])
-        textural_feature.append(feature.greycoprops(glcm, 'energy')[0, 0])
-        textural_feature.append(feature.greycoprops(glcm, 'correlation')[0, 0])
+        for fname in feaprops_names:
+            fes = feature.greycoprops(glcm, fname)
+            textural_feature.extend(np.array(fes).flatten())
 
         return  textural_feature
