@@ -12,22 +12,24 @@ from preparation import *
 
 class TestPatchPack(unittest.TestCase):
 
-    def test_pack_5x256(self):
+    def test_pack_5(self):
         c = Params.Params()
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         pack = PatchPack.PatchPack(c)
-        data_tag = pack.initialize_sample_tags_NC(["S500_64_cancer"],["S500_64_normal"])
+        # data_tag = pack.initialize_sample_tags_NCL(["S500_64_cancer"],["S500_64_normal"],["S500_64_lymph"])
+        data_tag = pack.initialize_sample_tags_SCL(["S500_128_cancer"], ["S500_128_stroma"], ["S500_128_lymph"])
+        # data_tag = pack.initialize_sample_tags_SCL([], ["S500_128_stroma"], ["S500_128_lymph"])
 
         print(len(data_tag))
-        pack.create_train_test_data(data_tag, 0.4, 0.6, "A3_5x64")
+        pack.create_train_test_data(data_tag, 0.4, 0.6, "SLC_5x128")
 
     def test_pack_refine_sample_tags_NC(self):
         c = Params.Params()
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         pack = PatchPack.PatchPack(c)
-        pack.refine_sample_tags_NC(["S500_64_cancer"],["S500_64_normal"])
+        pack.refine_sample_tags_SCL(["S500_128_cancer"],["S500_128_stroma"], ["S500_128_lymph"])
 
 # if __name__ == '__main__':
 #         unittest.main()

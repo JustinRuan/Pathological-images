@@ -51,42 +51,42 @@ class PatchFeature(object):
         return features, tags
 
     # x = features, y = tags
-    def train_svm(self, X, y):
+    def train_svm(self, X, y, patch_size, name):
         '''
         训练由精标区提取的图块所组成训练集的SVM，并存盘
         :param X: 特征向量
         :param y: 标签tag
         :return: SVM
         '''
-        clf = NuSVC(nu=0.5, kernel='rbf', probability=True) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
+        clf = NuSVC(nu=0.5, kernel='rbf', probability=False) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
         rf = clf.fit(X ,y)
 
-        model_file = self._params.PROJECT_ROOT + "/models/svm_5x64_NC.model"
+        model_file = self._params.PROJECT_ROOT + "/models/svm_5x{}_{}.model".format(patch_size, name)
         joblib.dump(rf, model_file)
         return clf
 
-    def load_svm_model(self):
+    def load_svm_model(self, patch_size, name):
         '''
         从存盘文件中，加载SVM
         :return: 所加载的SVM
         '''
-        model_file = self._params.PROJECT_ROOT + "/models/svm_5x64_NC.model"
+        model_file = self._params.PROJECT_ROOT + "/models/svm_5x{}_{}.model".format(patch_size, name)
         clf = joblib.load(model_file)
 
         return clf
 
-    def test_svm(self, test_filename):
+    def test_svm(self, test_filename, patch_size, name):
         '''
         对SVM进行测试
         :param test_filename: 所使用的测试图像的列表文件
         :return: 所预测的概率性结果
         '''
         features, expected_tags = self.loading_data(test_filename)
-        classifier = self.load_svm_model()
+        classifier = self.load_svm_model(patch_size, name)
         predicted_tags = classifier.predict(features)
-        predicted_result = classifier.predict_proba(features)
+        # predicted_result = classifier.predict_proba(features)
         print("Classification report for classifier %s:\n%s\n"
               % (classifier, metrics.classification_report(expected_tags, predicted_tags)))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(expected_tags, predicted_tags))
-        # return
-        return predicted_result
+        return
+        # return predicted_result

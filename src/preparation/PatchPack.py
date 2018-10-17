@@ -8,7 +8,7 @@ __mtime__ = '2018-10-14'
 
 import os
 import random
-from sklearn.svm import NuSVC
+from sklearn.svm import SVC
 from sklearn.externals import joblib
 from sklearn import metrics
 from preparation import PatchFeature
@@ -18,9 +18,10 @@ class PatchPack(object):
     def __init__(self, params):
         self._params = params
 
-    # tagPos = "normal"     0
-    # tagNeg = "cancer"     1
-    # tagEdge = "edge"      2
+    # "stroma"     0
+    # "cancer"     1
+    # "lymph"      2
+    # "edge"      3
     def loading_filename_tags(self, dir_code, tag):
 
         root_path = self._params.PATCHS_ROOT_PATH
@@ -82,28 +83,32 @@ class PatchPack(object):
 
         return
 
-    def initialize_sample_tags_NC(self, cancer_dirs, normal_dirs):
+    def initialize_sample_tags_SCL(self, cancer_dirs, stroma_dirs, lymph_dirs):
         data_tag = []
-        for n_dir in normal_dirs:
-            result = self.loading_filename_tags(n_dir, 0)
+        for s_dir in stroma_dirs:
+            result = self.loading_filename_tags(s_dir, 0)
             data_tag.extend(result)
 
         for c_dir in cancer_dirs:
             result = self.loading_filename_tags(c_dir, 1)
             data_tag.extend(result)
 
+        for l_dir in lymph_dirs:
+            result = self.loading_filename_tags(l_dir, 2)
+            data_tag.extend(result)
+
         return data_tag
 
-    def refine_sample_tags_NC(self, cancer_dirs, normal_dirs):
+    def refine_sample_tags_SCL(self, cancer_dirs, stroma_dir, lymph_dirs):
 
-        data_tag = self.initialize_sample_tags_NC(cancer_dirs, normal_dirs)
-        self.create_train_test_data(data_tag, 0.5, 0.5, "R1_5x64")
+        data_tag = self.initialize_sample_tags_SCL(cancer_dirs, stroma_dir, lymph_dirs)
+        self.create_train_test_data(data_tag, 0.5, 0.5, "R_SC_5x128")
 
         pf = PatchFeature.PatchFeature(self._params)
-        features_1, tags_1 = pf.loading_data("R1_5x64_train.txt")
-        features_2, tags_2 = pf.loading_data("R1_5x64_test.txt")
+        features_1, tags_1 = pf.loading_data("R_SC_5x128_train.txt")
+        features_2, tags_2 = pf.loading_data("R_SC_5x128_test.txt")
 
-        clf = NuSVC(nu=0.5, kernel='rbf', probability=False) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
+        clf = SVC(C=1, kernel='rbf', probability=False) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
 
         for i in range(3):
             rf = clf.fit(features_1, tags_1)
@@ -127,26 +132,19 @@ class PatchPack(object):
             tags_1 = np.array(tags_1)[simple_samples]
 
 
-        model_file = self._params.PROJECT_ROOT + "/models/svm_R_5x64_NC.model"
+        model_file = self._params.PROJECT_ROOT + "/models/svm_R_5x128_SCL.model"
         joblib.dump(rf, model_file)
 
         return
 
-    # def detect_patch_byProb(self, probs):
-    #     '''
-    #     根据 给定阈值判定图块的类型
-    #     :param probs: 对应分类（0：正常，1：癌）的概率值
-    #     :return: -1，0，1
-    #     '''
-    #     normal_prob = probs[0]
-    #     cancer_prob = probs[1]
-    #     if (normal_prob > 0.90): # 正常
-    #         return 0
-    #     elif (cancer_prob > 0.90): # 癌变
-    #         return 1
-    #     else:   # 不能确定
-    #         return -1
+    def extract_refine_sample_SCL(self, cancer_dirs, stroma_dir, lymph_dirs):
 
-    def refine_sample_tags_NEC(self, cancer_dirs, normal_dirs, edge_dirs, svm_path):
+        model_file = self._params.PROJECT_ROOT + "/models/svm_R_5x128_SCL.model"
+        rf = joblib.load(model_file)
+
+        pf = PatchFeature.PatchFeature(self._params)
+        data_tag = self.initialize_sample_tags_SCL(cancer_dirs, stroma_dir, lymph_dirs)
+
+
 
         return

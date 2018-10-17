@@ -17,17 +17,17 @@ class TestPatchFeature(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         pf = PatchFeature.PatchFeature(c)
-        features, tags = pf.loading_data("A3_5x64_train.txt")
+        features, tags = pf.loading_data("SL_5x128_train.txt")
         print(len(features))
 
-        pf.train_svm(features, tags)
+        pf.train_svm(features, tags, 128, "SL")
 
     def test_testSVM(self):
         c = Params.Params()
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         pf = PatchFeature.PatchFeature(c)
-        result = pf.test_svm("A3_5x64_test.txt")
+        result = pf.test_svm("SL_5x128_test.txt", 128, "SL")
         print(result)
 
 if __name__ == '__main__':

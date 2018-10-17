@@ -38,8 +38,7 @@ class FeatureExtractor(object):
         # image = util.img_as_ubyte(src_img)
         # 计算灰度共生矩阵
         # glcm = feature.greycomatrix(image, [1,3,5], [0, np.pi/4, np.pi/2, 3*np.pi/4], 256, symmetric=True, normed=True) # 效果不如下面的好
-        glcm = feature.greycomatrix(image, [3], [0], 256, symmetric=True,
-                                    normed=True)
+        glcm = feature.greycomatrix(image, [3], [0], 256, symmetric=True, normed=True)
         feaprops_names = ('contrast', 'dissimilarity',  'homogeneity','ASM','energy','correlation')
         # 得到不同统计量
         for fname in feaprops_names:

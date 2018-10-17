@@ -112,7 +112,7 @@ class ImageCone(object):
         w, h = self._slice.get_image_width_height_byScale(scale)
         '''
         癌变区代号 C， ano_TUMOR，将对应的标记区域，再腐蚀width宽。
-        正常间质区代号 N， ano_NORMAL，将对应的标记区域，再腐蚀width宽。
+        正常间质区代号 S， ano_STROMA，将对应的标记区域，再腐蚀width宽。
         淋巴区代号 L, ano_LYMPH, 将对应的标记区域,良性区域。
         边缘区代号 E， 在C和N，L之间的一定宽度的边缘，= ALL(有效区域) - C
        '''
@@ -128,18 +128,18 @@ class ImageCone(object):
             img[rr, cc] = 0
 
         C_img = morphology.binary_erosion(img, selem=square(width))
-        NL_img = ~ morphology.binary_dilation(img, selem=square(width)) #淋巴区域包括在内
-        E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, NL_img))
+        SL_img = ~ morphology.binary_dilation(img, selem=square(width)) #淋巴区域包括在内
+        E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, SL_img))
 
         img = np.zeros((h, w), dtype=np.bool)
         for contour in self._slice.ano_LYMPH:
             tumor_range = np.rint(contour * scale).astype(np.int)
             rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
             img[rr, cc] = 1
-        L_img = img
-        N_img = np.bitwise_xor(NL_img, L_img)
+        L_img = morphology.binary_erosion(img, selem=square(8))
+        S_img = np.bitwise_xor(SL_img, img)
 
-        return C_img, N_img, E_img, L_img
+        return C_img, S_img, E_img, L_img
 
     def get_effective_zone(self, scale):
         '''
@@ -156,6 +156,7 @@ class ImageCone(object):
         mask3 = (img[:, :, 0] < 0.9) & (img[:, :, 0] > 0.10)
         result = mask1 & mask2 & mask3
 
+        result = morphology.binary_closing(result, square(10))
         result = morphology.binary_opening(result, square(20))
-        result = morphology.binary_closing(result, square(5))
+        result = morphology.binary_dilation(result, square(10))
         return result
