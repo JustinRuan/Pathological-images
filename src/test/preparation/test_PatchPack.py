@@ -22,7 +22,7 @@ class TestPatchPack(unittest.TestCase):
         # data_tag = pack.initialize_sample_tags_SCL([], ["S500_128_stroma"], ["S500_128_lymph"])
 
         print(len(data_tag))
-        pack.create_train_test_data(data_tag, 0.4, 0.6, "SLC_5x128")
+        pack.create_train_test_data(data_tag, 0.8, 0.2, "SLC2_5x128")
 
     def test_pack_refine_sample_tags_NC(self):
         c = Params.Params()
@@ -30,6 +30,14 @@ class TestPatchPack(unittest.TestCase):
 
         pack = PatchPack.PatchPack(c)
         pack.refine_sample_tags_SCL(["S500_128_cancer"],["S500_128_stroma"], ["S500_128_lymph"])
+
+
+    def test_extract_refine_sample_SCL(self):
+        c = Params.Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+
+        pack = PatchPack.PatchPack(c)
+        pack.extract_refine_sample_SCL(5, ["S500_128_cancer"],["S500_128_stroma"], ["S500_128_lymph"])
 
 # if __name__ == '__main__':
 #         unittest.main()

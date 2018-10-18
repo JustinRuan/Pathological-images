@@ -7,12 +7,15 @@ __mtime__ = '2018-10-14'
 """
 
 import os
+import shutil
 import random
 from sklearn.svm import SVC
 from sklearn.externals import joblib
 from sklearn import metrics
 from preparation import PatchFeature
 import numpy as np
+from feature import FeatureExtractor
+from skimage import io
 
 class PatchPack(object):
     def __init__(self, params):
@@ -137,14 +140,60 @@ class PatchPack(object):
 
         return
 
-    def extract_refine_sample_SCL(self, cancer_dirs, stroma_dir, lymph_dirs):
+    def extract_refine_sample_SCL(self, extract_scale, cancer_dirs, stroma_dir, lymph_dirs):
 
         model_file = self._params.PROJECT_ROOT + "/models/svm_R_5x128_SCL.model"
-        rf = joblib.load(model_file)
+        classifier = joblib.load(model_file)
 
-        pf = PatchFeature.PatchFeature(self._params)
+        fe = FeatureExtractor.FeatureExtractor()
         data_tag = self.initialize_sample_tags_SCL(cancer_dirs, stroma_dir, lymph_dirs)
 
+        Root_path = self._params.PATCHS_ROOT_PATH
+        intScale = np.rint(extract_scale * 100).astype(np.int)
+        pathCancer = "{}/S{}_{}".format(Root_path,intScale, "ClearCancer")
+        pathStroma = "{}/S{}_{}".format(Root_path,intScale, "ClearStroma")
+        pathLymph = "{}/S{}_{}".format(Root_path,intScale, "ClearLymph")
+        pathAmbiguousCancer = "{}/S{}_{}".format(Root_path,intScale, "AmbiguousCancer")
+        pathAmbiguousStroma = "{}/S{}_{}".format(Root_path, intScale, "AmbiguousStroma")
+        pathAmbiguousLymph = "{}/S{}_{}".format(Root_path, intScale, "AmbiguousLymph")
+        if (not os.path.exists(pathCancer)):
+            os.makedirs(pathCancer)
 
+        if (not os.path.exists(pathStroma)):
+            os.makedirs(pathStroma)
 
+        if (not os.path.exists(pathLymph)):
+            os.makedirs(pathLymph)
+
+        if (not os.path.exists(pathAmbiguousCancer)):
+            os.makedirs(pathAmbiguousCancer)
+
+        if (not os.path.exists(pathAmbiguousStroma)):
+            os.makedirs(pathAmbiguousStroma)
+
+        if (not os.path.exists(pathAmbiguousLymph)):
+            os.makedirs(pathAmbiguousLymph)
+
+        for patch_file, tag in data_tag:
+            old_path = "{}/{}".format(Root_path, patch_file)
+            img = io.imread(old_path, as_grey=False)
+            fvector = fe.extract_glcm_feature(img)
+
+            predicted_tags = classifier.predict([fvector])
+            old_filename = os.path.split(patch_file)[-1]
+            if (predicted_tags == tag):
+                if tag == 0:
+                    new_filename = "{}/{}".format(pathStroma, old_filename)
+                elif tag == 1:
+                    new_filename = "{}/{}".format(pathCancer, old_filename)
+                else:
+                    new_filename = "{}/{}".format(pathLymph, old_filename)
+            else:
+                if tag == 0:
+                    new_filename = "{}/{}".format(pathAmbiguousStroma, old_filename)
+                elif tag == 1:
+                    new_filename = "{}/{}".format(pathAmbiguousCancer, old_filename)
+                else:
+                    new_filename = "{}/{}".format(pathAmbiguousLymph, old_filename)
+            shutil.copy(old_path, new_filename)
         return
