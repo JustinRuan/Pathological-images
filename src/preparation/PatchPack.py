@@ -86,25 +86,21 @@ class PatchPack(object):
 
         return
 
-    def initialize_sample_tags_SCL(self, cancer_dirs, stroma_dirs, lymph_dirs):
+    def initialize_sample_tags(self, first_dirs, second_dirs):
         data_tag = []
-        for s_dir in stroma_dirs:
-            result = self.loading_filename_tags(s_dir, 0)
-            data_tag.extend(result)
 
-        for c_dir in cancer_dirs:
+        for c_dir in first_dirs:
             result = self.loading_filename_tags(c_dir, 1)
             data_tag.extend(result)
 
-        for l_dir in lymph_dirs:
-            result = self.loading_filename_tags(l_dir, 2)
+        for s_dir in second_dirs:
+            result = self.loading_filename_tags(s_dir, 0)
             data_tag.extend(result)
 
         return data_tag
 
-    def refine_sample_tags_SCL(self, cancer_dirs, stroma_dir, lymph_dirs):
-
-        data_tag = self.initialize_sample_tags_SCL(cancer_dirs, stroma_dir, lymph_dirs)
+    def refine_sample_tags_SC(self, cancer_dirs, stroma_dir):
+        data_tag = self.initialize_sample_tags(cancer_dirs, stroma_dir)
         self.create_train_test_data(data_tag, 0.5, 0.5, "R_SC_5x128")
 
         pf = PatchFeature.PatchFeature(self._params)
@@ -135,35 +131,35 @@ class PatchPack(object):
             tags_1 = np.array(tags_1)[simple_samples]
 
 
-        model_file = self._params.PROJECT_ROOT + "/models/svm_R_5x128_SCL.model"
+        model_file = self._params.PROJECT_ROOT + "/models/svm_R_5x128_SC.model"
         joblib.dump(rf, model_file)
 
         return
 
-    def extract_refine_sample_SCL(self, extract_scale, cancer_dirs, stroma_dir, lymph_dirs):
+    def extract_refine_sample_SC(self, extract_scale, cancer_dirs, stroma_dir):
 
-        model_file = self._params.PROJECT_ROOT + "/models/svm_R_5x128_SCL.model"
+        model_file = self._params.PROJECT_ROOT + "/models/svm_R_5x128_SC.model"
         classifier = joblib.load(model_file)
 
         fe = FeatureExtractor.FeatureExtractor()
-        data_tag = self.initialize_sample_tags_SCL(cancer_dirs, stroma_dir, lymph_dirs)
+        data_tag = self.initialize_sample_tags(cancer_dirs, stroma_dir)
 
         Root_path = self._params.PATCHS_ROOT_PATH
         intScale = np.rint(extract_scale * 100).astype(np.int)
         pathCancer = "{}/S{}_{}".format(Root_path,intScale, "ClearCancer")
         pathStroma = "{}/S{}_{}".format(Root_path,intScale, "ClearStroma")
-        pathLymph = "{}/S{}_{}".format(Root_path,intScale, "ClearLymph")
+        # pathLymph = "{}/S{}_{}".format(Root_path,intScale, "ClearLymph")
         pathAmbiguousCancer = "{}/S{}_{}".format(Root_path,intScale, "AmbiguousCancer")
         pathAmbiguousStroma = "{}/S{}_{}".format(Root_path, intScale, "AmbiguousStroma")
-        pathAmbiguousLymph = "{}/S{}_{}".format(Root_path, intScale, "AmbiguousLymph")
+        # pathAmbiguousLymph = "{}/S{}_{}".format(Root_path, intScale, "AmbiguousLymph")
         if (not os.path.exists(pathCancer)):
             os.makedirs(pathCancer)
 
         if (not os.path.exists(pathStroma)):
             os.makedirs(pathStroma)
 
-        if (not os.path.exists(pathLymph)):
-            os.makedirs(pathLymph)
+        # if (not os.path.exists(pathLymph)):
+        #     os.makedirs(pathLymph)
 
         if (not os.path.exists(pathAmbiguousCancer)):
             os.makedirs(pathAmbiguousCancer)
@@ -171,8 +167,8 @@ class PatchPack(object):
         if (not os.path.exists(pathAmbiguousStroma)):
             os.makedirs(pathAmbiguousStroma)
 
-        if (not os.path.exists(pathAmbiguousLymph)):
-            os.makedirs(pathAmbiguousLymph)
+        # if (not os.path.exists(pathAmbiguousLymph)):
+        #     os.makedirs(pathAmbiguousLymph)
 
         for patch_file, tag in data_tag:
             old_path = "{}/{}".format(Root_path, patch_file)
@@ -186,14 +182,62 @@ class PatchPack(object):
                     new_filename = "{}/{}".format(pathStroma, old_filename)
                 elif tag == 1:
                     new_filename = "{}/{}".format(pathCancer, old_filename)
-                else:
-                    new_filename = "{}/{}".format(pathLymph, old_filename)
+                # else:
+                    # new_filename = "{}/{}".format(pathLymph, old_filename)
             else:
                 if tag == 0:
                     new_filename = "{}/{}".format(pathAmbiguousStroma, old_filename)
                 elif tag == 1:
                     new_filename = "{}/{}".format(pathAmbiguousCancer, old_filename)
-                else:
-                    new_filename = "{}/{}".format(pathAmbiguousLymph, old_filename)
+                # else:
+                    # new_filename = "{}/{}".format(pathAmbiguousLymph, old_filename)
+            shutil.copy(old_path, new_filename)
+        return
+
+
+    def extract_refine_sample_LE(self, extract_scale, lymph_dirs, edge_dir):
+
+        model_file = self._params.PROJECT_ROOT + "/models/svm_R_5x128_SC.model"
+        classifier = joblib.load(model_file)
+
+        fe = FeatureExtractor.FeatureExtractor()
+        data_tag = self.initialize_sample_tags(lymph_dirs, edge_dir) # lymph 0, edge 1
+
+        Root_path = self._params.PATCHS_ROOT_PATH
+        intScale = np.rint(extract_scale * 100).astype(np.int)
+        pathLymphStroma = "{}/S{}_{}".format(Root_path, intScale, "LymphStroma")
+        pathLymphCancer = "{}/S{}_{}".format(Root_path,intScale, "LymphCancer")
+        pathEdgeStroma = "{}/S{}_{}".format(Root_path, intScale, "EdgeStroma")
+        pathEdgeCancer = "{}/S{}_{}".format(Root_path,intScale, "EdgeCancer")
+
+        if (not os.path.exists(pathLymphStroma)):
+            os.makedirs(pathLymphStroma)
+
+        if (not os.path.exists(pathLymphCancer)):
+            os.makedirs(pathLymphCancer)
+
+        if (not os.path.exists(pathEdgeStroma)):
+            os.makedirs(pathEdgeStroma)
+
+        if (not os.path.exists(pathEdgeCancer)):
+            os.makedirs(pathEdgeCancer)
+
+        for patch_file, tag in data_tag:
+            old_path = "{}/{}".format(Root_path, patch_file)
+            img = io.imread(old_path, as_grey=False)
+            fvector = fe.extract_glcm_feature(img)
+
+            predicted_tags = classifier.predict([fvector])
+            old_filename = os.path.split(patch_file)[-1]
+            if (tag == 0): # Lymph
+                if predicted_tags == 0:
+                    new_filename = "{}/{}".format(pathLymphStroma, old_filename)
+                elif predicted_tags == 1:
+                    new_filename = "{}/{}".format(pathLymphCancer, old_filename)
+            else:       # Edge
+                if predicted_tags == 0:
+                    new_filename = "{}/{}".format(pathEdgeStroma, old_filename)
+                elif predicted_tags == 1:
+                    new_filename = "{}/{}".format(pathEdgeCancer, old_filename)
             shutil.copy(old_path, new_filename)
         return
