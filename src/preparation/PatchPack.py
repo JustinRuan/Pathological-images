@@ -113,7 +113,7 @@ class PatchPack(object):
 
         return data_tag
 
-    def refine_sample_tags_SC_SVM(self, dir_map, train_code):
+    def refine_sample_tags_SVM(self, dir_map, train_code):
         '''
         精炼过程：迭代过程，从已经标注的样本中寻找最典经（最容易分类正确）的样本，并用它们训练SVM
         :param dir_map: 样本以及标记
@@ -262,4 +262,21 @@ class PatchPack(object):
                 elif predicted_tags == 1:
                     new_filename = "{}/{}".format(pathEdgeCancer, old_filename)
             shutil.copy(old_path, new_filename)
+        return
+
+    def packing_refined_samples(self, extract_scale, patch_size):
+
+        # Root_path = self._params.PATCHS_ROOT_PATH
+        intScale = np.rint(extract_scale * 100).astype(np.int)
+        pathCancer = "S{}_{}_{}".format(intScale,patch_size, "ClearCancer")
+        pathStroma = "S{}_{}_{}".format(intScale,patch_size, "ClearStroma")
+        pathAmbiguousCancer = "S{}_{}_{}".format(intScale, patch_size,"AmbiguousCancer")
+        pathAmbiguousStroma = "S{}_{}_{}".format( intScale, patch_size,"AmbiguousStroma")
+
+        #暧昧的癌变图块（癌变区中间质图块），暧昧的间质图块（间质区中的癌变图块）
+        dir_map = {pathCancer: 1, pathStroma: 0, pathAmbiguousCancer: 0, pathAmbiguousStroma: 1}
+
+        data_tag = self.initialize_sample_tags(dir_map)
+        self.create_train_test_data(data_tag, 0.8, 0.2, "CNN_R_{}_{}".format(intScale, patch_size))
+
         return

@@ -73,7 +73,7 @@ class ImageCone(object):
         '''
         data = self._slice.get_image_block_file(fScale, c_x, c_y, nWidth, nHeight)
 
-        newBlock = Block.Block(self.slice_id, c_x, c_y, fScale, 0, nWidth, nHeight)
+        newBlock = Block(self.slice_id, c_x, c_y, fScale, 0, nWidth, nHeight)
         newBlock.set_img_file(data)
         return newBlock
     

@@ -17,7 +17,7 @@ class TestPatchPack(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         pack = PatchPack(c)
-        pack.refine_sample_tags_SC_SVM({"S500_128_cancer":1,"S500_128_stroma":0}, "R_SC_5x128")
+        pack.refine_sample_tags_SVM({"S500_128_cancer":1,"S500_128_stroma":0}, "R_SC_5x128")
 
 
     def test_extract_refine_sample_SC(self):
@@ -25,9 +25,15 @@ class TestPatchPack(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         pack = PatchPack(c)
-        # dir_map = {"S500_128_cancer":1,"S500_128_stroma":0}
-        # pack.extract_refine_sample_SC(5, dir_map, "R_SC_5x128", 128)
+        dir_map = {"S500_128_cancer":1,"S500_128_stroma":0}
+        pack.extract_refine_sample_SC(5, dir_map, "R_SC_5x128", 128)
 
-        dir_map = {"S500_128_edge": 1, "S500_128_lymph": 0}
-        pack.extract_refine_sample_LE(5, dir_map,  "R_SC_5x128", 128)
+        # dir_map = {"S500_128_edge": 1, "S500_128_lymph": 0}
+        # pack.extract_refine_sample_LE(5, dir_map,  "R_SC_5x128", 128)
 
+    def test_packing_refined_samples(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+
+        pack = PatchPack(c)
+        pack.packing_refined_samples(5, 128)
