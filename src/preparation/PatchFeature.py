@@ -27,7 +27,7 @@ class PatchFeature(object):
         root_path = self._params.PATCHS_ROOT_PATH
         data_file = "{}/{}".format(root_path, data_filename)
 
-        fe = FeatureExtractor.FeatureExtractor()
+        fe = FeatureExtractor()
         features = []
         tags = []
         count = 0
@@ -38,13 +38,13 @@ class PatchFeature(object):
             patch_file = "{}/{}".format(root_path, items[0])
             img = io.imread(patch_file, as_grey=False)
             tag = int(items[1])
-            fvector = fe.extract_glcm_feature(img)
+            fvector = fe.extract_feature(img, "best")
 
             features.append(fvector)
             tags.append(tag)
 
             if (0 == count%200):
-                print("{} extract glcm feature >>> {}".format(time.asctime( time.localtime()), count))
+                print("{} extract feature >>> {}".format(time.asctime( time.localtime()), count))
             count += 1
 
         f.close()
