@@ -14,13 +14,13 @@ import matplotlib.pyplot as plt
 class TestBlock(unittest.TestCase):
 
     def test_Block(self):
-        b = Block.Block("17004930", 13824, 17600, 20, 0, 256, 256)
+        b = Block("17004930", 13824, 17600, 20, 0, 256, 256)
         print(b.encoding())
 
     def test_getBlock(self):
-        c = Params.Params()
+        c = Params()
         c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
-        imgCone = ImageCone.ImageCone(c)
+        imgCone = ImageCone(c)
 
         # 读取数字全扫描切片图像
         tag = imgCone.open_slide("17004930 HE_2017-07-29 09_45_09.kfb",
@@ -38,7 +38,7 @@ class TestBlock(unittest.TestCase):
 
     def test_loadBlock(self):
         filename = "D:/Study/breast/Patches/P0523/17004930_012000_020000_2000_0.jpg"
-        block = Block.Block()
+        block = Block()
         block.load_img(filename)
         print(block.encoding())
 

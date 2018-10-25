@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 __author__ = 'Justin'
-__mtime__ = '2018-06-29'
+__mtime__ = '2018-10-25'
 
 """
 
@@ -15,14 +15,12 @@ from sklearn import metrics
 from skimage import io, util
 from core import *
 from core.util import read_csv_file
-from cnn.net import alexnet, googlenet
+from cnn.net import alexnet, googlenet, simpleNet128
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
-
 class cnn_tensor(object):
 
-    # samples_name = "ZoneR"
     def __init__(self, params, model_name, samples_name):
         '''
         初始化CNN分类器
@@ -37,7 +35,6 @@ class cnn_tensor(object):
         self.model_root = "{}/models/{}/".format(self._params.PROJECT_ROOT, model_name)
         self.train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         self.test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        self.check_list = "{}/{}_check.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         return
 
@@ -92,6 +89,8 @@ class cnn_tensor(object):
             model_fn = googlenet.googlenet_model_fn
         elif "alexnet" in self.model_name.lower():
             model_fn = alexnet.alexnet_model_fn
+        elif "simplenet128" in self.model_name.lower():
+            model_fn = simpleNet128.simpleNet128_model_fn
         else:
             model_fn = None
 
@@ -108,10 +107,10 @@ class cnn_tensor(object):
             tensors=tensors_to_log, every_n_iter=10)
 
         # Train the model
-        batch_size = 10
+        batch_size = 100
         classifier.train(
-            input_fn=lambda:self.train_input_fn(self.train_list, batch_size, 3),
-            steps=30,
+            input_fn=lambda:self.train_input_fn(self.train_list, batch_size, 10),
+            steps=1000,
             hooks=[logging_hook])
 
         # Evaluate the model and print results
@@ -120,14 +119,6 @@ class cnn_tensor(object):
 
         return
 
-
-if __name__ == '__main__':
-    c = Params.Params()
-    c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
-
-    # cnn = cnn_tensor(c,"alexnet", "Small")
-    cnn = cnn_tensor(c, "googlenet", "Small")
-    cnn.training()
 
 
 

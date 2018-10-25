@@ -6,4 +6,6 @@ __mtime__ = '2018-05-28'
 
 """
 
-__all__ = ["cnn_classifier", "transfer_cnn", "Detector", "alexnet_tensor"]
+from cnn.cnn_tensor import cnn_tensor
+
+__all__ = ["cnn_tensor"]

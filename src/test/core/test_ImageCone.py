@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 class TestImageCone(unittest.TestCase):
 
     def test_load(self):
-        c = Params.Params()
+        c = Params()
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
-        imgCone = ImageCone.ImageCone(c)
+        imgCone = ImageCone(c)
 
         # 读取数字全扫描切片图像
         tag = imgCone.open_slide("17004930 HE_2017-07-29 09_45_09.kfb",

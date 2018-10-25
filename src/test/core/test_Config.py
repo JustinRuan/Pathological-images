@@ -26,12 +26,12 @@ class TestConfigMethods(unittest.TestCase):
     #         s.split(2)
 
     def test_load(self):
-        c = Params.Params()
+        c = Params()
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/test.json")
         self.assertEqual(c.GLOBAL_SCALE, 1.25)
 
     def test_save(self):
-        c = Params.Params()
+        c = Params()
         c.save_default_value("test.json")
 
 if __name__ == '__main__':

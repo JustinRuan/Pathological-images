@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 class TestSlice(unittest.TestCase):
 
     def test_load_annotation(self):
-        c = Params.Params()
+        c = Params()
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
-        slice = Slice.Slice(c.KFB_SDK_PATH)
+        slice = Slice(c.KFB_SDK_PATH)
 
         # 读取数字全扫描切片图像
         tag = slice.open_slide("D:/Study/breast/3Plus/17004930 HE_2017-07-29 09_45_09.kfb", "17004930")

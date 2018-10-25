@@ -5,7 +5,8 @@ __author__ = 'Justin'
 __mtime__ = '2018-10-13'
 
 """
-from core import Slice, Block
+from core import Block
+from core.Slice import Slice
 import numpy as np
 from skimage import draw
 from skimage import color, morphology
@@ -14,7 +15,7 @@ from skimage.morphology import square
 class ImageCone(object):
 
     def __init__(self, params):
-        self._slice = Slice.Slice(params.KFB_SDK_PATH)
+        self._slice = Slice(params.KFB_SDK_PATH)
         self._params = params
 
     def open_slide(self, filename, ano_filename, id_string):
