@@ -11,6 +11,7 @@ import numpy as np
 from skimage import draw
 from skimage import color, morphology
 from skimage.morphology import square
+import io
 
 class ImageCone(object):
 
@@ -76,7 +77,7 @@ class ImageCone(object):
         newBlock = Block(self.slice_id, c_x, c_y, fScale, 0, nWidth, nHeight)
         newBlock.set_img_file(data)
         return newBlock
-    
+
     def get_image_blocks_itor(self, fScale, set_x, set_y, nWidth, nHeight, batch_size):
         '''
         获得以种子点为左上角的图块的迭代器

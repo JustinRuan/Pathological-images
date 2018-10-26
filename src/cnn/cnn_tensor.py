@@ -17,11 +17,11 @@ from core import *
 from core.util import read_csv_file
 from cnn.net import alexnet, googlenet, simpleNet128
 
-tf.logging.set_verbosity(tf.logging.INFO)
+# tf.logging.set_verbosity(tf.logging.INFO)
 
 class cnn_tensor(object):
 
-    def __init__(self, params, model_name, samples_name):
+    def __init__(self, params, model_name, samples_name = None):
         '''
         初始化CNN分类器
         :param params: 参数
@@ -33,8 +33,10 @@ class cnn_tensor(object):
         self.model_name = model_name
 
         self.model_root = "{}/models/{}/".format(self._params.PROJECT_ROOT, model_name)
-        self.train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        self.test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+
+        if (not samples_name is None):
+            self.train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+            self.test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         return
 
@@ -109,7 +111,7 @@ class cnn_tensor(object):
         # Train the model
         batch_size = 100
         classifier.train(
-            input_fn=lambda:self.train_input_fn(self.train_list, batch_size, 10),
+            input_fn=lambda:self.train_input_fn(self.train_list, batch_size, 3),
             steps=1000,
             hooks=[logging_hook])
 
@@ -119,8 +121,55 @@ class cnn_tensor(object):
 
         return
 
+    def prepare_predict(self, src_img, scale, patch_size):
+        self._imgCone = src_img
+        self.scale = scale
+        self.patch_size = patch_size
 
+    def predict_input_fn(self, seeds, batch_size):
+        image_list = []
+        for x, y in seeds:
+            block= self._imgCone.get_image_block(self.scale, x, y, self.patch_size, self.patch_size)
+            image_list.append(block.get_img().tobytes())
 
+        src_images = tf.constant(image_list)
 
+        dataset = tf.data.Dataset.from_tensor_slices(src_images)
+        dataset = dataset.map(self._parse_function_predict)
+        dataset = dataset.prefetch(batch_size)
+        dataset = dataset.batch(batch_size)
+        return dataset
 
+    def _parse_function_predict(self, image_data):
+        image_decoded = tf.decode_raw(image_data, tf.uint8)
+        image_float = tf.cast(image_decoded, dtype=tf.float32)
+        return {"x":image_float}
+
+    def predict(self, src_img, scale, patch_size, seeds):
+        self.prepare_predict(src_img, scale, patch_size)
+
+        GPU = False
+        if GPU:
+            gpu_config = tf.ConfigProto()
+            gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.5  # 程序最多只能占用指定gpu %的显存
+            gpu_config.gpu_options.allow_growth = True  # 程序按需申请内存
+
+            config = tf.estimator.RunConfig(keep_checkpoint_max=3, session_config=gpu_config)
+        else:
+            config = tf.estimator.RunConfig(keep_checkpoint_max=3)
+
+        model_fn = simpleNet128.simpleNet128_model_fn
+        classifier = tf.estimator.Estimator(
+            model_fn= model_fn, model_dir=self.model_root, config=config)
+        batch_size = 20
+
+        predictions = classifier.predict(input_fn=lambda:self.predict_input_fn(seeds, batch_size))
+
+        result = []
+        for pred_dict in predictions:
+            class_id = pred_dict['classes']
+            probability = pred_dict['probabilities'][class_id]
+            # print(class_id, 100 * probability)
+            result.append((class_id, probability))
+        return result
 
