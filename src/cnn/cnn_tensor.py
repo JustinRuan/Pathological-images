@@ -26,7 +26,7 @@ class cnn_tensor(object):
         初始化CNN分类器
         :param params: 参数
         :param model_name: 使用的模型文件
-        :param samples_name: 使用的标本集的关键字（标记符）
+        :param samples_name: 使用的标本集的关键字（标记符），为None时是进入预测模式
         '''
         model_name = model_name + "_tensorflow"
         self._params = params
@@ -41,12 +41,24 @@ class cnn_tensor(object):
         return
 
     def _parse_function(self, filename, label):
+        '''
+        解析数据，在train和test时，将图像文件读入Tensor环境，并加以标注
+        :param filename: 图像文件路径
+        :param label: 标注
+        :return: 图像Tensor和它的标注
+        '''
         image_string = tf.read_file(filename)
         image_decoded = tf.image.decode_image(image_string)
         image_float = tf.cast(image_decoded, dtype=tf.float32)
         return {"x":image_float}, label
 
     def eval_input_fn(self, csv_path, batch_size):
+        '''
+        在test时，数据输入
+        :param csv_path: test文件的路径
+        :param batch_size: 每批处理的数量
+        :return:
+        '''
         filenames_list, labels_list = read_csv_file(self._params.PATCHS_ROOT_PATH, csv_path)
 
         # A vector of filenames.
@@ -62,6 +74,13 @@ class cnn_tensor(object):
         return dataset
 
     def train_input_fn(self, csv_path, batch_size, repeat_count):
+        '''
+        在train时，数据输入
+        :param csv_path: train文件的路径
+        :param batch_size: 每批处理的数量
+        :param repeat_count: 数据重复使用的次数
+        :return:
+        '''
         filenames_list, labels_list = read_csv_file(self._params.PATCHS_ROOT_PATH, csv_path)
 
         # A vector of filenames.
@@ -77,6 +96,10 @@ class cnn_tensor(object):
         return dataset
 
     def training(self):
+        '''
+        训练网络
+        :return:
+        '''
         GPU = False
         if GPU:
             gpu_config = tf.ConfigProto()
@@ -122,11 +145,24 @@ class cnn_tensor(object):
         return
 
     def prepare_predict(self, src_img, scale, patch_size):
+        '''
+        预测前的准备
+        :param src_img: 输入的切片图像imageCone
+        :param scale: 提取图块的倍镜
+        :param patch_size: 图块大小
+        :return:
+        '''
         self._imgCone = src_img
         self.scale = scale
         self.patch_size = patch_size
 
     def predict_input_fn(self, seeds, batch_size):
+        '''
+        在predict时，数据输入
+        :param seeds: 图块的中心点的集合
+        :param batch_size: 每批处理的数量（Tensor计算用的）
+        :return:
+        '''
         image_list = []
         for x, y in seeds:
             block= self._imgCone.get_image_block(self.scale, x, y, self.patch_size, self.patch_size)
@@ -141,11 +177,24 @@ class cnn_tensor(object):
         return dataset
 
     def _parse_function_predict(self, image_data):
+        '''
+        在predict时，数据解析
+        :param image_data: 图像的Byte流
+        :return:图像Tensor
+        '''
         image_decoded = tf.decode_raw(image_data, tf.uint8)
         image_float = tf.cast(image_decoded, dtype=tf.float32)
         return {"x":image_float}
 
     def predict(self, src_img, scale, patch_size, seeds):
+        '''
+        进行预测
+        :param src_img:  输入的切片图像imageCone
+        :param scale: 提取图块的倍镜
+        :param patch_size:图块的大小
+        :param seeds: 提取图块的中心点的坐标集合
+        :return:
+        '''
         self.prepare_predict(src_img, scale, patch_size)
 
         GPU = False
@@ -177,6 +226,12 @@ class cnn_tensor(object):
         return result
 
     def get_seeds_itor(self, seeds, batch_size):
+        '''
+        将所有的图块中心点集，分割成更小的集合，以便减小图块载入的内存压力
+        :param seeds: 所有的需要计算的图块中心点集
+        :param batch_size: 每次读入到内存的图块数量（不是Tensor的批处理数量）
+        :return: 种子点的迭代器
+        '''
         len_seeds = len(seeds)
         start_id = 0
         for end_id in range(batch_size + 1, len_seeds, batch_size):

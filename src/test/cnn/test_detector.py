@@ -30,8 +30,8 @@ class Test_detector(unittest.TestCase):
 
         x1 = 600
         y1 = 610
-        x2 = 720
-        y2 = 720
+        x2 = 1720
+        y2 = 1720
         seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1, 5, 128)
         cancer_map = detector.create_cancer_map(x1,y1, 1, 5, 1.25, seeds, predictions, 128)
         # print(cancer_map)
