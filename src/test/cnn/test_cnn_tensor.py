@@ -30,7 +30,7 @@ class Test_cnn_tensor(unittest.TestCase):
         # 读取数字全扫描切片图像
         tag = imgCone.open_slide("17004930 HE_2017-07-29 09_45_09.kfb",
                                  '17004930 HE_2017-07-29 09_45_09.kfb.Ano', "17004930")
-        seeds = [(8384, 4448), (8112, 4704)]
+        seeds = [(7600, 4160), (3440, 3840), (9888, 7968)] # C, C, S
         result = cnn.predict(imgCone, 5, 128, seeds)
 
         print(result)

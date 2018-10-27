@@ -32,8 +32,10 @@ class ImageCone(object):
         tag = self._slice.open_slide(path, id_string)
 
         if tag:
-            path = "{}/{}".format(self._params.SLICES_ROOT_PATH, ano_filename)
-            self._slice.read_annotation(path)
+            if not ano_filename is None:
+                path = "{}/{}".format(self._params.SLICES_ROOT_PATH, ano_filename)
+                self._slice.read_annotation(path)
+
             return True
 
         return False
