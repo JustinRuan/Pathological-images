@@ -163,13 +163,29 @@ class cnn_tensor(object):
             model_fn= model_fn, model_dir=self.model_root, config=config)
         batch_size = 20
 
-        predictions = classifier.predict(input_fn=lambda:self.predict_input_fn(seeds, batch_size))
-
+        # predictions = classifier.predict(input_fn=lambda:self.predict_input_fn(seeds, batch_size))
+        seeds_itor = self.get_seeds_itor(seeds, 100)
         result = []
-        for pred_dict in predictions:
-            class_id = pred_dict['classes']
-            probability = pred_dict['probabilities'][class_id]
-            # print(class_id, 100 * probability)
-            result.append((class_id, probability))
+        for part_seeds in seeds_itor:
+            predictions = classifier.predict(input_fn=lambda: self.predict_input_fn(part_seeds, batch_size))
+            for pred_dict in predictions:
+                class_id = pred_dict['classes']
+                probability = pred_dict['probabilities'][class_id]
+                # print(class_id, 100 * probability)
+                result.append((class_id, probability))
+
         return result
+
+    def get_seeds_itor(self, seeds, batch_size):
+        len_seeds = len(seeds)
+        start_id = 0
+        for end_id in range(batch_size + 1, len_seeds, batch_size):
+            new_seeds = seeds[start_id : end_id]
+            start_id = end_id
+            yield new_seeds
+
+        if start_id < len_seeds:
+            yield seeds[start_id:len_seeds]
+
+        return
 

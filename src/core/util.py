@@ -41,7 +41,7 @@ def get_seeds(MaskLow, lowScale, highScale, patch_size_high, spacingHigh, margin
     for xx, yy in zip(x, y):
         resultHigh.add((xx, yy))
 
-    return resultHigh
+    return list(resultHigh)
 
 
 def read_csv_file(root_path, csv_path):
