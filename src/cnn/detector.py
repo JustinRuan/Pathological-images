@@ -139,6 +139,7 @@ class Detector(object):
         half = int(target_patch_size>>1)
 
         cancer_map = np.zeros((self.valid_area_height, self.valid_area_width), dtype=np.float)
+        count_map = np.zeros((self.valid_area_height, self.valid_area_width), dtype=np.float)
 
         for (x, y), (class_id, probability)  in zip(new_seeds, predictions):
             if class_id == 1 :
@@ -150,6 +151,11 @@ class Detector(object):
                 select_x = (cc >= 0) & (cc < self.valid_area_width)
                 select = select_x & select_y
                 cancer_map[rr[select], cc[select]] = cancer_map[rr[select], cc[select]] + probability
+                count_map[rr[select], cc[select]] = count_map[rr[select], cc[select]] + 1
+
+        #计算平均概率
+        tag = count_map > 0
+        cancer_map[tag] = cancer_map[tag] / count_map[tag]
 
         return cancer_map
 
