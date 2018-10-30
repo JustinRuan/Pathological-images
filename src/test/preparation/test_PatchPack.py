@@ -37,3 +37,11 @@ class TestPatchPack(unittest.TestCase):
 
         pack = PatchPack(c)
         pack.packing_refined_samples(5, 128)
+
+    def test_pack_samples_256(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+
+        pack = PatchPack(c)
+        data_tag = pack.initialize_sample_tags({"S2000_256_cancer":1,"S2000_256_stroma":0})
+        pack.create_data_txt(data_tag, "SC_20x256")

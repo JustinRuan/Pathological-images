@@ -99,6 +99,27 @@ class PatchPack(object):
 
         return
 
+    def create_data_txt(self, data_tag, file_tag):
+        '''
+        生成样本文件的列表，存入txt中
+        :param data_tag: 样本集
+        :param file_tag: 生成的两个列表文件中所包含的代号
+        :return: 生成.txt文件
+        '''
+
+        root_path = self._params.PATCHS_ROOT_PATH
+
+        random.shuffle(data_tag)
+
+        full_filename = "{0}/{1}.txt".format(root_path, file_tag)
+
+        f = open(full_filename, "w")
+        for item, tag in data_tag:
+            f.write("{} {}\n".format(item, tag))
+        f.close()
+
+        return
+
     def initialize_sample_tags(self, dir2tag_map):
         '''
         从不同文件夹中加载不同标记的样本
