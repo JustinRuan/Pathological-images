@@ -17,6 +17,7 @@ from tensorflow.keras import backend as K
 import numpy as np
 from core.util import read_csv_file
 from transfer.image_sequence import ImageSequence
+from sklearn.model_selection import train_test_split
 
 class Transfer(object):
 
@@ -43,11 +44,17 @@ class Transfer(object):
 
         return features
 
+    def load_model(self):
+
+        return
+
     def fine_tuning(self, samples_name):
         csv_path = "{}/{}.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         filenames_list, labels_list = read_csv_file(self._params.PATCHS_ROOT_PATH, csv_path)
 
-        data_gen = ImageSequence(filenames_list, labels_list, 100)
+        Xtrain, Xtest, Ytrain, Ytest = train_test_split(filenames_list, labels_list, test_size=0.2, random_state=0)
+        train_gen = ImageSequence(Xtrain, Ytrain, 20)
+        test_gen = ImageSequence(Xtest, Ytest, 20)
 
         # create the base pre-trained model
         base_model = InceptionV3(weights='imagenet', include_top=False)
@@ -68,12 +75,12 @@ class Transfer(object):
             layer.trainable = False
 
         # compile the model (should be done *after* setting layers to non-trainable)
-        model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
+        model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
 
         print(model.summary())
         # train the model on the new data for a few epochs
-        model.fit_generator(data_gen, steps_per_epoch=3)
-
+        result = model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1,
+                            validation_data=test_gen, validation_steps=100)
         # at this point, the top layers are well trained and we can start fine-tuning
         # convolutional layers from inception V3. We will freeze the bottom N layers
         # and train the remaining top layers.
@@ -97,7 +104,6 @@ class Transfer(object):
 
         # we train our model again (this time fine-tuning the top 2 inception blocks
         # alongside the top Dense layers
-        model.fit_generator(data_gen, steps_per_epoch=3)
-
-
+        result = model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1,
+                            validation_data=test_gen, validation_steps=100)
 
