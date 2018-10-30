@@ -72,7 +72,7 @@ class Transfer(object):
 
         print(model.summary())
         # train the model on the new data for a few epochs
-        model.fit_generator(data_gen, steps_per_epoch=1000)
+        model.fit_generator(data_gen, steps_per_epoch=3)
 
         # at this point, the top layers are well trained and we can start fine-tuning
         # convolutional layers from inception V3. We will freeze the bottom N layers
@@ -92,12 +92,12 @@ class Transfer(object):
 
         # we need to recompile the model for these modifications to take effect
         # we use SGD with a low learning rate
-        from keras.optimizers import SGD
+        from tensorflow.keras.optimizers import SGD
         model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy')
 
         # we train our model again (this time fine-tuning the top 2 inception blocks
         # alongside the top Dense layers
-        model.fit_generator(data_gen, steps_per_epoch=1000)
+        model.fit_generator(data_gen, steps_per_epoch=3)
 
 
 
