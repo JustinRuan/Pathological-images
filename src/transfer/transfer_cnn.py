@@ -47,7 +47,7 @@ class Transfer(object):
         csv_path = "{}/{}.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         filenames_list, labels_list = read_csv_file(self._params.PATCHS_ROOT_PATH, csv_path)
 
-        data_gen = ImageSequence(filenames_list, labels_list, 2)
+        data_gen = ImageSequence(filenames_list, labels_list, 100)
 
         # create the base pre-trained model
         base_model = InceptionV3(weights='imagenet', include_top=False)

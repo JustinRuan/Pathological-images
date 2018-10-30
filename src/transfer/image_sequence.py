@@ -6,7 +6,7 @@ __mtime__ = '2018-10-30'
 
 """
 
-from tensorflow.keras.utils import Sequence
+from tensorflow.keras.utils import Sequence, to_categorical
 from skimage.io import imread
 from skimage.transform import resize
 import numpy as np
@@ -34,4 +34,4 @@ class ImageSequence(Sequence):
         return np.array([
             # resize(imread(file_name),(299,299))
             imread(file_name)
-            for file_name in batch_x]), np.array(batch_y)
+            for file_name in batch_x]), to_categorical(batch_y, 2)
