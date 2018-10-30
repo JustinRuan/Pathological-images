@@ -56,6 +56,16 @@ class Transfer(object):
         train_gen = ImageSequence(Xtrain, Ytrain, 20)
         test_gen = ImageSequence(Xtest, Ytest, 20)
 
+        # include the epoch in the file name. (uses `str.format`)
+        checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, "InceptionV3")
+        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}.ckpt"
+
+        cp_callback = tf.keras.callbacks.ModelCheckpoint(
+            checkpoint_path, verbose=1, save_weights_only=True,
+            # Save weights, every 5-epochs.
+            period=1)
+
+
         # create the base pre-trained model
         base_model = InceptionV3(weights='imagenet', include_top=False)
         # add a global spatial average pooling layer
@@ -71,15 +81,16 @@ class Transfer(object):
 
         # first: train only the top layers (which were randomly initialized)
         # i.e. freeze all convolutional InceptionV3 layers
-        for layer in base_model.layers:
+        for i, layer in enumerate(base_model.layers):
             layer.trainable = False
+            print(i, layer.name, "freezed", sep="\t") # 有310层
 
         # compile the model (should be done *after* setting layers to non-trainable)
         model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
 
-        print(model.summary())
+        # print(model.summary())
         # train the model on the new data for a few epochs
-        result = model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1,
+        model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1, callbacks = [cp_callback],
                             validation_data=test_gen, validation_steps=100)
         # at this point, the top layers are well trained and we can start fine-tuning
         # convolutional layers from inception V3. We will freeze the bottom N layers
@@ -100,10 +111,10 @@ class Transfer(object):
         # we need to recompile the model for these modifications to take effect
         # we use SGD with a low learning rate
         from tensorflow.keras.optimizers import SGD
-        model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy')
+        model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
 
         # we train our model again (this time fine-tuning the top 2 inception blocks
         # alongside the top Dense layers
-        result = model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1,
+        model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1, callbacks = [cp_callback],
                             validation_data=test_gen, validation_steps=100)
 
