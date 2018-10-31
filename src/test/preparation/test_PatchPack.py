@@ -31,12 +31,12 @@ class TestPatchPack(unittest.TestCase):
         # dir_map = {"S500_128_edge": 1, "S500_128_lymph": 0}
         # pack.extract_refine_sample_LE(5, dir_map,  "R_SC_5x128", 128)
 
-    # def test_packing_refined_samples(self):
-    #     c = Params()
-    #     c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
-    #
-    #     pack = PatchPack(c)
-    #     pack.packing_refined_samples(5, 128)
+    def test_packing_refined_samples(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+
+        pack = PatchPack(c)
+        pack.packing_refined_samples(5, 128)
 
     def test_pack_samples_256(self):
         c = Params()

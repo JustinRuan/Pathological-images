@@ -63,43 +63,43 @@ class PatchPack(object):
                     L.append((rfile, tag))
         return L
 
-    # def create_train_test_data(self, data_tag, train_size, test_size, file_tag):
-    #     '''
-    #     生成样本文件的列表，存入txt中
-    #     :param data_tag: 样本集
-    #     :param train_size: 训练集所占比例
-    #     :param test_size: 测试集所占比例
-    #     :param file_tag: 生成的两个列表文件中所包含的代号
-    #     :return: 生成train.txt和test.txt
-    #     '''
-    #     if (train_size + test_size > 1):
-    #         return
-    #
-    #     root_path = self._params.PATCHS_ROOT_PATH
-    #
-    #     count = len(data_tag)
-    #     train_count = int(train_size * count)
-    #     test_count = int(test_size * count)
-    #
-    #     random.shuffle(data_tag)
-    #     train_data = data_tag[:train_count]
-    #     test_data = data_tag[train_count : train_count + test_count]
-    #
-    #     full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"train")
-    #
-    #     f = open(full_filename, "w")
-    #     for item, tag in train_data:
-    #         f.write("{} {}\n".format(item, tag))
-    #     f.close()
-    #
-    #     full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"test")
-    #
-    #     f = open(full_filename, "w")
-    #     for item, tag in test_data:
-    #         f.write("{} {}\n".format(item, tag))
-    #     f.close()
-    #
-    #     return
+    def create_train_test_data(self, data_tag, train_size, test_size, file_tag):
+        '''
+        生成样本文件的列表，存入txt中
+        :param data_tag: 样本集
+        :param train_size: 训练集所占比例
+        :param test_size: 测试集所占比例
+        :param file_tag: 生成的两个列表文件中所包含的代号
+        :return: 生成train.txt和test.txt
+        '''
+        if (train_size + test_size > 1):
+            return
+
+        root_path = self._params.PATCHS_ROOT_PATH
+
+        count = len(data_tag)
+        train_count = int(train_size * count)
+        test_count = int(test_size * count)
+
+        random.shuffle(data_tag)
+        train_data = data_tag[:train_count]
+        test_data = data_tag[train_count : train_count + test_count]
+
+        full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"train")
+
+        f = open(full_filename, "w")
+        for item, tag in train_data:
+            f.write("{} {}\n".format(item, tag))
+        f.close()
+
+        full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"test")
+
+        f = open(full_filename, "w")
+        for item, tag in test_data:
+            f.write("{} {}\n".format(item, tag))
+        f.close()
+
+        return
 
     def create_data_txt(self, data_tag, file_tag):
         '''
@@ -122,15 +122,15 @@ class PatchPack(object):
 
         return
 
-    def initialize_sample_tags(self, dir2tag_map):
+    def initialize_sample_tags(self, dir_tag_map):
         '''
         从不同文件夹中加载不同标记的样本
-        :param dir2tag_map: { "dir_code": tag }
+        :param dir_tag_map: { "dir_code": tag }
         :return: 已经标注的，样本的文件路径
         '''
         data_tag = []
 
-        for dir_code, tag in dir2tag_map.items():
+        for dir_code, tag in dir_tag_map.items():
             result = self.loading_filename_tags(dir_code, tag)
             data_tag.extend(result)
 
@@ -222,10 +222,10 @@ class PatchPack(object):
                     AmbiguousCancer.append((patch_file, 0))
 
         intScale = np.rint(extract_scale * 100).astype(np.int)
-        pathCancer = "S{}_{}_{}".format(intScale,patch_size, "ClearCancer.txt")
-        pathStroma = "S{}_{}_{}".format(intScale,patch_size, "ClearStroma.txt")
-        pathAmbiguousCancer = "S{}_{}_{}".format(intScale, patch_size,"AmbiguousCancer.txt")
-        pathAmbiguousStroma = "S{}_{}_{}".format( intScale, patch_size,"AmbiguousStroma.txt")
+        pathCancer = "S{}_{}_{}".format(intScale,patch_size, "ClearCancer")
+        pathStroma = "S{}_{}_{}".format(intScale,patch_size, "ClearStroma")
+        pathAmbiguousCancer = "S{}_{}_{}".format(intScale, patch_size,"AmbiguousCancer")
+        pathAmbiguousStroma = "S{}_{}_{}".format( intScale, patch_size,"AmbiguousStroma")
 
         self.create_data_txt(ClearCancer, pathCancer)
         self.create_data_txt(ClearStroma, pathStroma)
@@ -287,20 +287,30 @@ class PatchPack(object):
     #                 new_filename = "{}/{}".format(pathEdgeCancer, old_filename)
     #         shutil.copy(old_path, new_filename)
     #     return
-    #
-    # def packing_refined_samples(self, extract_scale, patch_size):
-    #
-    #     # Root_path = self._params.PATCHS_ROOT_PATH
-    #     intScale = np.rint(extract_scale * 100).astype(np.int)
-    #     pathCancer = "S{}_{}_{}".format(intScale,patch_size, "ClearCancer")
-    #     pathStroma = "S{}_{}_{}".format(intScale,patch_size, "ClearStroma")
-    #     pathAmbiguousCancer = "S{}_{}_{}".format(intScale, patch_size,"AmbiguousCancer")
-    #     pathAmbiguousStroma = "S{}_{}_{}".format( intScale, patch_size,"AmbiguousStroma")
-    #
-    #     #暧昧的癌变图块（癌变区中间质图块），暧昧的间质图块（间质区中的癌变图块）
-    #     dir_map = {pathCancer: 1, pathStroma: 0, pathAmbiguousCancer: 0, pathAmbiguousStroma: 1}
-    #
-    #     data_tag = self.initialize_sample_tags(dir_map)
-    #     self.create_train_test_data(data_tag, 0.8, 0.2, "CNN_R_{}_{}".format(intScale, patch_size))
-    #
-    #     return
+
+    def packing_refined_samples(self, extract_scale, patch_size):
+
+        root_path = self._params.PATCHS_ROOT_PATH
+        intScale = np.rint(extract_scale * 100).astype(np.int)
+        pathCancer = "S{}_{}_{}.txt".format(intScale,patch_size, "ClearCancer")
+        pathStroma = "S{}_{}_{}.txt".format(intScale,patch_size, "ClearStroma")
+        pathAmbiguousCancer = "S{}_{}_{}.txt".format(intScale, patch_size,"AmbiguousCancer")
+        pathAmbiguousStroma = "S{}_{}_{}.txt".format( intScale, patch_size,"AmbiguousStroma")
+
+        #暧昧的癌变图块（癌变区中间质图块），暧昧的间质图块（间质区中的癌变图块）
+        file_map = {pathCancer: 1, pathStroma: 0, pathAmbiguousCancer: 0, pathAmbiguousStroma: 1}
+
+        data_tag = []
+
+        for filename, tag in file_map.items():
+            csv_path = "{}/{}".format(root_path, filename)
+            f = open(csv_path, "r")
+            lines = f.readlines()
+            for line in lines:
+                items = line.split(" ")
+                tag = int(items[1])
+                data_tag.append((items[0], tag))
+
+        self.create_train_test_data(data_tag, 0.8, 0.2, "CNN_R_{}_{}".format(intScale, patch_size))
+
+        return
