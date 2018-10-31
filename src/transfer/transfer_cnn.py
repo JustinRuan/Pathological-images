@@ -49,11 +49,12 @@ class Transfer(object):
         return
 
     def fine_tuning(self, samples_name):
-        csv_path = "{}/{}.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        filenames_list, labels_list = read_csv_file(self._params.PATCHS_ROOT_PATH, csv_path)
+        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
-        Xtrain, Xtest, Ytrain, Ytest = train_test_split(filenames_list, labels_list, test_size=0.2, random_state=0)
+        Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
         train_gen = ImageSequence(Xtrain, Ytrain, 20)
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
         test_gen = ImageSequence(Xtest, Ytest, 20)
 
         # include the epoch in the file name. (uses `str.format`)
@@ -92,29 +93,29 @@ class Transfer(object):
         # train the model on the new data for a few epochs
         model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1, callbacks = [cp_callback],
                             validation_data=test_gen, validation_steps=100)
-        # at this point, the top layers are well trained and we can start fine-tuning
-        # convolutional layers from inception V3. We will freeze the bottom N layers
-        # and train the remaining top layers.
-
-        # let's visualize layer names and layer indices to see how many layers
-        # we should freeze:
-        for i, layer in enumerate(base_model.layers):
-            print(i, layer.name)
-
-        # we chose to train the top 2 inception blocks, i.e. we will freeze
-        # the first 249 layers and unfreeze the rest:
-        for layer in model.layers[:249]:
-            layer.trainable = False
-        for layer in model.layers[249:]:
-            layer.trainable = True
-
-        # we need to recompile the model for these modifications to take effect
-        # we use SGD with a low learning rate
-        from tensorflow.keras.optimizers import SGD
-        model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-
-        # we train our model again (this time fine-tuning the top 2 inception blocks
-        # alongside the top Dense layers
-        model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1, callbacks = [cp_callback],
-                            validation_data=test_gen, validation_steps=100)
+        # # at this point, the top layers are well trained and we can start fine-tuning
+        # # convolutional layers from inception V3. We will freeze the bottom N layers
+        # # and train the remaining top layers.
+        #
+        # # let's visualize layer names and layer indices to see how many layers
+        # # we should freeze:
+        # for i, layer in enumerate(base_model.layers):
+        #     print(i, layer.name)
+        #
+        # # we chose to train the top 2 inception blocks, i.e. we will freeze
+        # # the first 249 layers and unfreeze the rest:
+        # for layer in model.layers[:249]:
+        #     layer.trainable = False
+        # for layer in model.layers[249:]:
+        #     layer.trainable = True
+        #
+        # # we need to recompile the model for these modifications to take effect
+        # # we use SGD with a low learning rate
+        # from tensorflow.keras.optimizers import SGD
+        # model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+        #
+        # # we train our model again (this time fine-tuning the top 2 inception blocks
+        # # alongside the top Dense layers
+        # model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1, callbacks = [cp_callback],
+        #                     validation_data=test_gen, validation_steps=100)
 
