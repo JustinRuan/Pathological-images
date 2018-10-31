@@ -5,7 +5,7 @@ __author__ = 'Justin'
 __mtime__ = '2018-10-16'
 
 """
-from skimage import feature, color, util
+from skimage import feature, color, util, exposure
 import numpy as np
 
 class FeatureExtractor(object):
@@ -37,7 +37,7 @@ class FeatureExtractor(object):
         textural_feature = []
         # 以灰度模式读取图片
         image =  util.img_as_ubyte(color.rgb2gray(src_img))
-        # image = util.img_as_ubyte(src_img)
+        # image = exposure.rescale_intensity(color.rgb2gray(src_img), out_range=(0, 255))
         # 计算灰度共生矩阵
         # glcm = feature.greycomatrix(image, [1,3,5], [0, np.pi/4, np.pi/2, 3*np.pi/4], 256, symmetric=True, normed=True) # 效果不如下面的好
         glcm = feature.greycomatrix(image, [3], [0], 256, symmetric=True, normed=True)
@@ -59,6 +59,7 @@ class FeatureExtractor(object):
         textural_feature = []
         # 以灰度模式读取图片
         image =  util.img_as_ubyte(color.rgb2gray(src_img))
+        # image = exposure.rescale_intensity(color.rgb2gray(src_img), out_range=(0, 255))
         # 计算灰度共生矩阵
         # glcm = feature.greycomatrix(image, [1,3,5], [0, np.pi/4, np.pi/2, 3*np.pi/4], 256, symmetric=True, normed=True) # 效果不如下面的好
         glcm = feature.greycomatrix(image, [1,3,5], [0], 256, symmetric=True, normed=True)

@@ -16,6 +16,8 @@ from preparation import PatchFeature
 import numpy as np
 from feature import FeatureExtractor
 from skimage import io
+from sklearn.model_selection import train_test_split
+from core.util import read_csv_file
 
 class PatchPack(object):
     def __init__(self, params):
@@ -61,43 +63,43 @@ class PatchPack(object):
                     L.append((rfile, tag))
         return L
 
-    def create_train_test_data(self, data_tag, train_size, test_size, file_tag):
-        '''
-        生成样本文件的列表，存入txt中
-        :param data_tag: 样本集
-        :param train_size: 训练集所占比例
-        :param test_size: 测试集所占比例
-        :param file_tag: 生成的两个列表文件中所包含的代号
-        :return: 生成train.txt和test.txt
-        '''
-        if (train_size + test_size > 1):
-            return
-
-        root_path = self._params.PATCHS_ROOT_PATH
-
-        count = len(data_tag)
-        train_count = int(train_size * count)
-        test_count = int(test_size * count)
-
-        random.shuffle(data_tag)
-        train_data = data_tag[:train_count]
-        test_data = data_tag[train_count : train_count + test_count]
-
-        full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"train")
-
-        f = open(full_filename, "w")
-        for item, tag in train_data:
-            f.write("{} {}\n".format(item, tag))
-        f.close()
-
-        full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"test")
-
-        f = open(full_filename, "w")
-        for item, tag in test_data:
-            f.write("{} {}\n".format(item, tag))
-        f.close()
-
-        return
+    # def create_train_test_data(self, data_tag, train_size, test_size, file_tag):
+    #     '''
+    #     生成样本文件的列表，存入txt中
+    #     :param data_tag: 样本集
+    #     :param train_size: 训练集所占比例
+    #     :param test_size: 测试集所占比例
+    #     :param file_tag: 生成的两个列表文件中所包含的代号
+    #     :return: 生成train.txt和test.txt
+    #     '''
+    #     if (train_size + test_size > 1):
+    #         return
+    #
+    #     root_path = self._params.PATCHS_ROOT_PATH
+    #
+    #     count = len(data_tag)
+    #     train_count = int(train_size * count)
+    #     test_count = int(test_size * count)
+    #
+    #     random.shuffle(data_tag)
+    #     train_data = data_tag[:train_count]
+    #     test_data = data_tag[train_count : train_count + test_count]
+    #
+    #     full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"train")
+    #
+    #     f = open(full_filename, "w")
+    #     for item, tag in train_data:
+    #         f.write("{} {}\n".format(item, tag))
+    #     f.close()
+    #
+    #     full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"test")
+    #
+    #     f = open(full_filename, "w")
+    #     for item, tag in test_data:
+    #         f.write("{} {}\n".format(item, tag))
+    #     f.close()
+    #
+    #     return
 
     def create_data_txt(self, data_tag, file_tag):
         '''
@@ -143,11 +145,16 @@ class PatchPack(object):
         '''
         # train_code = "R_SC_5x128"
         data_tag = self.initialize_sample_tags(dir_map)
-        self.create_train_test_data(data_tag, 0.5, 0.5, train_code)
+        self.create_data_txt(data_tag, train_code)
 
+        # self.create_train_test_data(data_tag, 0.5, 0.5, train_code)
+        #
+        # pf = PatchFeature(self._params)
+        # features_1, tags_1 = pf.loading_data("{}_train.txt".format(train_code))
+        # features_2, tags_2 = pf.loading_data("{}_test.txt".format(train_code))
         pf = PatchFeature(self._params)
-        features_1, tags_1 = pf.loading_data("{}_train.txt".format(train_code))
-        features_2, tags_2 = pf.loading_data("{}_test.txt".format(train_code))
+        features, tag = pf.loading_data("{}.txt".format(train_code))
+        features_1, features_2, tags_1, tags_2 = train_test_split(features, tag, test_size=0.5, random_state=0)
 
         clf = SVC(C=1, kernel='rbf', probability=False) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
 
@@ -182,7 +189,7 @@ class PatchPack(object):
         用精炼SVM对样本进行分类，找出间质中的癌图块，以及癌变区域中的间质图块
         :param extract_scale: 提取的倍镜数
         :param SC_dir_map: 将要进行分类的S和C图块
-        :param train_code: 生成新的目录的代码
+        :param train_code: 生成新的文件的代码
         :param patch_size: 图块大小
         :return:
         '''
@@ -192,112 +199,108 @@ class PatchPack(object):
         fe = FeatureExtractor()
         data_tag = self.initialize_sample_tags(SC_dir_map)
 
+        ClearCancer = []
+        ClearStroma = []
+        AmbiguousCancer = []
+        AmbiguousStroma = []
+
         Root_path = self._params.PATCHS_ROOT_PATH
-        intScale = np.rint(extract_scale * 100).astype(np.int)
-        pathCancer = "{}/S{}_{}_{}".format(Root_path,intScale,patch_size, "ClearCancer")
-        pathStroma = "{}/S{}_{}_{}".format(Root_path,intScale,patch_size, "ClearStroma")
-        pathAmbiguousCancer = "{}/S{}_{}_{}".format(Root_path,intScale, patch_size,"AmbiguousCancer")
-        pathAmbiguousStroma = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size,"AmbiguousStroma")
-
-        if (not os.path.exists(pathCancer)):
-            os.makedirs(pathCancer)
-
-        if (not os.path.exists(pathStroma)):
-            os.makedirs(pathStroma)
-
-        if (not os.path.exists(pathAmbiguousCancer)):
-            os.makedirs(pathAmbiguousCancer)
-
-        if (not os.path.exists(pathAmbiguousStroma)):
-            os.makedirs(pathAmbiguousStroma)
-
         for patch_file, tag in data_tag:
             old_path = "{}/{}".format(Root_path, patch_file)
-            img = io.imread(old_path, as_grey=False)
+            img = io.imread(old_path)
             fvector = fe.extract_feature(img, "best")
-
             predicted_tags = classifier.predict([fvector])
-            old_filename = os.path.split(patch_file)[-1]
             if (predicted_tags == tag):
                 if tag == 0:
-                    new_filename = "{}/{}".format(pathStroma, old_filename)
+                    ClearStroma.append((patch_file, 0))
                 elif tag == 1:
-                    new_filename = "{}/{}".format(pathCancer, old_filename)
+                    ClearCancer.append((patch_file, 1))
             else:
                 if tag == 0:
-                    new_filename = "{}/{}".format(pathAmbiguousStroma, old_filename)
+                    AmbiguousStroma.append((patch_file, 1))
                 elif tag == 1:
-                    new_filename = "{}/{}".format(pathAmbiguousCancer, old_filename)
-            shutil.copy(old_path, new_filename)
-        return
+                    AmbiguousCancer.append((patch_file, 0))
 
-    def extract_refine_sample_LE(self, extract_scale, LE_dir_map, train_code, patch_size):
-        '''
-        用精炼SVM对样本进行分类，找出边缘区域中的癌图块和间质图块，以及淋巴区域中的间质图块和癌变图块
-        :param extract_scale: 提取的倍镜数
-        :param SC_dir_map: 将要进行分类的L和E图块
-        :param train_code: 生成新的目录的代码
-        :param patch_size: 图块大小
-        :return:
-        '''
-        model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_code)
-        classifier = joblib.load(model_file)
-
-        fe = FeatureExtractor()
-        data_tag = self.initialize_sample_tags(LE_dir_map) # lymph 0, edge 1
-
-        Root_path = self._params.PATCHS_ROOT_PATH
         intScale = np.rint(extract_scale * 100).astype(np.int)
-        pathLymphStroma = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size,"LymphStroma")
-        pathLymphCancer = "{}/S{}_{}_{}".format(Root_path,intScale, patch_size,"LymphCancer")
-        pathEdgeStroma = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size,"EdgeStroma")
-        pathEdgeCancer = "{}/S{}_{}_{}".format(Root_path,intScale, patch_size,"EdgeCancer")
+        pathCancer = "S{}_{}_{}".format(intScale,patch_size, "ClearCancer.txt")
+        pathStroma = "S{}_{}_{}".format(intScale,patch_size, "ClearStroma.txt")
+        pathAmbiguousCancer = "S{}_{}_{}".format(intScale, patch_size,"AmbiguousCancer.txt")
+        pathAmbiguousStroma = "S{}_{}_{}".format( intScale, patch_size,"AmbiguousStroma.txt")
 
-        if (not os.path.exists(pathLymphStroma)):
-            os.makedirs(pathLymphStroma)
-
-        if (not os.path.exists(pathLymphCancer)):
-            os.makedirs(pathLymphCancer)
-
-        if (not os.path.exists(pathEdgeStroma)):
-            os.makedirs(pathEdgeStroma)
-
-        if (not os.path.exists(pathEdgeCancer)):
-            os.makedirs(pathEdgeCancer)
-
-        for patch_file, tag in data_tag:
-            old_path = "{}/{}".format(Root_path, patch_file)
-            img = io.imread(old_path, as_grey=False)
-            fvector = fe.extract_feature(img, "best")
-
-            predicted_tags = classifier.predict([fvector])
-            old_filename = os.path.split(patch_file)[-1]
-            if (tag == 0): # Lymph
-                if predicted_tags == 0:
-                    new_filename = "{}/{}".format(pathLymphStroma, old_filename)
-                elif predicted_tags == 1:
-                    new_filename = "{}/{}".format(pathLymphCancer, old_filename)
-            else:       # Edge
-                if predicted_tags == 0:
-                    new_filename = "{}/{}".format(pathEdgeStroma, old_filename)
-                elif predicted_tags == 1:
-                    new_filename = "{}/{}".format(pathEdgeCancer, old_filename)
-            shutil.copy(old_path, new_filename)
-        return
-
-    def packing_refined_samples(self, extract_scale, patch_size):
-
-        # Root_path = self._params.PATCHS_ROOT_PATH
-        intScale = np.rint(extract_scale * 100).astype(np.int)
-        pathCancer = "S{}_{}_{}".format(intScale,patch_size, "ClearCancer")
-        pathStroma = "S{}_{}_{}".format(intScale,patch_size, "ClearStroma")
-        pathAmbiguousCancer = "S{}_{}_{}".format(intScale, patch_size,"AmbiguousCancer")
-        pathAmbiguousStroma = "S{}_{}_{}".format( intScale, patch_size,"AmbiguousStroma")
-
-        #暧昧的癌变图块（癌变区中间质图块），暧昧的间质图块（间质区中的癌变图块）
-        dir_map = {pathCancer: 1, pathStroma: 0, pathAmbiguousCancer: 0, pathAmbiguousStroma: 1}
-
-        data_tag = self.initialize_sample_tags(dir_map)
-        self.create_train_test_data(data_tag, 0.8, 0.2, "CNN_R_{}_{}".format(intScale, patch_size))
+        self.create_data_txt(ClearCancer, pathCancer)
+        self.create_data_txt(ClearStroma, pathStroma)
+        self.create_data_txt(AmbiguousCancer, pathAmbiguousCancer)
+        self.create_data_txt(AmbiguousStroma, pathAmbiguousStroma)
 
         return
+
+    # def extract_refine_sample_LE(self, extract_scale, LE_dir_map, train_code, patch_size):
+    #     '''
+    #     用精炼SVM对样本进行分类，找出边缘区域中的癌图块和间质图块，以及淋巴区域中的间质图块和癌变图块
+    #     :param extract_scale: 提取的倍镜数
+    #     :param SC_dir_map: 将要进行分类的L和E图块
+    #     :param train_code: 生成新的目录的代码
+    #     :param patch_size: 图块大小
+    #     :return:
+    #     '''
+    #     model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_code)
+    #     classifier = joblib.load(model_file)
+    #
+    #     fe = FeatureExtractor()
+    #     data_tag = self.initialize_sample_tags(LE_dir_map) # lymph 0, edge 1
+    #
+    #     Root_path = self._params.PATCHS_ROOT_PATH
+    #     intScale = np.rint(extract_scale * 100).astype(np.int)
+    #     pathLymphStroma = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size,"LymphStroma")
+    #     pathLymphCancer = "{}/S{}_{}_{}".format(Root_path,intScale, patch_size,"LymphCancer")
+    #     pathEdgeStroma = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size,"EdgeStroma")
+    #     pathEdgeCancer = "{}/S{}_{}_{}".format(Root_path,intScale, patch_size,"EdgeCancer")
+    #
+    #     if (not os.path.exists(pathLymphStroma)):
+    #         os.makedirs(pathLymphStroma)
+    #
+    #     if (not os.path.exists(pathLymphCancer)):
+    #         os.makedirs(pathLymphCancer)
+    #
+    #     if (not os.path.exists(pathEdgeStroma)):
+    #         os.makedirs(pathEdgeStroma)
+    #
+    #     if (not os.path.exists(pathEdgeCancer)):
+    #         os.makedirs(pathEdgeCancer)
+    #
+    #     for patch_file, tag in data_tag:
+    #         old_path = "{}/{}".format(Root_path, patch_file)
+    #         img = io.imread(old_path, as_grey=False)
+    #         fvector = fe.extract_feature(img, "best")
+    #
+    #         predicted_tags = classifier.predict([fvector])
+    #         old_filename = os.path.split(patch_file)[-1]
+    #         if (tag == 0): # Lymph
+    #             if predicted_tags == 0:
+    #                 new_filename = "{}/{}".format(pathLymphStroma, old_filename)
+    #             elif predicted_tags == 1:
+    #                 new_filename = "{}/{}".format(pathLymphCancer, old_filename)
+    #         else:       # Edge
+    #             if predicted_tags == 0:
+    #                 new_filename = "{}/{}".format(pathEdgeStroma, old_filename)
+    #             elif predicted_tags == 1:
+    #                 new_filename = "{}/{}".format(pathEdgeCancer, old_filename)
+    #         shutil.copy(old_path, new_filename)
+    #     return
+    #
+    # def packing_refined_samples(self, extract_scale, patch_size):
+    #
+    #     # Root_path = self._params.PATCHS_ROOT_PATH
+    #     intScale = np.rint(extract_scale * 100).astype(np.int)
+    #     pathCancer = "S{}_{}_{}".format(intScale,patch_size, "ClearCancer")
+    #     pathStroma = "S{}_{}_{}".format(intScale,patch_size, "ClearStroma")
+    #     pathAmbiguousCancer = "S{}_{}_{}".format(intScale, patch_size,"AmbiguousCancer")
+    #     pathAmbiguousStroma = "S{}_{}_{}".format( intScale, patch_size,"AmbiguousStroma")
+    #
+    #     #暧昧的癌变图块（癌变区中间质图块），暧昧的间质图块（间质区中的癌变图块）
+    #     dir_map = {pathCancer: 1, pathStroma: 0, pathAmbiguousCancer: 0, pathAmbiguousStroma: 1}
+    #
+    #     data_tag = self.initialize_sample_tags(dir_map)
+    #     self.create_train_test_data(data_tag, 0.8, 0.2, "CNN_R_{}_{}".format(intScale, patch_size))
+    #
+    #     return
