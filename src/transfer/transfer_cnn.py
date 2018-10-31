@@ -45,54 +45,94 @@ class Transfer(object):
         return features
 
     def load_model(self):
-
-        return
-
-    def fine_tuning(self, samples_name):
-        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-
-        Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-        train_gen = ImageSequence(Xtrain, Ytrain, 20)
-        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        test_gen = ImageSequence(Xtest, Ytest, 20)
-
-        # include the epoch in the file name. (uses `str.format`)
         checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, "InceptionV3")
-        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}.ckpt"
+        latest = tf.train.latest_checkpoint(checkpoint_dir)
 
-        cp_callback = tf.keras.callbacks.ModelCheckpoint(
-            checkpoint_path, verbose=1, save_weights_only=True,
-            # Save weights, every 5-epochs.
-            period=1)
+        if latest is None:
+            # create the base pre-trained model
+            base_model = InceptionV3(weights='imagenet', include_top=False)
+        else:
+            # create the base pre-trained model
+            base_model = InceptionV3(weights=None, include_top=False)
 
-
-        # create the base pre-trained model
-        base_model = InceptionV3(weights='imagenet', include_top=False)
         # add a global spatial average pooling layer
         x = base_model.output
         x = GlobalAveragePooling2D()(x)
         # let's add a fully-connected layer
-        x = Dense(1024, activation='relu')(x)
+        x = Dense(128, activation='relu')(x)
         # and a logistic layer -- let's say we have 2 classes
         predictions = Dense(2, activation='softmax')(x)
 
         # this is the model we will train
         model = Model(inputs=base_model.input, outputs=predictions)
 
+        if not latest is None:
+            model.load_weights(latest)
+        #     p = latest.index("-")
+        #     previous_epoch = int(latest[p + 1: p + 5])
+        # else:
+        #     previous_epoch = 0
+
+        return model
+
+    def load_data(self, samples_name, batch_size):
+        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+
+        Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+        train_gen = ImageSequence(Xtrain, Ytrain, batch_size)
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        test_gen = ImageSequence(Xtest, Ytest, batch_size)
+        return  train_gen, test_gen
+
+    def fine_tuning(self, samples_name):
+        # train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        # test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        #
+        # Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+        # train_gen = ImageSequence(Xtrain, Ytrain, 20)
+        # Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        # test_gen = ImageSequence(Xtest, Ytest, 20)
+
+        train_gen, test_gen = self.load_data(samples_name, 20)
+
+        # include the epoch in the file name. (uses `str.format`)
+        checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, "InceptionV3")
+        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}.ckpt"
+
+        cp_callback = tf.keras.callbacks.ModelCheckpoint(
+            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
+            # Save weights, every 5-epochs.
+            period=1)
+
+        # # create the base pre-trained model
+        # base_model = InceptionV3(weights='imagenet', include_top=False)
+        # # add a global spatial average pooling layer
+        # x = base_model.output
+        # x = GlobalAveragePooling2D()(x)
+        # # let's add a fully-connected layer
+        # x = Dense(1024, activation='relu')(x)
+        # # and a logistic layer -- let's say we have 2 classes
+        # predictions = Dense(2, activation='softmax')(x)
+        #
+        # # this is the model we will train
+        # model = Model(inputs=base_model.input, outputs=predictions)
+        model = self.load_model()
+
         # first: train only the top layers (which were randomly initialized)
         # i.e. freeze all convolutional InceptionV3 layers
-        for i, layer in enumerate(base_model.layers):
+        for i, layer in enumerate(model.layers[:311]):
             layer.trainable = False
-            print(i, layer.name, "freezed", sep="\t") # 有310层
+            print(i, layer.name, "freezed", sep="\t") # 有311层
 
         # compile the model (should be done *after* setting layers to non-trainable)
         model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
 
         # print(model.summary())
         # train the model on the new data for a few epochs
-        model.fit_generator(train_gen, steps_per_epoch=100, epochs=1, verbose=1, callbacks = [cp_callback],
-                            validation_data=test_gen, validation_steps=100)
+        model.fit_generator(train_gen, steps_per_epoch=3, epochs=1, verbose=1, callbacks = [cp_callback],
+                            validation_data=test_gen, validation_steps=3)
+
         # # at this point, the top layers are well trained and we can start fine-tuning
         # # convolutional layers from inception V3. We will freeze the bottom N layers
         # # and train the remaining top layers.
