@@ -59,11 +59,18 @@ class Test_transfer(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
         cnn = Transfer(c)
 
-        cnn.extract_features_list("T_SC_2000_256")
+        cnn.extract_features_for_train("T_SC_2000_256")
 
     def test_fine_tuning_data_file(self):
         c = Params()
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
         cnn = Transfer(c)
 
-        cnn.fine_tuning_data_file("T_SC_2000_256")
+        cnn.fine_tuning_saved_file("T_SC_2000_256")
+
+    def test_evaluate_merged_model(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+        cnn = Transfer(c)
+
+        cnn.evaluate_merged_model("T_SC_2000_256")

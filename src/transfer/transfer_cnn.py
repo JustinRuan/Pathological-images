@@ -13,14 +13,12 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.inception_v3 import preprocess_input
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Flatten
-from tensorflow.keras import backend as K
 import numpy as np
 from core.util import read_csv_file
 from transfer.image_sequence import ImageSequence
-from sklearn.model_selection import train_test_split
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.optimizers import SGD, RMSprop
 from tensorflow.keras.utils import to_categorical
 
 class Transfer(object):
@@ -200,7 +198,7 @@ class Transfer(object):
 
         return result
 
-    def extract_features_list(self, samples_name):
+    def extract_features_for_train(self, samples_name):
         batch_size = 20
         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
@@ -229,7 +227,7 @@ class Transfer(object):
         np.savez(data_path + "features_train", train_features, train_label)
         return
 
-    def fine_tuning_data_file(self,samples_name):
+    def fine_tuning_saved_file(self,samples_name):
         data_path = "{}/data/{}_".format(self._params.PROJECT_ROOT, samples_name)
         D = np.load(data_path + "features_test.npz")
         test_features = D['arr_0']
@@ -245,18 +243,70 @@ class Transfer(object):
         train_label = train_label[:, np.newaxis]
         train_label = to_categorical(train_label, 2)
 
+        # include the epoch in the file name. (uses `str.format`)
+        checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, "InceptionV3_2")
+        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.ckpt"
+
+        cp_callback = tf.keras.callbacks.ModelCheckpoint(
+            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
+            # Save weights, every 5-epochs.
+            period=1)
+
         top_model = Sequential()
         top_model.add(Flatten(input_shape=(1, 2048)))
         top_model.add(Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1"))
         top_model.add(Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2"))
 
-        top_model.compile(optimizer="rmsprop", loss='categorical_crossentropy', metrics=['accuracy'])
+        latest = tf.train.latest_checkpoint(checkpoint_dir)
+        if not latest is None:
+            print("loading >>> ", latest, " ...")
+            top_model.load_weights(latest)
+
+        top_model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
 
         # print(model.summary())
         # train the model on the new data for a few epochs
-        top_model.fit(train_features, train_label, batch_size =200, epochs=1,
+        top_model.fit(train_features, train_label, batch_size =200, epochs=20,
+                      callbacks=[cp_callback, TensorBoard(log_dir=checkpoint_dir)],
                       validation_data=(test_features, test_label))
 
-        return
+    def merge_model(self, model_dir):
+        checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, model_dir)
+        latest = tf.train.latest_checkpoint(checkpoint_dir)
 
+        if latest is None: return None
 
+        base_model = InceptionV3(weights='imagenet', include_top=False)
+
+        top_model = Sequential()
+        top_model.add(Flatten(input_shape=(1, 2048)))
+        top_model.add(Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1"))
+        top_model.add(Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2"))
+        print("loading >>> ", latest, " ...")
+        top_model.load_weights(latest)
+
+        x = base_model.output
+        x = GlobalAveragePooling2D()(x)
+        # let's add a fully-connected layer
+        x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1")(x)
+        # and a logistic layer -- let's say we have 2 classes
+        predictions = Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2")(x)
+        model = Model(inputs=base_model.input, outputs=predictions)
+
+        layers_set = ["t_Dense_1", "t_Dense_2"]
+        for layer_name in layers_set:
+            new_layer = model.get_layer(name=layer_name)
+            old_layer = top_model.get_layer(name=layer_name)
+            weights = old_layer.get_weights()
+            new_layer.set_weights(weights)
+
+        return model
+
+    def evaluate_merged_model(self, samples_name):
+        train_gen, test_gen = self.load_data(samples_name, 20)
+
+        model = self.merge_model("InceptionV3_2")
+        model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+        test_loss, test_acc = model.evaluate_generator(test_gen, steps = 40)
+
+        print('Test accuracy:', test_acc)
