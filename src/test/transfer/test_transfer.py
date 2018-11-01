@@ -38,4 +38,4 @@ class Test_transfer(unittest.TestCase):
         # tag = imgCone.open_slide("17004930 HE_2017-07-29 09_45_09.kfb",
         #                          '17004930 HE_2017-07-29 09_45_09.kfb.Ano', "17004930")
 
-        cnn.fine_tuning("T_SC_2000_256")
+        cnn.fine_tuning_1("T_SC_2000_256")
