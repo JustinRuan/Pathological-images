@@ -39,3 +39,17 @@ class Test_transfer(unittest.TestCase):
         #                          '17004930 HE_2017-07-29 09_45_09.kfb.Ano', "17004930")
 
         cnn.fine_tuning_1("T_SC_2000_256")
+
+    def test_predict(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+        cnn = Transfer(c)
+
+        imgCone = ImageCone(c)
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("17004930 HE_2017-07-29 09_45_09.kfb",
+                                 None, "17004930")
+        seeds = [(12608, 17856), (23232, 22656), (7296, 14208)]  # C, C, S
+        result = cnn.predict(imgCone, 20, 256, seeds)
+        print(result)

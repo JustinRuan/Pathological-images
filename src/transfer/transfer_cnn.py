@@ -61,7 +61,7 @@ class Transfer(object):
         x = base_model.output
         x = GlobalAveragePooling2D()(x)
         # let's add a fully-connected layer
-        x = Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x)
+        x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x)
         # and a logistic layer -- let's say we have 2 classes
         predictions = Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01))(x)
 
@@ -69,7 +69,9 @@ class Transfer(object):
         model = Model(inputs=base_model.input, outputs=predictions)
 
         if not latest is None:
+            print("loading >>> ", latest, " ...")
             model.load_weights(latest)
+
         return model
 
     def load_data(self, samples_name, batch_size):
@@ -173,7 +175,25 @@ class Transfer(object):
 
     def fine_tuning_1(self, samples_name):
         self.fine_tuning_model("InceptionV3", samples_name, 311, 'rmsprop')
-        return
 
     def fine_tuning_2(self, samples_name):
         self.fine_tuning_model("InceptionV3_2", samples_name, 249, SGD(lr=0.0001, momentum=0.9))
+
+    def predict(self, src_img, scale, patch_size, seeds):
+        model = self.load_model("InceptionV3")
+
+        result = []
+        for x, y in seeds:
+            block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
+            img = block.get_img()
+
+            x = image.img_to_array(img)
+            x = np.expand_dims(x, axis=0)
+            x = preprocess_input(x)
+
+            predictions = model.predict(x)
+            class_id = np.argmax(predictions[0])
+            probability = predictions[0][class_id]
+            result.append((class_id, probability))
+
+        return result
