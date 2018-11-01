@@ -276,8 +276,6 @@ class Transfer(object):
 
         if latest is None: return None
 
-        base_model = InceptionV3(weights='imagenet', include_top=False)
-
         top_model = Sequential()
         top_model.add(Flatten(input_shape=(1, 2048)))
         top_model.add(Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1"))
@@ -285,6 +283,7 @@ class Transfer(object):
         print("loading >>> ", latest, " ...")
         top_model.load_weights(latest)
 
+        base_model = InceptionV3(weights='imagenet', include_top=False)
         x = base_model.output
         x = GlobalAveragePooling2D()(x)
         # let's add a fully-connected layer
