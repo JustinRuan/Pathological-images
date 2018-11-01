@@ -18,6 +18,9 @@ import numpy as np
 from core.util import read_csv_file
 from transfer.image_sequence import ImageSequence
 from sklearn.model_selection import train_test_split
+from tensorflow.keras import regularizers
+from tensorflow.keras.callbacks import TensorBoard
+
 
 class Transfer(object):
 
@@ -52,16 +55,15 @@ class Transfer(object):
             # create the base pre-trained model
             base_model = InceptionV3(weights='imagenet', include_top=False)
         else:
-            # create the base pre-trained model
             base_model = InceptionV3(weights=None, include_top=False)
 
         # add a global spatial average pooling layer
         x = base_model.output
         x = GlobalAveragePooling2D()(x)
         # let's add a fully-connected layer
-        x = Dense(128, activation='relu')(x)
+        x = Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x)
         # and a logistic layer -- let's say we have 2 classes
-        predictions = Dense(2, activation='softmax')(x)
+        predictions = Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01))(x)
 
         # this is the model we will train
         model = Model(inputs=base_model.input, outputs=predictions)
@@ -98,7 +100,8 @@ class Transfer(object):
 
         # include the epoch in the file name. (uses `str.format`)
         checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, "InceptionV3")
-        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}.ckpt"
+        # checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}.ckpt"
+        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.ckpt"
 
         cp_callback = tf.keras.callbacks.ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
@@ -130,7 +133,8 @@ class Transfer(object):
 
         # print(model.summary())
         # train the model on the new data for a few epochs
-        model.fit_generator(train_gen, steps_per_epoch=3, epochs=1, verbose=1, callbacks = [cp_callback],
+        model.fit_generator(train_gen, steps_per_epoch=3, epochs=1, verbose=1,
+                            callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
                             validation_data=test_gen, validation_steps=3)
 
         # # at this point, the top layers are well trained and we can start fine-tuning
