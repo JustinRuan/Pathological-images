@@ -53,3 +53,17 @@ class Test_transfer(unittest.TestCase):
         seeds = [(12608, 17856), (23232, 22656), (7296, 14208)]  # C, C, S
         result = cnn.predict(imgCone, 20, 256, seeds)
         print(result)
+
+    def test_extract_features_list(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+        cnn = Transfer(c)
+
+        cnn.extract_features_list("T_SC_2000_256")
+
+    def test_fine_tuning_data_file(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+        cnn = Transfer(c)
+
+        cnn.fine_tuning_data_file("T_SC_2000_256")

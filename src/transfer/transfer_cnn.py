@@ -11,8 +11,8 @@ from tensorflow import keras
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.inception_v3 import preprocess_input
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Flatten
 from tensorflow.keras import backend as K
 import numpy as np
 from core.util import read_csv_file
@@ -21,6 +21,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.utils import to_categorical
 
 class Transfer(object):
 
@@ -61,9 +62,9 @@ class Transfer(object):
         x = base_model.output
         x = GlobalAveragePooling2D()(x)
         # let's add a fully-connected layer
-        x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x)
+        x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1")(x)
         # and a logistic layer -- let's say we have 2 classes
-        predictions = Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01))(x)
+        predictions = Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2")(x)
 
         # this is the model we will train
         model = Model(inputs=base_model.input, outputs=predictions)
@@ -181,6 +182,7 @@ class Transfer(object):
 
     def predict(self, src_img, scale, patch_size, seeds):
         model = self.load_model("InceptionV3")
+        print(model.summary())
 
         result = []
         for x, y in seeds:
@@ -197,3 +199,64 @@ class Transfer(object):
             result.append((class_id, probability))
 
         return result
+
+    def extract_features_list(self, samples_name):
+        batch_size = 20
+        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        data_path = "{}/data/{}_".format(self._params.PROJECT_ROOT, samples_name)
+
+        Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+        train_gen = ImageSequence(Xtrain, Ytrain, batch_size)
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        test_gen = ImageSequence(Xtest, Ytest, batch_size)
+
+        base_model = InceptionV3(weights='imagenet', include_top=False)
+        x = base_model.output
+        features_layer = GlobalAveragePooling2D()(x)
+        model = Model(inputs=base_model.input, outputs=features_layer)
+
+        # step_count = len(Ytest) // batch_size
+        step_count = 10
+        test_features = model.predict_generator(test_gen, steps=step_count, verbose=1)
+        test_label = Ytest[:step_count * batch_size]
+        np.savez(data_path + "features_test", test_features, test_label)
+
+        step_count = len(Ytrain) // batch_size
+        step_count = 10
+        train_features = model.predict_generator(train_gen, steps=step_count, verbose=1)
+        train_label = Ytrain[:step_count * batch_size]
+        np.savez(data_path + "features_train", train_features, train_label)
+        return
+
+    def fine_tuning_data_file(self,samples_name):
+        data_path = "{}/data/{}_".format(self._params.PROJECT_ROOT, samples_name)
+        D = np.load(data_path + "features_test.npz")
+        test_features = D['arr_0']
+        test_features = test_features[:, np.newaxis]
+        test_label = D['arr_1']
+        test_label = test_label[:, np.newaxis]
+        test_label = to_categorical(test_label, 2)
+
+        D = np.load(data_path + "features_train.npz")
+        train_features = D['arr_0']
+        train_features = train_features[:, np.newaxis]
+        train_label = D['arr_1']
+        train_label = train_label[:, np.newaxis]
+        train_label = to_categorical(train_label, 2)
+
+        top_model = Sequential()
+        top_model.add(Flatten(input_shape=(1, 2048)))
+        top_model.add(Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1"))
+        top_model.add(Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2"))
+
+        top_model.compile(optimizer="rmsprop", loss='categorical_crossentropy', metrics=['accuracy'])
+
+        # print(model.summary())
+        # train the model on the new data for a few epochs
+        top_model.fit(train_features, train_label, batch_size =200, epochs=1,
+                      validation_data=(test_features, test_label))
+
+        return
+
+
