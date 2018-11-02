@@ -11,7 +11,7 @@ from tensorflow import keras
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.inception_v3 import preprocess_input
-from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.models import Model, Sequential, load_model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Flatten
 import numpy as np
 from core.util import read_csv_file
@@ -46,30 +46,33 @@ class Transfer(object):
 
         return features
 
-    def load_model(self, model_dir):
-        checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, model_dir)
-        latest = tf.train.latest_checkpoint(checkpoint_dir)
+    def load_model(self, model_path, is_checkpoint = True):
+        if is_checkpoint:
+            checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, model_path)
+            latest = tf.train.latest_checkpoint(checkpoint_dir)
 
-        if latest is None:
-            # create the base pre-trained model
-            base_model = InceptionV3(weights='imagenet', include_top=False)
+            if latest is None:
+                # create the base pre-trained model
+                base_model = InceptionV3(weights='imagenet', include_top=False)
+            else:
+                base_model = InceptionV3(weights=None, include_top=False)
+
+            # add a global spatial average pooling layer
+            x = base_model.output
+            x = GlobalAveragePooling2D()(x)
+            # let's add a fully-connected layer
+            x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1")(x)
+            # and a logistic layer -- let's say we have 2 classes
+            predictions = Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2")(x)
+
+            # this is the model we will train
+            model = Model(inputs=base_model.input, outputs=predictions)
+            if not latest is None:
+                print("loading >>> ", latest, " ...")
+                model.load_weights(latest)
         else:
-            base_model = InceptionV3(weights=None, include_top=False)
-
-        # add a global spatial average pooling layer
-        x = base_model.output
-        x = GlobalAveragePooling2D()(x)
-        # let's add a fully-connected layer
-        x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1")(x)
-        # and a logistic layer -- let's say we have 2 classes
-        predictions = Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2")(x)
-
-        # this is the model we will train
-        model = Model(inputs=base_model.input, outputs=predictions)
-
-        if not latest is None:
-            print("loading >>> ", latest, " ...")
-            model.load_weights(latest)
+            model_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, model_path)
+            model = load_model(model_dir)
 
         return model
 
@@ -179,7 +182,8 @@ class Transfer(object):
         self.fine_tuning_model("InceptionV3_2", samples_name, 249, SGD(lr=0.0001, momentum=0.9))
 
     def predict(self, src_img, scale, patch_size, seeds):
-        model = self.load_model("InceptionV3")
+        model = self.load_model("InceptionV3/V3-0.11-0.96.h5", False)
+        # model = self.merge_model("InceptionV3_2")
         print(model.summary())
 
         result = []
@@ -189,7 +193,7 @@ class Transfer(object):
 
             x = image.img_to_array(img)
             x = np.expand_dims(x, axis=0)
-            x = preprocess_input(x)
+            # x = preprocess_input(x)
 
             predictions = model.predict(x)
             class_id = np.argmax(predictions[0])
@@ -306,6 +310,13 @@ class Transfer(object):
 
         model = self.merge_model("InceptionV3_2")
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-        test_loss, test_acc = model.evaluate_generator(test_gen, steps = 40)
+        test_loss, test_acc = model.evaluate_generator(test_gen, steps = 10)
+
+        # model_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, "InceptionV3")
+        # model_path = model_dir + "/V3-{:.2f}-{:.2f}.h5".format(test_loss, test_acc)
+        # model.save(model_path)
 
         print('Test accuracy:', test_acc)
+
+        # result = model.predict_generator(test_gen, steps=10)
+        # print(result)
