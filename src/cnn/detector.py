@@ -90,11 +90,30 @@ class Detector(object):
         cnn = cnn_tensor(self._params, "simplenet128")
         predictions = cnn.predict(self._imgCone, extract_scale, patch_size, seeds)
 
-        # result = []
-        # for (x, y), (class_id, probability) in zip(seeds, predictions):
-        #     result.append((x, y, class_id, probability))
-
         return seeds, predictions
+
+    def get_seed_deep_analysis(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):
+        amplify = new_scale / seeds_scale
+        partitions = original_patch_size * amplify / new_patch_size
+        bias = int(original_patch_size * amplify / (2 * partitions))
+        result = []
+
+        for (x, y), (class_id, probability) in zip(seeds, predictions):
+            if probability < 0.95:
+                xx = int(x * amplify)
+                yy = int(y * amplify)
+                result.append((xx, yy))
+                result.append((xx - bias, yy - bias))
+                result.append((xx - bias, yy + bias))
+                result.append((xx + bias, yy - bias))
+                result.append((xx + bias, yy + bias))
+
+                # result.append((xx, yy - bias))
+                # result.append((xx, yy + bias))
+                # result.append((xx + bias, yy))
+                # result.append((xx - bias, yy))
+
+        return result
 
     def transform_coordinate(self, x1, y1, coordinate_scale, seeds_scale, target_scale, seeds):
         '''
@@ -121,7 +140,7 @@ class Detector(object):
         return results
 
     def create_cancer_map(self, x1, y1, coordinate_scale, seeds_scale, target_scale, seeds,
-                          predictions, seeds_patch_size):
+                          predictions, seeds_patch_size, pre_prob_map = None, pre_count_map = None):
         '''
         生成癌变可能性Map
         :param x1: 检测区域的左上角x坐标
@@ -139,25 +158,43 @@ class Detector(object):
         half = int(target_patch_size>>1)
 
         cancer_map = np.zeros((self.valid_area_height, self.valid_area_width), dtype=np.float)
+        prob_map = np.zeros((self.valid_area_height, self.valid_area_width), dtype=np.float)
         count_map = np.zeros((self.valid_area_height, self.valid_area_width), dtype=np.float)
 
-        for (x, y), (class_id, probability)  in zip(new_seeds, predictions):
-            if class_id == 1 :
-                xx = x - half
-                yy = y - half
-                rr, cc = rectangle((yy, xx), extent=(target_patch_size, target_patch_size))
+        update_mode = not (pre_prob_map is None or pre_count_map is None)
+        if update_mode:
+            vaild_map = np.zeros((self.valid_area_height, self.valid_area_width), dtype=np.bool)
 
-                select_y = (rr >= 0) & (rr < self.valid_area_height)
-                select_x = (cc >= 0) & (cc < self.valid_area_width)
-                select = select_x & select_y
-                cancer_map[rr[select], cc[select]] = cancer_map[rr[select], cc[select]] + probability
+        for (x, y), (class_id, probability)  in zip(new_seeds, predictions):
+            xx = x - half
+            yy = y - half
+            rr, cc = rectangle((yy, xx), extent=(target_patch_size, target_patch_size))
+
+            select_y = (rr >= 0) & (rr < self.valid_area_height)
+            select_x = (cc >= 0) & (cc < self.valid_area_width)
+            select = select_x & select_y
+
+            if class_id == 1 :
+                prob_map[rr[select], cc[select]] = prob_map[rr[select], cc[select]] + probability
                 count_map[rr[select], cc[select]] = count_map[rr[select], cc[select]] + 1
 
-        #计算平均概率
-        tag = count_map > 0
-        cancer_map[tag] = cancer_map[tag] / count_map[tag]
+            if update_mode:
+                vaild_map[rr[select], cc[select]] = True
 
-        return cancer_map
+        tag = count_map > 0
+        cancer_map[tag] = prob_map[tag] / count_map[tag]
+
+        if not update_mode:
+            #计算平均概率
+            return cancer_map, prob_map, count_map
+        else:
+            # 更新平均概率
+            pre_prob_map[vaild_map] = prob_map[vaild_map]
+            pre_count_map[vaild_map] = count_map[vaild_map]
+
+            tag = pre_count_map > 0
+            cancer_map[tag] = pre_prob_map[tag] / pre_count_map[tag]
+            return cancer_map, pre_prob_map, pre_count_map
 
     def get_detect_area_img(self, x1, y1, x2, y2, coordinate_scale, img_scale):
         '''

@@ -231,7 +231,7 @@ class Transfer(object):
         :param seeds: 种子点的集合
         :return:
         '''
-        model = self.load_model("InceptionV3/V3-0.11-0.96.h5", False)
+        model = self.load_model("InceptionV3/V3-0.10-0.96.h5", False)
         # model = self.merge_model("InceptionV3_2")
         print(model.summary())
 

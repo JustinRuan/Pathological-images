@@ -12,7 +12,7 @@ from core import *
 import matplotlib.pyplot as plt
 from cnn import *
 import numpy as np
-
+from transfer import Transfer
 
 class Test_detector(unittest.TestCase):
 
@@ -33,7 +33,7 @@ class Test_detector(unittest.TestCase):
         x2 = 1420
         y2 = 1420
         seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1, 5, 128)
-        cancer_map = detector.create_cancer_map(x1,y1, 1, 5, 1.25, seeds, predictions, 128)
+        cancer_map, prob_map, count_map = detector.create_cancer_map(x1,y1, 1, 5, 1.25, seeds, predictions, 128, None, None)
         # print(cancer_map)
 
         src_img = detector.get_detect_area_img(x1, y1, x2, y2, 1, 1.25)
@@ -55,6 +55,60 @@ class Test_detector(unittest.TestCase):
 
         return
 
+
+    def test_detect2(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+        imgCone = ImageCone(c)
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("17004930 HE_2017-07-29 09_45_09.kfb",
+                                 '17004930 HE_2017-07-29 09_45_09.kfb.Ano', "17004930")
+
+        detector = Detector(c, imgCone)
+        # print(detector.ImageHeight, detector.ImageWidth)
+
+        x1 = 600
+        y1 = 610
+        x2 = 920
+        y2 = 920
+        seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1, 5, 128)
+        new_seeds = detector.get_seed_deep_analysis(seeds, predictions, 5, 128, 20, 256)
+
+        cnn = Transfer(c)
+        predictions_deep = cnn.predict(imgCone, 20, 256, new_seeds)
+        # print(result)
+
+        cancer_map, prob_map, count_map = detector.create_cancer_map(x1, y1, 1, 5, 1.25, seeds, predictions, 128, None,
+                                                                     None)
+        cancer_map2, prob_map, count_map = detector.create_cancer_map(x1, y1, 1, 20, 1.25, new_seeds, predictions_deep,
+                                                                      256, prob_map, count_map)
+        # cancer_map2, prob_map, count_map = detector.create_cancer_map(x1, y1, 1, 20, 1.25, new_seeds, predictions_deep,
+        #                                                               256, None, None)
+        # print(cancer_map)
+
+        src_img = detector.get_detect_area_img(x1, y1, x2, y2, 1, 1.25)
+
+        fig, axes = plt.subplots(1, 3, figsize=(8, 6), dpi=200)
+        ax = axes.ravel()
+
+        ax[0].imshow(src_img)
+        ax[0].set_title("src_img")
+
+        ax[1].imshow(src_img)
+        ax[1].imshow(cancer_map, alpha=0.6)
+        ax[1].set_title("cancer_map")
+
+        ax[2].imshow(src_img)
+        ax[2].imshow(cancer_map2, alpha=0.6)
+        ax[2].set_title("cancer_map2")
+
+        for a in ax.ravel():
+            a.axis('off')
+
+        plt.show()
+
+        return
     # def test_detect(self):
     #     dtor = Detector.Detector("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json",
     #                            "17004930 HE_2017-07-29 09_45_09.kfb",
