@@ -93,6 +93,16 @@ class Detector(object):
         return seeds, predictions
 
     def get_seed_deep_analysis(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):
+        '''
+        获取置信度不高的种子点在更高倍镜下的图块中心点坐标
+        :param seeds: 低倍镜下的种子点集合
+        :param predictions: 低倍镜下的种子点所对应的检测结果
+        :param seeds_scale: 种子点的低倍镜数
+        :param original_patch_size: 低倍镜下的图块大小
+        :param new_scale: 高倍镜数
+        :param new_patch_size: 在高倍镜下的图块大小
+        :return: 高倍镜下，种子点集合
+        '''
         amplify = new_scale / seeds_scale
         partitions = original_patch_size * amplify / new_patch_size
         bias = int(original_patch_size * amplify / (2 * partitions))
@@ -151,6 +161,8 @@ class Detector(object):
         :param seeds: 图块中心点集
         :param predictions: 每个图块的预测结果
         :param seeds_patch_size: 图块的大小
+        :param pre_prob_map: 上次处理生成癌变概率图
+        :param pre_count_map; 上次处理生成癌变的检测计数图
         :return: 癌变可能性Map
         '''
         new_seeds = self.transform_coordinate(x1, y1, coordinate_scale, seeds_scale, target_scale, seeds)
