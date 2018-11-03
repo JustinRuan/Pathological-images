@@ -6,20 +6,21 @@ __mtime__ = '2018-10-30'
 
 """
 
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.applications.inception_v3 import InceptionV3
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.inception_v3 import preprocess_input
-from tensorflow.keras.models import Model, Sequential, load_model
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Flatten
 import numpy as np
+import tensorflow as tf
+from tensorflow.keras import regularizers
+from tensorflow.keras.applications.inception_v3 import InceptionV3
+from tensorflow.keras.applications.inception_v3 import preprocess_input
+from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Flatten
+from tensorflow.keras.models import Model, Sequential, load_model
+from tensorflow.keras.optimizers import SGD, RMSprop
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.utils import to_categorical
+
 from core.util import read_csv_file
 from transfer.image_sequence import ImageSequence
-from tensorflow.keras import regularizers
-from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.keras.optimizers import SGD, RMSprop
-from tensorflow.keras.utils import to_categorical
+
 
 class Transfer(object):
 
@@ -29,6 +30,14 @@ class Transfer(object):
         return
 
     def extract_features(self, src_img, scale, patch_size, seeds):
+        '''
+        从切片中提取图块，并用网络提取特征
+        :param src_img: 切片图像
+        :param scale: 提取的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 图块中心点的坐标
+        :return: 特征
+        '''
         # create the base pre-trained model
         base_model = InceptionV3(weights='imagenet', include_top=False)
         # print(base_model.summary())
@@ -47,6 +56,13 @@ class Transfer(object):
         return features
 
     def load_model(self, model_path, is_checkpoint = True):
+        '''
+        从文件中加载网络模型
+        :param model_path: 模型的文件名，包括models文件夹中的子文件夹的路径
+        :param is_checkpoint: 是否为checkpoint文件
+        :return: 网络模型
+        '''
+        #从checkpoint文件中加载 最后的全连接层的权重
         if is_checkpoint:
             checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, model_path)
             latest = tf.train.latest_checkpoint(checkpoint_dir)
@@ -71,12 +87,19 @@ class Transfer(object):
                 print("loading >>> ", latest, " ...")
                 model.load_weights(latest)
         else:
+            # 直接从.h5模型文件中加载整个网络和权重
             model_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, model_path)
             model = load_model(model_dir)
 
         return model
 
     def load_data(self, samples_name, batch_size):
+        '''
+        从图片的列表文件中加载数据，到Sequence中
+        :param samples_name: 列表文件的代号
+        :param batch_size: 图片读取时的每批的图片数量
+        :return:用于train和test的两个Sequence
+        '''
         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
@@ -143,6 +166,14 @@ class Transfer(object):
     #     #                     validation_data=test_gen, validation_steps=100)
 
     def fine_tuning_model(self, model_dir, samples_name, freezed_num, optimizer):
+        '''
+        微调模型，训练时冻结网络中0到freezed_num层
+        :param model_dir:训练时checkpoint文件的存盘路径
+        :param samples_name:训练所使用的图片列表文件的代号
+        :param freezed_num: 训练时冻结网络中 0 到 freezed_num 层
+        :param optimizer: 训练用，自适应学习率算法
+        :return:
+        '''
         train_gen, test_gen = self.load_data(samples_name, 20)
 
         # include the epoch in the file name. (uses `str.format`)
@@ -176,12 +207,30 @@ class Transfer(object):
         return
 
     def fine_tuning_1(self, samples_name):
-        self.fine_tuning_model("InceptionV3", samples_name, 311, 'rmsprop')
+        '''
+        只训练全连接层
+        :param samples_name:
+        :return:
+        '''
+        self.fine_tuning_model("InceptionV3", samples_name, 311, RMSprop(lr=1e-4, rho=0.9))
 
     def fine_tuning_2(self, samples_name):
+        '''
+        训练全连接层，和最后一部分的原网络
+        :param samples_name:
+        :return:
+        '''
         self.fine_tuning_model("InceptionV3_2", samples_name, 249, SGD(lr=0.0001, momentum=0.9))
 
     def predict(self, src_img, scale, patch_size, seeds):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return:
+        '''
         model = self.load_model("InceptionV3/V3-0.11-0.96.h5", False)
         # model = self.merge_model("InceptionV3_2")
         print(model.summary())
@@ -193,7 +242,7 @@ class Transfer(object):
 
             x = image.img_to_array(img)
             x = np.expand_dims(x, axis=0)
-            # x = preprocess_input(x)
+            # x = preprocess_input(x) //训练时没有使用预处理，这里也不能调用
 
             predictions = model.predict(x)
             class_id = np.argmax(predictions[0])
@@ -203,6 +252,11 @@ class Transfer(object):
         return result
 
     def extract_features_for_train(self, samples_name):
+        '''
+        从训练的图块中提取 特征， 并存盘
+        :param samples_name: 图块文件所在列表txt文件
+        :return: 生成两个特征文件
+        '''
         batch_size = 20
         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
@@ -218,20 +272,25 @@ class Transfer(object):
         features_layer = GlobalAveragePooling2D()(x)
         model = Model(inputs=base_model.input, outputs=features_layer)
 
-        # step_count = len(Ytest) // batch_size
-        step_count = 10
+        step_count = len(Ytest) // batch_size
+        # step_count = 10
         test_features = model.predict_generator(test_gen, steps=step_count, verbose=1)
         test_label = Ytest[:step_count * batch_size]
         np.savez(data_path + "features_test", test_features, test_label)
 
         step_count = len(Ytrain) // batch_size
-        step_count = 10
+        # step_count = 10
         train_features = model.predict_generator(train_gen, steps=step_count, verbose=1)
         train_label = Ytrain[:step_count * batch_size]
         np.savez(data_path + "features_train", train_features, train_label)
         return
 
     def fine_tuning_saved_file(self,samples_name):
+        '''
+        使用存盘的特征文件来训练 全连接层
+        :param samples_name: 存盘的特征文件的代号
+        :return:
+        '''
         data_path = "{}/data/{}_".format(self._params.PROJECT_ROOT, samples_name)
         D = np.load(data_path + "features_test.npz")
         test_features = D['arr_0']
@@ -275,6 +334,11 @@ class Transfer(object):
                       validation_data=(test_features, test_label))
 
     def merge_model(self, model_dir):
+        '''
+        将新训练的全连接层与 迁移的网络模型进行合并
+        :param model_dir:新训练的全连接层的checkpoint文件所在目录
+        :return:
+        '''
         checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, model_dir)
         latest = tf.train.latest_checkpoint(checkpoint_dir)
 
@@ -306,15 +370,20 @@ class Transfer(object):
         return model
 
     def evaluate_merged_model(self, samples_name):
+        '''
+        使用图块文件，评估 合并后的网络
+        :param samples_name:图块文件的列表的代号
+        :return:
+        '''
         train_gen, test_gen = self.load_data(samples_name, 20)
 
         model = self.merge_model("InceptionV3_2")
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
         test_loss, test_acc = model.evaluate_generator(test_gen, steps = 10)
 
-        # model_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, "InceptionV3")
-        # model_path = model_dir + "/V3-{:.2f}-{:.2f}.h5".format(test_loss, test_acc)
-        # model.save(model_path)
+        model_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, "InceptionV3")
+        model_path = model_dir + "/V3-{:.2f}-{:.2f}.h5".format(test_loss, test_acc)
+        model.save(model_path)
 
         print('Test accuracy:', test_acc)
 
