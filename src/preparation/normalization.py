@@ -8,7 +8,6 @@ __mtime__ = '2018-11-05'
 
 from skimage import color
 import numpy as np
-from sklearn import preprocessing
 
 class ImageNormalization(object):
     def __init__(self):
@@ -30,20 +29,30 @@ class ImageNormalization(object):
         labO_b = lab_img[:, :, 2]
 
         # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差: [-2, 2]
-        labO_l = preprocessing.scale(labO_l)
-        labO_a = preprocessing.scale(labO_a)
-        labO_b = preprocessing.scale(labO_b)
-        labO_l[labO_l > 2] = 2
-        labO_l[labO_l < -2] = -2
-        labO_a[labO_a > 2] = 2
-        labO_a[labO_a < -2] = -2
-        labO_b[labO_b > 2] = 2
-        labO_b[labO_b < -2] = -2
+        lsbO = np.std(labO_l)
+        asbO = np.std(labO_a)
+        bsbO = np.std(labO_b)
 
-        labO_ls = 25 * labO_l + 50       # 100 * (labO_l + 2)/ 4
-        labO_as = 64 * labO_a
-        labO_bs = 64 * labO_b
+        lMO = np.mean(labO_l)
+        aMO = np.mean(labO_a)
+        bMO = np.mean(labO_b)
+
+        labO_l= (labO_l - lMO) / lsbO
+        labO_a = (labO_a - aMO) / asbO
+        labO_b = (labO_b - bMO) / bsbO
+
+        # labO_l[labO_l > 4] = 4
+        # labO_l[labO_l < -4] = -4
+        # labO_a[labO_a > 8] = 8
+        # labO_a[labO_a < -8] = -8
+        # labO_b[labO_b > 8] = 8
+        # labO_b[labO_b < -8] = -8
+
+        labO_ls = 100 * (labO_l + 4) / 8
+        labO_as = 40 * labO_a
+        labO_bs = 40 * labO_b
         labO = np.dstack([labO_ls, labO_as, labO_bs])
         # LAB to RGB变换
         rgb_image = color.lab2rgb(labO)
+
         return rgb_image
