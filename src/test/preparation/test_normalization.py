@@ -33,7 +33,8 @@ class TestNormalization(unittest.TestCase):
         plt.figure(figsize=(10,6), dpi=100)
         for index, filename in enumerate(file_list):
             img = imread("{}/{}".format(patch_path, filename))
-            result = ImageNormalization.normalize(img, 64.4, 17.8, -14.9, 9.69, 4.87, 4.22)
+            # result = ImageNormalization.normalize(img, 64.4, 17.8, -14.9, 9.69, 4.87, 4.22) # 5 x 128
+            result = ImageNormalization.normalize(img, 62.8,19.4,-16.2,12.06,6.86,7.14)  # 20 x 256
 
             plt.subplot(2, 5, index + 1)
             plt.axis("off")
