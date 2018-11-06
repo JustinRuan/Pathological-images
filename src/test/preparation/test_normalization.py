@@ -33,10 +33,20 @@ class TestNormalization(unittest.TestCase):
         plt.figure(figsize=(10,6), dpi=100)
         for index, filename in enumerate(file_list):
             img = imread("{}/{}".format(patch_path, filename))
-            result = ImageNormalization.normalize(img)
+            result = ImageNormalization.normalize(img, 64.4, 17.8, -14.9, 9.69, 4.87, 4.22)
 
             plt.subplot(2, 5, index + 1)
             plt.axis("off")
             plt.imshow(result)
 
         plt.show()
+
+    def test_calculate_mean_std(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+
+        normal = ImageNormalization(c)
+        avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b = \
+            normal.calculate_avg_mean_std("T_SC_2000_256_test.txt")
+
+        print(avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b)
