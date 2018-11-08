@@ -111,3 +111,42 @@ class ImageNormalization(object):
         rgb_image = color.lab2rgb(labO)
 
         return rgb_image
+
+    @staticmethod
+    def normalize_shift_mean(src_img, avg_mean_l, avg_mean_a, avg_mean_b):
+     #   avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b = \
+     #       64.4142491342, 17.8558880865, -14.9493230523, 9.69010566298, 4.87607967592, 4.22826851423  # 5 x 128
+    # 62.8356120408,19.4081460042,-16.2194449226,12.0661142823,6.86495094844,7.14640136961   # 20 x 256
+        lab_img = color.rgb2lab(src_img)
+
+        # LAB三通道分离
+        labO_l = lab_img[:, :, 0]
+        labO_a = lab_img[:, :, 1]
+        labO_b = lab_img[:, :, 2]
+
+        # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
+        lsbO = np.std(labO_l)
+        asbO = np.std(labO_a)
+        bsbO = np.std(labO_b)
+
+        lMO = np.mean(labO_l)
+        aMO = np.mean(labO_a)
+        bMO = np.mean(labO_b)
+
+        # labO_l= (labO_l - lMO) / lsbO * avg_std_l + avg_mean_l
+        # labO_a = (labO_a - aMO) / asbO * avg_std_a + avg_mean_a
+        # labO_b = (labO_b - bMO) / bsbO * avg_std_b + avg_mean_b
+
+        labO_l = (labO_l - lMO) + avg_mean_l
+        labO_a = (labO_a - aMO) + avg_mean_a
+        labO_b = (labO_b - bMO) + avg_mean_b
+
+        labO = np.dstack([labO_l, labO_a, labO_b])
+        # LAB to RGB变换
+        rgb_image = color.lab2rgb(labO)
+
+        return rgb_image
+
+    @staticmethod
+    def normalize_mean(src_img):
+        return ImageNormalization.normalize_shift_mean(src_img, 63, 18, -15)
