@@ -54,7 +54,7 @@ class Test_transfer(unittest.TestCase):
         result = cnn.predict(imgCone, 20, 256, seeds)
         print(result)
 
-    def test_extract_features_list(self):
+    def test_extract_features_for_train(self):
         c = Params()
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
         cnn = Transfer(c)

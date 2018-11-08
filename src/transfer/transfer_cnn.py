@@ -93,7 +93,7 @@ class Transfer(object):
 
         return model
 
-    def load_data(self, samples_name, batch_size):
+    def load_data(self, samples_name, batch_size, augmentation = False):
         '''
         从图片的列表文件中加载数据，到Sequence中
         :param samples_name: 列表文件的代号
@@ -104,9 +104,9 @@ class Transfer(object):
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-        train_gen = ImageSequence(Xtrain, Ytrain, batch_size)
+        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, augmentation)
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        test_gen = ImageSequence(Xtest, Ytest, batch_size)
+        test_gen = ImageSequence(Xtest, Ytest, batch_size, augmentation)
         return  train_gen, test_gen
 
     # def fine_tuning_311(self, samples_name):
@@ -375,7 +375,7 @@ class Transfer(object):
         :param samples_name:图块文件的列表的代号
         :return:
         '''
-        train_gen, test_gen = self.load_data(samples_name, 20)
+        train_gen, test_gen = self.load_data(samples_name, 20, augmentation = True)
 
         model = self.merge_model("InceptionV3_2")
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
