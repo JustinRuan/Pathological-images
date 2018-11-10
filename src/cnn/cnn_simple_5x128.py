@@ -8,7 +8,7 @@ __mtime__ = '2018-11-10'
 
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0" #GPU
-os.environ['CUDA_VISIBLE_DEVICES'] = "-1" #CPU
+# os.environ['CUDA_VISIBLE_DEVICES'] = "-1" #CPU
 
 import numpy as np
 import tensorflow as tf
@@ -63,10 +63,14 @@ class cnn_simple_5x128(object):
 
         model.add(Flatten())
         # 全连接层
-        model.add(Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.01)))
+        # model.add(Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.01)))
+        # # model.add(Dropout(0.5))
+        # model.add(Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.01)))
+        # model.add(Dense(num_classes, activation='softmax', kernel_regularizer=regularizers.l2(0.01)))
+        model.add(Dense(64, activation='relu'))
         # model.add(Dropout(0.5))
-        model.add(Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.01)))
-        model.add(Dense(num_classes, activation='softmax', kernel_regularizer=regularizers.l2(0.01)))
+        model.add(Dense(64, activation='relu'))
+        model.add(Dense(num_classes, activation='softmax'))
 
         checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, self.model_name)
         latest = tf.train.latest_checkpoint(checkpoint_dir)
@@ -99,7 +103,7 @@ class cnn_simple_5x128(object):
                             validation_data=test_gen, validation_steps=6)
         return
 
-    def load_data(self, samples_name, batch_size, augmentation = False):
+    def load_data(self, samples_name, batch_size, augmentation = (False, False)):
         '''
         从图片的列表文件中加载数据，到Sequence中
         :param samples_name: 列表文件的代号
@@ -110,9 +114,10 @@ class cnn_simple_5x128(object):
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, augmentation)
+        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, augmentation[0])
+
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        test_gen = ImageSequence(Xtest, Ytest, batch_size, augmentation)
+        test_gen = ImageSequence(Xtest, Ytest, batch_size, augmentation[1])
         return  train_gen, test_gen
 
     def predict(self):

@@ -17,6 +17,6 @@ class Test_cnn_simple_5x128(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
 
         cnn = cnn_simple_5x128(c, "simplenet128")
-        cnn.train_model("CNN_R_500_128", batch_size = 100, augmentation = False)
+        cnn.train_model("CNN_R_500_128", batch_size = 100, augmentation = (True, False))
 
 
