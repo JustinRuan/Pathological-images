@@ -23,6 +23,7 @@ from sklearn import metrics
 from skimage import io, util
 from core import *
 from core.util import read_csv_file
+from preparation.normalization import ImageNormalization
 
 class cnn_simple_5x128(object):
 
@@ -120,7 +121,32 @@ class cnn_simple_5x128(object):
         test_gen = ImageSequence(Xtest, Ytest, batch_size, augmentation[1])
         return  train_gen, test_gen
 
-    def predict(self):
+    def predict(self, src_img, scale, patch_size, seeds):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return:
+        '''
+        model = self.create_model()
+        optimizer = RMSprop(lr=1e-4, rho=0.9)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        print(model.summary())
 
-        return
+        result = []
+        for x, y in seeds:
+            block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
+            img = block.get_img()
+
+            x = image.img_to_array(ImageNormalization.normalize_mean(img))
+            x = np.expand_dims(x, axis=0)
+
+            predictions = model.predict(x)
+            class_id = np.argmax(predictions[0])
+            probability = predictions[0][class_id]
+            result.append((class_id, probability))
+        return result
+
 

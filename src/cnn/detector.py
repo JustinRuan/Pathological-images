@@ -16,7 +16,8 @@ from skimage import segmentation
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds
 import random
-from cnn import cnn_tensor
+# from cnn import cnn_tensor
+from cnn.cnn_simple_5x128 import cnn_simple_5x128
 
 class Detector(object):
 
@@ -87,7 +88,7 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         seeds = self.get_points_detected_area(extract_scale, patch_size, patch_size >> 1)
 
-        cnn = cnn_tensor(self._params, "simplenet128")
+        cnn = cnn_simple_5x128(self._params, "simplenet128")
         predictions = cnn.predict(self._imgCone, extract_scale, patch_size, seeds)
 
         return seeds, predictions
@@ -107,6 +108,7 @@ class Detector(object):
         partitions = original_patch_size * amplify / new_patch_size
         bias = int(original_patch_size * amplify / (2 * partitions))
         result = []
+        print(">>> Number of patches detected at low magnification: ", len(predictions))
 
         for (x, y), (class_id, probability) in zip(seeds, predictions):
             if probability < 0.95:
@@ -122,7 +124,7 @@ class Detector(object):
                 # result.append((xx, yy + bias))
                 # result.append((xx + bias, yy))
                 # result.append((xx - bias, yy))
-
+        print(">>> Number of patches to be detected at high magnification: ", len(result))
         return result
 
     def transform_coordinate(self, x1, y1, coordinate_scale, seeds_scale, target_scale, seeds):

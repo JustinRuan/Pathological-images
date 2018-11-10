@@ -70,8 +70,8 @@ class Test_detector(unittest.TestCase):
 
         x1 = 600
         y1 = 610
-        x2 = 1420
-        y2 = 1420
+        x2 = 720
+        y2 = 720
         seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1, 5, 128)
         new_seeds = detector.get_seed_deep_analysis(seeds, predictions, 5, 128, 20, 256)
 
