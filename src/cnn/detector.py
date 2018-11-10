@@ -89,7 +89,8 @@ class Detector(object):
         seeds = self.get_points_detected_area(extract_scale, patch_size, patch_size >> 1)
 
         cnn = cnn_simple_5x128(self._params, "simplenet128")
-        predictions = cnn.predict(self._imgCone, extract_scale, patch_size, seeds)
+        # predictions = cnn.predict(self._imgCone, extract_scale, patch_size, seeds)
+        predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, seeds, 20)
 
         return seeds, predictions
 

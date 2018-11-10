@@ -19,7 +19,7 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.utils import to_categorical
 
 from core.util import read_csv_file
-from core.image_sequence import ImageSequence
+from core import *
 
 
 class Transfer(object):
@@ -247,6 +247,31 @@ class Transfer(object):
             predictions = model.predict(x)
             class_id = np.argmax(predictions[0])
             probability = predictions[0][class_id]
+            result.append((class_id, probability))
+
+        return result
+
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :param batch_size: 每批处理的图片数量
+        :return:
+        '''
+        model = self.load_model("InceptionV3/V3-0.06-0.99.h5", False)
+        # model = self.merge_model("InceptionV3_2")
+        print(model.summary())
+
+        image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
+
+        predictions = model.predict_generator(image_itor, verbose=1)
+        result = []
+        for pred_dict in predictions:
+            class_id = np.argmax(pred_dict)
+            probability = pred_dict[class_id]
             result.append((class_id, probability))
 
         return result

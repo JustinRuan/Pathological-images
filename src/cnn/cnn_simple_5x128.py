@@ -149,4 +149,66 @@ class cnn_simple_5x128(object):
             result.append((class_id, probability))
         return result
 
+    # def get_patches_itor(self, src_img, scale, patch_size, seeds, batch_size):
+    #     '''
+    #     将所有的图块中心点集，分割成更小的集合，以便减小图块载入的内存压力
+    #     :param seeds: 所有的需要计算的图块中心点集
+    #     :param batch_size: 每次读入到内存的图块数量（不是Tensor的批处理数量）
+    #     :return: 种子点的迭代器
+    #     '''
+    #     len_seeds = len(seeds)
+    #     start_id = 0
+    #     for end_id in range(batch_size + 1, len_seeds, batch_size):
+    #         result = []
+    #         for x, y in seeds[start_id : end_id]:
+    #             block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
+    #             img = block.get_img()
+    #
+    #             # x = image.img_to_array(ImageNormalization.normalize_mean(img))
+    #             # x = np.expand_dims(x, axis=0)
+    #             result.append(np.array(ImageNormalization.normalize_mean(img)))
+    #
+    #         start_id = end_id
+    #         yield result
+    #
+    #     result = []
+    #     if start_id < len_seeds:
+    #         for x, y in seeds[start_id: len_seeds]:
+    #             block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
+    #             img = block.get_img()
+    #
+    #             # x = image.img_to_array(ImageNormalization.normalize_mean(img))
+    #             # x = np.expand_dims(x, axis=0)
+    #             result.append(np.array(ImageNormalization.normalize_mean(img)))
+    #         yield result
+    #     return
+
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return:
+        '''
+        model = self.create_model()
+        optimizer = RMSprop(lr=1e-4, rho=0.9)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        print(model.summary())
+
+        image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
+        # test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, "CNN_R_500_128")
+        # Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        # image_itor = ImageSequence(Xtest, Ytest, 20)
+
+        predictions = model.predict_generator(image_itor, verbose=1)
+        result = []
+        for pred_dict in predictions:
+            class_id = np.argmax(pred_dict)
+            probability = pred_dict[class_id]
+            result.append((class_id, probability))
+
+        return result
+
 
