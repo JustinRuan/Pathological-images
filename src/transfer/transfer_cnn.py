@@ -19,7 +19,7 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.utils import to_categorical
 
 from core.util import read_csv_file
-from transfer.image_sequence import ImageSequence
+from core.image_sequence import ImageSequence
 
 
 class Transfer(object):
@@ -375,7 +375,7 @@ class Transfer(object):
         :param samples_name:图块文件的列表的代号
         :return:
         '''
-        train_gen, test_gen = self.load_data(samples_name, 20, augmentation = True)
+        train_gen, test_gen = self.load_data(samples_name, 20, augmentation = False)
 
         model = self.merge_model("InceptionV3_2")
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
