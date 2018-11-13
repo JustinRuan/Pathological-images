@@ -126,7 +126,7 @@ class TestPatchSampler(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        code = "004"
+        code = "011"
         tag = imgCone.open_slide("Tumor/Tumor_{}.tif".format(code),
                                  'Tumor/tumor_{}.xml'.format(code), "Tumor_{}".format(code))
         self.assertTrue(tag)
@@ -147,12 +147,57 @@ class TestPatchSampler(unittest.TestCase):
 
             ps = PatchSampler(c)
 
-            c_seeds = ps.generate_seeds4_high(C_mask, extract_scale, patch_size, patch_spacing=32)
-            s_seeds = ps.generate_seeds4_high(N_mask, extract_scale, patch_size, patch_spacing=256)
+            c_seeds = ps.generate_seeds4_high(C_mask, extract_scale, patch_size, patch_spacing=80)
+            s_seeds = ps.generate_seeds4_high(N_mask, extract_scale, patch_size, patch_spacing=128)
             e_seeds = ps.generate_seeds4_high(E_mask, extract_scale, patch_size, patch_spacing=16)
 
             print("c_seeds = ",len(c_seeds),", n_seeds = ", len(s_seeds),", e_seeds = ", len(e_seeds))
 
-            ps.extract_patches(imgCone, extract_scale, patch_size, c_seeds, seeds_name="cancer")
-            ps.extract_patches(imgCone, extract_scale, patch_size, s_seeds, seeds_name="normal")
-            ps.extract_patches(imgCone, extract_scale, patch_size, e_seeds, seeds_name="edge")
+            print("是否提取图块？Y/N")
+            tag_c = input()
+
+            if tag_c == "Y":
+                ps.extract_patches(imgCone, extract_scale, patch_size, c_seeds, seeds_name="cancer")
+                ps.extract_patches(imgCone, extract_scale, patch_size, s_seeds, seeds_name="normal")
+                ps.extract_patches(imgCone, extract_scale, patch_size, e_seeds, seeds_name="edge")
+
+    def test_patch_20x_256_openslide(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        code = "009"
+        tag = imgCone.open_slide("Tumor/Tumor_{}.tif".format(code),
+                                 'Tumor/tumor_{}.xml'.format(code), "Tumor_{}".format(code))
+        self.assertTrue(tag)
+
+        if tag:
+            patch_size = 256
+            edge_width = 4
+            extract_scale = 20
+            # patch_spacing = 128
+            low_scale = c.GLOBAL_SCALE
+
+            mask = imgCone.create_mask_image(low_scale, edge_width)
+            N_mask = mask["N"]
+            C_mask = mask["C"]
+            E_mask = mask["E"]
+            mask1 = imgCone.get_effective_zone(low_scale)
+            N_mask = N_mask & mask1
+
+            ps = PatchSampler(c)
+
+            c_seeds = ps.generate_seeds4_high(C_mask, extract_scale, patch_size, patch_spacing=64)
+            s_seeds = ps.generate_seeds4_high(N_mask, extract_scale, patch_size, patch_spacing=128)
+            e_seeds = ps.generate_seeds4_high(E_mask, extract_scale, patch_size, patch_spacing=16)
+
+            print("c_seeds = ",len(c_seeds),", n_seeds = ", len(s_seeds),", e_seeds = ", len(e_seeds))
+
+            print("是否提取图块？Y/N")
+            tag_c = input()
+
+            if tag_c == "Y":
+                ps.extract_patches(imgCone, extract_scale, patch_size, c_seeds, seeds_name="cancer")
+                ps.extract_patches(imgCone, extract_scale, patch_size, s_seeds, seeds_name="normal")
+                ps.extract_patches(imgCone, extract_scale, patch_size, e_seeds, seeds_name="edge")
