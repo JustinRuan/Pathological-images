@@ -31,7 +31,7 @@ class Block(object):
         self.opcode = opcode
         self.width = w
         self.height = h
-        self.img_file = None
+        # self.img_file = None
         self.img = None
 
     def decoding(self, filename, w, h):
@@ -66,13 +66,13 @@ class Block(object):
         return "{0}_{1:0>6}_{2:0>6}_{3:0>4}_{4:0>1}".format(self.slice_number,
                                                             self.x, self.y, intScale, self.opcode)
 
-    def set_img_file(self, image_file):
-        '''
-        设定图块的文件流
-        :param image_file 文件流:
-        :return:
-        '''
-        self.img_file = image_file
+    # def set_img_file(self, image_file):
+    #     '''
+    #     设定图块的文件流
+    #     :param image_file 文件流:
+    #     :return:
+    #     '''
+    #     self.img_file = image_file
 
     def set_img(self, img):
         '''
@@ -80,16 +80,16 @@ class Block(object):
         :param img: 图像矩阵
         :return:
         '''
-        self.img = img
+        self.img = img[:,:,:3] #如果是RGBA图像，则取前三个通道
 
     def get_img(self):
         '''
         提取图块图像
         :return: 图块图像
         '''
-        if self.img == None:
-            # 从文件流中得到图像矩阵
-            self.img = np.array(Image.open(io.BytesIO(self.img_file)))
+        # if self.img == None:
+        #     # 从文件流中得到图像矩阵
+        #     self.img = np.array(Image.open(io.BytesIO(self.img_file)))
 
         return self.img
 
@@ -100,7 +100,12 @@ class Block(object):
         :return:
         '''
         filename = '/{}.jpg'.format(self.encoding())
-        self.img_file.tofile(path + filename)
+        save_image = Image.fromarray(np.uint8(self.img))
+        save_image.save(path + filename)
+        # if self.img_file == None:
+        #     self.img.save(path + filename)
+        # else:
+        #    self.img_file.tofile(path + filename)
         return
 
     def load_img(self, filename):

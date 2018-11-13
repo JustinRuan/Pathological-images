@@ -19,8 +19,8 @@ class TestBlock(unittest.TestCase):
 
     def test_getBlock(self):
         c = Params()
-        c.load_config_file("D:/CloudSpace/DoingNow/WorkSpace/PatholImage/config/justin.json")
-        imgCone = ImageCone(c)
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+        imgCone = ImageCone(c, KFB_Slide(c.KFB_SDK_PATH))
 
         # 读取数字全扫描切片图像
         tag = imgCone.open_slide("17004930 HE_2017-07-29 09_45_09.kfb",
@@ -28,6 +28,24 @@ class TestBlock(unittest.TestCase):
         self.assertTrue(tag)
 
         block = imgCone.get_image_block(20, 12000, 20000, 256, 256)
+        img = block.get_img()
+
+        plt.imshow(img)
+        plt.show()
+
+        block.save_img(c.PATCHS_ROOT_PATH)
+
+    def test_getBlock2(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_001.tif",
+                                 'Tumor/tumor_001.xml', "Tumor_001")
+        self.assertTrue(tag)
+
+        block = imgCone.get_image_block(5, 6600, 16000, 256, 256)
         img = block.get_img()
 
         plt.imshow(img)
@@ -48,5 +66,3 @@ class TestBlock(unittest.TestCase):
 
         return
 
-if __name__ == '__main__':
-    unittest.main()

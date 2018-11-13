@@ -154,7 +154,7 @@ class Open_Slide(object):
         N_img = ~ morphology.binary_dilation(img, selem=square(width))
         E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, N_img))
 
-        return {"C": C_img, "S": N_img, "E": E_img}
+        return {"C": C_img, "N": N_img, "E": E_img}
 
 
 

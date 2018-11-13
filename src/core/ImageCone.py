@@ -72,10 +72,10 @@ class ImageCone(object):
         :param nHeight: 图块的高
         :return: 返回一个图块对象
         '''
-        data = self._slide.get_image_block_file(fScale, c_x, c_y, nWidth, nHeight)
+        data = self._slide.get_image_block(fScale, c_x, c_y, nWidth, nHeight)
 
         newBlock = Block(self.slice_id, c_x, c_y, fScale, 0, nWidth, nHeight)
-        newBlock.set_img_file(data)
+        newBlock.set_img(data)
         return newBlock
 
     # def get_image_blocks_itor(self, fScale, set_x, set_y, nWidth, nHeight, batch_size):

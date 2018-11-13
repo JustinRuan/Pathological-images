@@ -186,7 +186,46 @@ class KFB_Slide(object):
         # if self.img_pointer :
         return self.UnInitImageFileFunc(byref(self.img_pointer))
 
-    def get_image_block_file(self, c_scale, c_x, c_y, nWidth, nHeight):
+    # def get_image_block_file(self, c_scale, c_x, c_y, nWidth, nHeight):
+    #     '''
+    #     提取所在位置的图块文件流
+    #     :param c_scale: 所使用倍镜数
+    #     :param c_x: 中心x坐标
+    #     :param c_y: 中心y坐标
+    #     :param nWidth: 图块的宽
+    #     :param nHeight: 图块的高
+    #     :return: 图块的文件流，保存它就成为JPG文件
+    #     '''
+    #     pBuffer = POINTER(c_ubyte)()
+    #     DataLength = c_int()
+    #     '''
+    #     bool GetImageDataRoiFunc( ImageInfoStruct sImageInfo, float fScale,
+    #     int sp_x, int sp_y, int nWidth, int nHeight,
+    #     BYTE** pBuffer, int&DataLength, bool flag);
+    #
+    #     参数：
+    #     1.	sImageInfo：传入图像数据指针
+    #     2.	fScale：传入倍率
+    #     3.	sp_x：左上角X坐标
+    #     4.	sp_y：右上角Y坐标
+    #     5.	nWidth：宽度
+    #     6.	nHeight：高度
+    #     7.	pBuffer：返回图像数据指针
+    #     8.	DataLength：返回图像字节长度
+    #     9.	flag：true
+    #
+    #     '''
+    #     #从中心坐标移动到左上角坐标
+    #     sp_x = c_x - (nWidth >> 1)
+    #     sp_y = c_y - (nHeight >> 1)
+    #
+    #     tag = self.GetImageDataRoiFunc(self.img_pointer, c_scale, sp_x, sp_y, nWidth, nHeight, byref(pBuffer),
+    #                                    byref(DataLength), True)
+    #     data = np.ctypeslib.as_array(
+    #         (ctypes.c_ubyte * DataLength.value).from_address(ctypes.addressof(pBuffer.contents)))
+    #     return data
+
+    def get_image_block(self, c_scale, c_x, c_y, nWidth, nHeight):
         '''
         提取所在位置的图块文件流
         :param c_scale: 所使用倍镜数
@@ -223,19 +262,6 @@ class KFB_Slide(object):
                                        byref(DataLength), True)
         data = np.ctypeslib.as_array(
             (ctypes.c_ubyte * DataLength.value).from_address(ctypes.addressof(pBuffer.contents)))
-        return data
-
-    def get_image_block(self, c_scale, c_x, c_y, nWidth, nHeight):
-        '''
-        提取指定位置的图块
-        :param c_scale: 所使用倍镜数
-        :param c_x: 中心x坐标
-        :param c_y: 中心y坐标
-        :param nWidth: 图块的宽
-        :param nHeight: 图块的高
-        :return: 图块的矩阵，用于算法的处理
-        '''
-        data = self.get_image_block_file(c_scale, c_x, c_y, nWidth, nHeight)
         return Image.open(io.BytesIO(data))
 
     def get_thumbnail(self, scale):
