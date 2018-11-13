@@ -261,7 +261,7 @@ class Transfer(object):
         :param batch_size: 每批处理的图片数量
         :return:
         '''
-        model = self.load_model("InceptionV3/V3-0.06-0.99.h5", False)
+        model = self.load_model("InceptionV3/V3-0.07-0.99.h5", False)
         # model = self.merge_model("InceptionV3_2")
         print(model.summary())
 
@@ -400,11 +400,11 @@ class Transfer(object):
         :param samples_name:图块文件的列表的代号
         :return:
         '''
-        train_gen, test_gen = self.load_data(samples_name, 20, augmentation = False)
+        train_gen, test_gen = self.load_data(samples_name, 100, augmentation = False)
 
         model = self.merge_model("InceptionV3_2")
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-        test_loss, test_acc = model.evaluate_generator(test_gen, steps = 10)
+        test_loss, test_acc = model.evaluate_generator(test_gen, steps = 10, verbose=1)
 
         model_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, "InceptionV3")
         model_path = model_dir + "/V3-{:.2f}-{:.2f}.h5".format(test_loss, test_acc)

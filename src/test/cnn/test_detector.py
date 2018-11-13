@@ -74,10 +74,11 @@ class Test_detector(unittest.TestCase):
         y2 = 920
         seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1, 5, 128)
         new_seeds = detector.get_seed_deep_analysis(seeds, predictions, 5, 128, 20, 256)
+        # print(predictions)
 
         cnn = Transfer(c)
-        predictions_deep = cnn.predict_on_batch(imgCone, 20, 256, new_seeds, 20)
-        # print(result)
+        predictions_deep = cnn.predict_on_batch(imgCone, 20, 256, new_seeds, 100)
+        print(predictions_deep)
 
         cancer_map, prob_map, count_map = detector.create_cancer_map(x1, y1, 1, 5, 1.25, seeds, predictions, 128, None,
                                                                      None)

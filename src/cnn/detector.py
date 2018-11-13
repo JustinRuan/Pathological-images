@@ -90,7 +90,7 @@ class Detector(object):
 
         cnn = cnn_simple_5x128(self._params, "simplenet128")
         # predictions = cnn.predict(self._imgCone, extract_scale, patch_size, seeds)
-        predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, seeds, 20)
+        predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, seeds, 100)
 
         return seeds, predictions
 

@@ -95,6 +95,7 @@ class cnn_simple_5x128(object):
             period=1)
 
         model = self.create_model()
+        print(model.summary())
         # optimizer = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
         optimizer = RMSprop(lr=1e-4, rho=0.9)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])

@@ -6,7 +6,7 @@ __mtime__ = '2018-10-13'
 
 """
 from core import Block
-from core.Slice import Slice
+from core.KFB_slide import KFB_Slide
 import numpy as np
 from skimage import draw
 from skimage import color, morphology
@@ -15,8 +15,9 @@ import io
 
 class ImageCone(object):
 
-    def __init__(self, params):
-        self._slice = Slice(params.KFB_SDK_PATH)
+    def __init__(self, params, slide):
+        # self._slide = KFB_Slide(params.KFB_SDK_PATH)
+        self._slide = slide
         self._params = params
 
     def open_slide(self, filename, ano_filename, id_string):
@@ -29,12 +30,12 @@ class ImageCone(object):
         '''
         path = "{}/{}".format(self._params.SLICES_ROOT_PATH, filename)
         self.slice_id = id_string
-        tag = self._slice.open_slide(path, id_string)
+        tag = self._slide.open_slide(path, id_string)
 
         if tag:
             if not ano_filename is None:
                 path = "{}/{}".format(self._params.SLICES_ROOT_PATH, ano_filename)
-                self._slice.read_annotation(path)
+                self._slide.read_annotation(path)
 
             return True
 
@@ -46,10 +47,7 @@ class ImageCone(object):
         :param scale: 倍镜数
         :return:
         '''
-        w, h = self.get_image_width_height_byScale(scale)
-
-        fullImage = self._slice.get_image_block(scale, w>>1, h>>1, w, h)
-        return fullImage
+        return self._slide.get_thumbnail(scale)
 
     def get_image_width_height_byScale(self, scale):
         '''
@@ -61,7 +59,7 @@ class ImageCone(object):
             print("\a", "The size of image is too large")
             return
 
-        w, h = self._slice.get_image_width_height_byScale(scale)
+        w, h = self._slide.get_image_width_height_byScale(scale)
         return w, h
 
     def get_image_block(self, fScale, c_x, c_y, nWidth, nHeight):
@@ -74,7 +72,7 @@ class ImageCone(object):
         :param nHeight: 图块的高
         :return: 返回一个图块对象
         '''
-        data = self._slice.get_image_block_file(fScale, c_x, c_y, nWidth, nHeight)
+        data = self._slide.get_image_block_file(fScale, c_x, c_y, nWidth, nHeight)
 
         newBlock = Block(self.slice_id, c_x, c_y, fScale, 0, nWidth, nHeight)
         newBlock.set_img_file(data)
@@ -113,37 +111,7 @@ class ImageCone(object):
         :param width: 边缘区单边宽度
         :return: 对应的Mask图像
         '''
-        w, h = self._slice.get_image_width_height_byScale(scale)
-        '''
-        癌变区代号 C， ano_TUMOR，将对应的标记区域，再腐蚀width宽。
-        正常间质区代号 S， ano_STROMA，将对应的标记区域，再腐蚀width宽。
-        淋巴区代号 L, ano_LYMPH, 将对应的标记区域,良性区域。
-        边缘区代号 E， 在C和N，L之间的一定宽度的边缘，= ALL(有效区域) - C
-       '''
-        img = np.zeros((h, w), dtype=np.bool)
-        for contour in self._slice.ano_TUMOR:
-            tumor_range = np.rint(contour * scale).astype(np.int)
-            rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-            img[rr, cc] = 1
-
-        for contour in self._slice.ano_NORMAL:
-            tumor_range = np.rint(contour * scale).astype(np.int)
-            rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-            img[rr, cc] = 0
-
-        C_img = morphology.binary_erosion(img, selem=square(width))
-        SL_img = ~ morphology.binary_dilation(img, selem=square(width)) #淋巴区域包括在内
-        E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, SL_img))
-
-        img = np.zeros((h, w), dtype=np.bool)
-        for contour in self._slice.ano_LYMPH:
-            tumor_range = np.rint(contour * scale).astype(np.int)
-            rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-            img[rr, cc] = 1
-        L_img = morphology.binary_erosion(img, selem=square(8))
-        S_img = np.bitwise_xor(SL_img, img)
-
-        return C_img, S_img, E_img, L_img
+        return self._slide.create_mask_image(scale, width)
 
     def get_effective_zone(self, scale):
         '''

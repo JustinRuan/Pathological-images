@@ -16,7 +16,7 @@ class TestImageCone(unittest.TestCase):
     def test_load(self):
         c = Params()
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
-        imgCone = ImageCone(c)
+        imgCone = ImageCone(c, KFB_Slide(c.KFB_SDK_PATH))
 
         # 读取数字全扫描切片图像
         tag = imgCone.open_slide("17004930 HE_2017-07-29 09_45_09.kfb",
@@ -26,25 +26,25 @@ class TestImageCone(unittest.TestCase):
         if tag:
             scale = c.GLOBAL_SCALE
             fullImage = imgCone.get_fullimage_byScale(scale)
-            C_mask, N_mask, E_mask, L_mask = imgCone.create_mask_image(scale,64)
+            masks = imgCone.create_mask_image(scale,64)
             mask1 = imgCone.get_effective_zone(scale)
-            mask2 = N_mask & mask1
+            mask2 = masks["S"] & mask1
 
-            fig, axes = plt.subplots(2, 3, figsize=(6, 3), dpi=400)
+            fig, axes = plt.subplots(2, 3, figsize=(12, 6), dpi=200)
             ax = axes.ravel()
 
             ax[0].imshow(fullImage)
             ax[0].set_title("full")
 
-            ax[1].imshow(C_mask)
+            ax[1].imshow(masks["C"])
             ax[1].set_title("C_mask")
-            ax[2].imshow(N_mask)
-            ax[2].set_title("N_mask")
-            ax[3].imshow(E_mask)
+            ax[2].imshow(masks["S"])
+            ax[2].set_title("S_mask")
+            ax[3].imshow(masks["E"])
             ax[3].set_title("E_mask")
             ax[4].imshow(mask1)
             ax[4].set_title("ROI")
-            ax[5].imshow(L_mask)
+            ax[5].imshow(masks["L"])
             ax[5].set_title("L_mask")
 
             for a in ax.ravel():
@@ -52,6 +52,39 @@ class TestImageCone(unittest.TestCase):
 
             plt.show()
 
+    def test_load2(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+        imgCone = ImageCone(c, Open_Slide())
 
-if __name__ == '__main__':
-    unittest.main()
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_001.tif",
+                                 'Tumor/tumor_001.xml', "Tumor_001")
+        self.assertTrue(tag)
+
+        if tag:
+            scale = c.GLOBAL_SCALE
+            fullImage = imgCone.get_fullimage_byScale(scale)
+            masks = imgCone.create_mask_image(scale,4)
+            mask1 = imgCone.get_effective_zone(scale)
+            mask2 = masks["S"] & mask1
+
+            fig, axes = plt.subplots(2, 3, figsize=(12, 6), dpi=200)
+            ax = axes.ravel()
+
+            ax[0].imshow(fullImage)
+            ax[0].set_title("full")
+
+            ax[1].imshow(masks["C"])
+            ax[1].set_title("C_mask")
+            ax[2].imshow(masks["S"])
+            ax[2].set_title("S_mask")
+            ax[3].imshow(masks["E"])
+            ax[3].set_title("E_mask")
+            ax[4].imshow(mask1)
+            ax[4].set_title("ROI")
+
+            for a in ax.ravel():
+                a.axis('off')
+
+            plt.show()

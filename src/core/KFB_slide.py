@@ -14,6 +14,9 @@ from ctypes import POINTER, byref
 from PIL import Image
 import io
 import xml.dom.minidom
+from skimage import draw
+from skimage import color, morphology
+from skimage.morphology import square
 
 TUMOR_RANGE_COLOR = 4278190335
 NORMAL_RANGE_COLOR = 4278222848
@@ -24,7 +27,7 @@ class ImageInfoStruct(ctypes.Structure):
     _fields_ = [("DataFilePTR", LPARAM)]
 
 
-class Slice(object):
+class KFB_Slide(object):
     def __init__(self, SDK_path):
         '''
         初始化过程
@@ -183,10 +186,10 @@ class Slice(object):
         # if self.img_pointer :
         return self.UnInitImageFileFunc(byref(self.img_pointer))
 
-    def get_image_block_file(self, fScale, c_x, c_y, nWidth, nHeight):
+    def get_image_block_file(self, c_scale, c_x, c_y, nWidth, nHeight):
         '''
         提取所在位置的图块文件流
-        :param fScale: 所使用倍镜数
+        :param c_scale: 所使用倍镜数
         :param c_x: 中心x坐标
         :param c_y: 中心y坐标
         :param nWidth: 图块的宽
@@ -216,30 +219,28 @@ class Slice(object):
         sp_x = c_x - (nWidth >> 1)
         sp_y = c_y - (nHeight >> 1)
 
-        tag = self.GetImageDataRoiFunc(self.img_pointer, fScale, sp_x, sp_y, nWidth, nHeight, byref(pBuffer),
+        tag = self.GetImageDataRoiFunc(self.img_pointer, c_scale, sp_x, sp_y, nWidth, nHeight, byref(pBuffer),
                                        byref(DataLength), True)
         data = np.ctypeslib.as_array(
             (ctypes.c_ubyte * DataLength.value).from_address(ctypes.addressof(pBuffer.contents)))
         return data
 
-    def get_image_block(self, fScale, c_x, c_y, nWidth, nHeight):
+    def get_image_block(self, c_scale, c_x, c_y, nWidth, nHeight):
         '''
         提取指定位置的图块
-        :param fScale: 所使用倍镜数
+        :param c_scale: 所使用倍镜数
         :param c_x: 中心x坐标
         :param c_y: 中心y坐标
         :param nWidth: 图块的宽
         :param nHeight: 图块的高
         :return: 图块的矩阵，用于算法的处理
         '''
-        data = self.get_image_block_file(fScale, c_x, c_y, nWidth, nHeight)
+        data = self.get_image_block_file(c_scale, c_x, c_y, nWidth, nHeight)
         return Image.open(io.BytesIO(data))
 
-        # if isFile:
-        #     return data
-        # else:
-        #     resultJPG = Image.open(io.BytesIO(data))
-        #     return resultJPG
+    def get_thumbnail(self, scale):
+        ImageWidth, ImageHeight = self.get_image_width_height_byScale(scale)
+        return self.get_image_block(scale, ImageWidth>>1, ImageHeight>>1, ImageWidth, ImageHeight)
 
     ############################## v.03 代码 #################################
     '''
@@ -255,9 +256,7 @@ class Slice(object):
         :param filename: 切片标注文件名
         :return:
         '''
-        self.ano_TUMOR = []
-        self.ano_NORMAL = []
-        self.ano_LYMPH = []
+        self.ano = {"TUMOR":[], "NORMAL":[], "LYMPH":[]}
 
         # 使用minidom解析器打开 XML 文档
         fp = open(filename, 'r', encoding="utf-8")
@@ -286,13 +285,53 @@ class Slice(object):
                         i += 1
 
                     if range_type == TUMOR_RANGE_COLOR:
-                        self.ano_TUMOR.append(posArray)
+                        self.ano["TUMOR"].append(posArray)
                     elif range_type == NORMAL_RANGE_COLOR:
-                        self.ano_NORMAL.append(posArray)
+                        self.ano["NORMAL"].append(posArray)
                     elif range_type == LYMPH_RANGE_COLOR:
-                        self.ano_LYMPH.append(posArray)
+                        self.ano["LYMPH"].append(posArray)
 
         return
+
+    def create_mask_image(self, scale, width):
+        '''
+        在设定的倍镜下，生成四种标注区的mask图像（NECL）
+        :param scale: 指定的倍镜数
+        :param width: 边缘区单边宽度
+        :return: 对应的Mask图像
+        '''
+        w, h = self.get_image_width_height_byScale(scale)
+        '''
+        癌变区代号 C， ano_TUMOR，将对应的标记区域，再腐蚀width宽。
+        正常间质区代号 S， ano_STROMA，将对应的标记区域，再腐蚀width宽。
+        淋巴区代号 L, ano_LYMPH, 将对应的标记区域,良性区域。
+        边缘区代号 E， 在C和N，L之间的一定宽度的边缘，= ALL(有效区域) - C
+       '''
+        img = np.zeros((h, w), dtype=np.bool)
+
+        for contour in self.ano["TUMOR"]:
+            tumor_range = np.rint(contour * scale).astype(np.int)
+            rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
+            img[rr, cc] = 1
+
+        for contour in self.ano["NORMAL"]:
+            tumor_range = np.rint(contour * scale).astype(np.int)
+            rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
+            img[rr, cc] = 0
+
+        C_img = morphology.binary_erosion(img, selem=square(width))
+        SL_img = ~ morphology.binary_dilation(img, selem=square(width)) #淋巴区域包括在内
+        E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, SL_img))
+
+        img = np.zeros((h, w), dtype=np.bool)
+        for contour in self.ano["LYMPH"]:
+            tumor_range = np.rint(contour * scale).astype(np.int)
+            rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
+            img[rr, cc] = 1
+        L_img = morphology.binary_erosion(img, selem=square(8))
+        S_img = np.bitwise_xor(SL_img, img)
+
+        return {"C": C_img, "S": S_img, "E": E_img, "L": L_img}
 
     ############################## v.02 代码 #################################
     '''关于标注的说明：
