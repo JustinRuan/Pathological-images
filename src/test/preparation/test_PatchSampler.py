@@ -167,7 +167,7 @@ class TestPatchSampler(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        code = "009"
+        code = "004"
         tag = imgCone.open_slide("Tumor/Tumor_{}.tif".format(code),
                                  'Tumor/tumor_{}.xml'.format(code), "Tumor_{}".format(code))
         self.assertTrue(tag)
@@ -189,7 +189,7 @@ class TestPatchSampler(unittest.TestCase):
             ps = PatchSampler(c)
 
             c_seeds = ps.generate_seeds4_high(C_mask, extract_scale, patch_size, patch_spacing=64)
-            s_seeds = ps.generate_seeds4_high(N_mask, extract_scale, patch_size, patch_spacing=128)
+            s_seeds = ps.generate_seeds4_high(N_mask, extract_scale, patch_size, patch_spacing=512)
             e_seeds = ps.generate_seeds4_high(E_mask, extract_scale, patch_size, patch_spacing=16)
 
             print("c_seeds = ",len(c_seeds),", n_seeds = ", len(s_seeds),", e_seeds = ", len(e_seeds))

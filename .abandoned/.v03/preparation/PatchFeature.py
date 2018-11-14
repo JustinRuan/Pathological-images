@@ -17,38 +17,38 @@ class PatchFeature(object):
         self._params = params
         return
 
-    # train_filename = "ZoneA_train.txt"
-    def loading_data(self, data_filename):
-        '''
-        从指定文件列表中，读入图像文件，并计算特征，和分类Tag
-        :param data_filename: 图像文件的列表，前项是文件名，后项是tag
-        :return: 特征向量集合，tag集合
-        '''
-        root_path = self._params.PATCHS_ROOT_PATH
-        data_file = "{}/{}".format(root_path, data_filename)
-
-        fe = FeatureExtractor()
-        features = []
-        tags = []
-        count = 0
-
-        f = open(data_file, "r")
-        for line in f:
-            items = line.split(" ")
-            patch_file = "{}/{}".format(root_path, items[0])
-            img = io.imread(patch_file, as_grey=False)
-            tag = int(items[1])
-            fvector = fe.extract_feature(img, "best")
-
-            features.append(fvector)
-            tags.append(tag)
-
-            if (0 == count%200):
-                print("{} extract feature >>> {}".format(time.asctime( time.localtime()), count))
-            count += 1
-
-        f.close()
-        return features, tags
+    # # train_filename = "ZoneA_train.txt"
+    # def loading_data(self, data_filename):
+    #     '''
+    #     从指定文件列表中，读入图像文件，并计算特征，和分类Tag
+    #     :param data_filename: 图像文件的列表，前项是文件名，后项是tag
+    #     :return: 特征向量集合，tag集合
+    #     '''
+    #     root_path = self._params.PATCHS_ROOT_PATH
+    #     data_file = "{}/{}".format(root_path, data_filename)
+    #
+    #     fe = FeatureExtractor()
+    #     features = []
+    #     tags = []
+    #     count = 0
+    #
+    #     f = open(data_file, "r")
+    #     for line in f:
+    #         items = line.split(" ")
+    #         patch_file = "{}/{}".format(root_path, items[0])
+    #         img = io.imread(patch_file, as_grey=False)
+    #         tag = int(items[1])
+    #         fvector = fe.extract_feature(img, "best")
+    #
+    #         features.append(fvector)
+    #         tags.append(tag)
+    #
+    #         if (0 == count%200):
+    #             print("{} extract feature >>> {}".format(time.asctime( time.localtime()), count))
+    #         count += 1
+    #
+    #     f.close()
+    #     return features, tags
 
     # x = features, y = tags
     def train_svm(self, X, y, patch_size, name):

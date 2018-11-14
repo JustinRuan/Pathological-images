@@ -10,8 +10,8 @@ import numpy as np
 from skimage import color, morphology
 from skimage.morphology import square
 import os
-from preparation import PatchFeature
-from feature import FeatureExtractor
+# from preparation import PatchFeature
+from feature import feature_extractor
 from core.util import get_seeds
 
 class PatchSampler(object):

@@ -6,13 +6,13 @@ __mtime__ = '2018-10-14'
 
 """
 
+import time
 import os
 import shutil
 import random
 from sklearn.svm import SVC
 from sklearn.externals import joblib
 from sklearn import metrics
-from preparation import PatchFeature
 import numpy as np
 from feature import FeatureExtractor
 from skimage import io
@@ -136,24 +136,26 @@ class PatchPack(object):
 
         return data_tag
 
-    def refine_sample_tags_SVM(self, dir_map, train_code):
+    def extract_feature_save_file(self, train_file_code):
+        pf = FeatureExtractor(self._params)
+        features, tag = pf.extract_features_by_file_list("{}.txt".format(train_file_code))
+
+        data_filename = "{}/data/{}_features_tags".format(self._params.PROJECT_ROOT, train_file_code)
+        np.savez(data_filename, features, tag)
+        return
+
+    def train_SVM_for_refine_sample(self, train_file_code):
         '''
         精炼过程：迭代过程，从已经标注的样本中寻找最典经（最容易分类正确）的样本，并用它们训练SVM
         :param dir_map: 样本以及标记
         :param train_code: 生成SVM的代号
         :return: 得到一个能进行SC二分的分类器
         '''
-        # train_code = "R_SC_5x128"
-        data_tag = self.initialize_sample_tags(dir_map)
-        self.create_data_txt(data_tag, train_code)
 
-        # self.create_train_test_data(data_tag, 0.5, 0.5, train_code)
-        #
-        # pf = PatchFeature(self._params)
-        # features_1, tags_1 = pf.loading_data("{}_train.txt".format(train_code))
-        # features_2, tags_2 = pf.loading_data("{}_test.txt".format(train_code))
-        pf = PatchFeature(self._params)
-        features, tag = pf.loading_data("{}.txt".format(train_code))
+        data_filename = "{}/data/{}_features_tags.npz".format(self._params.PROJECT_ROOT, train_file_code)
+        D = np.load(data_filename)
+        features = D['arr_0']
+        tag = D['arr_1']
         features_1, features_2, tags_1, tags_2 = train_test_split(features, tag, test_size=0.5, random_state=0)
 
         clf = SVC(C=1, kernel='rbf', probability=False) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
@@ -179,12 +181,16 @@ class PatchPack(object):
             features_1 = np.array(features_1)[simple_samples,:]
             tags_1 = np.array(tags_1)[simple_samples]
 
-        model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_code)
+        model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_file_code)
         joblib.dump(rf, model_file)
 
+        predicted_tags = rf.predict(features)
+        print("Classification report for classifier %s:\n%s\n"
+              % (clf, metrics.classification_report(tag, predicted_tags)))
+        print("Confusion matrix:\n%s" % metrics.confusion_matrix(tag, predicted_tags))
         return
 
-    def extract_refine_sample_SC(self, extract_scale, SC_dir_map, train_code, patch_size):
+    def create_refined_sample_txt(self, extract_scale, patch_size, dir_map, tag_name_map, train_code):
         '''
         用精炼SVM对样本进行分类，找出间质中的癌图块，以及癌变区域中的间质图块
         :param extract_scale: 提取的倍镜数
@@ -196,13 +202,14 @@ class PatchPack(object):
         model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_code)
         classifier = joblib.load(model_file)
 
-        fe = FeatureExtractor()
-        data_tag = self.initialize_sample_tags(SC_dir_map)
+        fe = feature_extractor()
+        data_tag = self.initialize_sample_tags(dir_map)
 
-        ClearCancer = []
-        ClearStroma = []
-        AmbiguousCancer = []
-        AmbiguousStroma = []
+        count = 0
+        result_filenames = {}
+        for tag, name in tag_name_map.items():
+            result_filenames["True_" + name] = []
+            result_filenames["False_" + name] = []
 
         Root_path = self._params.PATCHS_ROOT_PATH
         for patch_file, tag in data_tag:
@@ -211,82 +218,20 @@ class PatchPack(object):
             fvector = fe.extract_feature(img, "best")
             predicted_tags = classifier.predict([fvector])
             if (predicted_tags == tag):
-                if tag == 0:
-                    ClearStroma.append((patch_file, 0))
-                elif tag == 1:
-                    ClearCancer.append((patch_file, 1))
+                result_filenames["True_" + tag_name_map[tag]].append((patch_file, tag))
             else:
-                if tag == 0:
-                    AmbiguousStroma.append((patch_file, 1))
-                elif tag == 1:
-                    AmbiguousCancer.append((patch_file, 0))
+                result_filenames["False_" + tag_name_map[tag]].append((patch_file, predicted_tags[0]))
+
+            if (0 == count%200):
+                print("{} predicting  >>> {}".format(time.asctime( time.localtime()), count))
+            count += 1
 
         intScale = np.rint(extract_scale * 100).astype(np.int)
-        pathCancer = "S{}_{}_{}".format(intScale,patch_size, "ClearCancer")
-        pathStroma = "S{}_{}_{}".format(intScale,patch_size, "ClearStroma")
-        pathAmbiguousCancer = "S{}_{}_{}".format(intScale, patch_size,"AmbiguousCancer")
-        pathAmbiguousStroma = "S{}_{}_{}".format( intScale, patch_size,"AmbiguousStroma")
-
-        self.create_data_txt(ClearCancer, pathCancer)
-        self.create_data_txt(ClearStroma, pathStroma)
-        self.create_data_txt(AmbiguousCancer, pathAmbiguousCancer)
-        self.create_data_txt(AmbiguousStroma, pathAmbiguousStroma)
+        for name, result_list in result_filenames.items():
+            path = "S{}_{}_{}".format(intScale,patch_size, name)
+            self.create_data_txt(result_list, path)
 
         return
-
-    # def extract_refine_sample_LE(self, extract_scale, LE_dir_map, train_code, patch_size):
-    #     '''
-    #     用精炼SVM对样本进行分类，找出边缘区域中的癌图块和间质图块，以及淋巴区域中的间质图块和癌变图块
-    #     :param extract_scale: 提取的倍镜数
-    #     :param SC_dir_map: 将要进行分类的L和E图块
-    #     :param train_code: 生成新的目录的代码
-    #     :param patch_size: 图块大小
-    #     :return:
-    #     '''
-    #     model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_code)
-    #     classifier = joblib.load(model_file)
-    #
-    #     fe = FeatureExtractor()
-    #     data_tag = self.initialize_sample_tags(LE_dir_map) # lymph 0, edge 1
-    #
-    #     Root_path = self._params.PATCHS_ROOT_PATH
-    #     intScale = np.rint(extract_scale * 100).astype(np.int)
-    #     pathLymphStroma = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size,"LymphStroma")
-    #     pathLymphCancer = "{}/S{}_{}_{}".format(Root_path,intScale, patch_size,"LymphCancer")
-    #     pathEdgeStroma = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size,"EdgeStroma")
-    #     pathEdgeCancer = "{}/S{}_{}_{}".format(Root_path,intScale, patch_size,"EdgeCancer")
-    #
-    #     if (not os.path.exists(pathLymphStroma)):
-    #         os.makedirs(pathLymphStroma)
-    #
-    #     if (not os.path.exists(pathLymphCancer)):
-    #         os.makedirs(pathLymphCancer)
-    #
-    #     if (not os.path.exists(pathEdgeStroma)):
-    #         os.makedirs(pathEdgeStroma)
-    #
-    #     if (not os.path.exists(pathEdgeCancer)):
-    #         os.makedirs(pathEdgeCancer)
-    #
-    #     for patch_file, tag in data_tag:
-    #         old_path = "{}/{}".format(Root_path, patch_file)
-    #         img = io.imread(old_path, as_grey=False)
-    #         fvector = fe.extract_feature(img, "best")
-    #
-    #         predicted_tags = classifier.predict([fvector])
-    #         old_filename = os.path.split(patch_file)[-1]
-    #         if (tag == 0): # Lymph
-    #             if predicted_tags == 0:
-    #                 new_filename = "{}/{}".format(pathLymphStroma, old_filename)
-    #             elif predicted_tags == 1:
-    #                 new_filename = "{}/{}".format(pathLymphCancer, old_filename)
-    #         else:       # Edge
-    #             if predicted_tags == 0:
-    #                 new_filename = "{}/{}".format(pathEdgeStroma, old_filename)
-    #             elif predicted_tags == 1:
-    #                 new_filename = "{}/{}".format(pathEdgeCancer, old_filename)
-    #         shutil.copy(old_path, new_filename)
-    #     return
 
     def packing_refined_samples(self, extract_scale, patch_size):
 

@@ -6,37 +6,41 @@ __mtime__ = '2018-05-23'
 
 """
 
+import os
 import unittest
-from core import *
-from preparation import *
+from core import Params
+from preparation import PatchPack
+import matplotlib.pyplot as plt
+from skimage.io import imread
+from core.util import read_csv_file
 
 class TestPatchPack(unittest.TestCase):
 
-    def test_pack_refine_sample_tags_SC(self):
-        c = Params()
-        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
-
-        pack = PatchPack(c)
-        pack.refine_sample_tags_SVM({"S500_128_cancer":1,"S500_128_stroma":0}, "R_SC_5x128")
-
-
-    def test_extract_refine_sample_SC(self):
-        c = Params()
-        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
-
-        pack = PatchPack(c)
-        dir_map = {"S500_128_cancer":1,"S500_128_stroma":0}
-        pack.extract_refine_sample_SC(5, dir_map, "R_SC_5x128", 128)
-
-        # dir_map = {"S500_128_edge": 1, "S500_128_lymph": 0}
-        # pack.extract_refine_sample_LE(5, dir_map,  "R_SC_5x128", 128)
-
-    def test_packing_refined_samples(self):
-        c = Params()
-        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
-
-        pack = PatchPack(c)
-        pack.packing_refined_samples(5, 128)
+    # def test_pack_refine_sample_tags_SC(self):
+    #     c = Params()
+    #     c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+    #
+    #     pack = PatchPack(c)
+    #     pack.refine_sample_tags_SVM({"S500_128_cancer":1,"S500_128_stroma":0}, "R_SC_5x128")
+    #
+    #
+    # def test_extract_refine_sample_SC(self):
+    #     c = Params()
+    #     c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+    #
+    #     pack = PatchPack(c)
+    #     dir_map = {"S500_128_cancer":1,"S500_128_stroma":0}
+    #     pack.extract_refine_sample_SC(5, dir_map, "R_SC_5x128", 128)
+    #
+    #     # dir_map = {"S500_128_edge": 1, "S500_128_lymph": 0}
+    #     # pack.extract_refine_sample_LE(5, dir_map,  "R_SC_5x128", 128)
+    #
+    # def test_packing_refined_samples(self):
+    #     c = Params()
+    #     c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+    #
+    #     pack = PatchPack(c)
+    #     pack.packing_refined_samples(5, 128)
 
     def test_pack_samples_256(self):
         c = Params()
@@ -46,3 +50,61 @@ class TestPatchPack(unittest.TestCase):
         data_tag = pack.initialize_sample_tags({"S2000_256_cancer":1,"S2000_256_stroma":0})
         # pack.create_data_txt(data_tag, "SC_20x256")
         pack.create_train_test_data(data_tag, 0.8, 0.2, "T_SC_2000_256")
+
+    def test_pack_sample_128(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+
+        pack = PatchPack(c)
+        data_tag = pack.initialize_sample_tags({"S500_128_cancer":1,"S500_128_normal":0})
+        pack.create_train_test_data(data_tag, 0.8, 0.2, "T_NC_500_128")
+        pack.create_data_txt(data_tag, "T_NC_500_128")
+
+    def test_extract_features_save_file(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+
+        pack = PatchPack(c)
+        pack.extract_feature_save_file("T_NC_500_128")
+
+    def test_train_SVM_for_refine_sample(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+
+        pack = PatchPack(c)
+        pack.train_SVM_for_refine_sample("T_NC_500_128")
+
+    def test_create_refined_sample_txt(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+
+        pack = PatchPack(c)
+        dir_map = {"S500_128_cancer": 1, "S500_128_normal": 0}
+        tag_name_map = {1 : "cancer", 0 : "normal"}
+        pack.create_refined_sample_txt(5, 128, dir_map, tag_name_map, "T_NC_500_128")
+
+
+    def test_show_sample_txt(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+        sample_txt = "{}/{}".format(c.PATCHS_ROOT_PATH, "S500_128_True_normal.txt")
+        patch_path = c.PATCHS_ROOT_PATH
+
+        filenames_list, labels_list = read_csv_file(patch_path, sample_txt)
+
+        fig = plt.figure(figsize=(8,10), dpi=100)
+        for index, filename in enumerate(filenames_list):
+            img = imread(filename)
+            pos = index % 20
+            plt.subplot(4, 5, pos + 1)
+            plt.imshow(img)
+            plt.axis("off")
+
+            if pos == 19:
+                fig.tight_layout()  # 调整整体空白
+                plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
+                plt.show()
+
+                # os.system('pause')
+            # if pos == 19:
+            #     break;

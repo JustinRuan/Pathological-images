@@ -8,7 +8,7 @@ __mtime__ = '2018-10-26'
 from core import *
 import numpy as np
 from sklearn import metrics
-from feature import FeatureExtractor
+from feature import feature_extractor
 from skimage import io, util
 from sklearn.svm import SVC
 from sklearn.externals import joblib

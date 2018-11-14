@@ -5,6 +5,6 @@ __author__ = 'Justin'
 __mtime__ = '2018-05-24'
 
 """
-from feature.FeatureExtractor import FeatureExtractor
+from .feature_extractor import FeatureExtractor
 
 __all__ = ["FeatureExtractor"]
