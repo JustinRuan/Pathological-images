@@ -271,17 +271,17 @@ class PatchPack(object):
 
         return
 
-    def packing_refined_samples(self, extract_scale, patch_size):
+    def packing_refined_samples(self, file_map, extract_scale, patch_size):
 
         root_path = self._params.PATCHS_ROOT_PATH
         intScale = np.rint(extract_scale * 100).astype(np.int)
-        pathCancer = "S{}_{}_{}.txt".format(intScale,patch_size, "ClearCancer")
-        pathStroma = "S{}_{}_{}.txt".format(intScale,patch_size, "ClearStroma")
-        pathAmbiguousCancer = "S{}_{}_{}.txt".format(intScale, patch_size,"AmbiguousCancer")
-        pathAmbiguousStroma = "S{}_{}_{}.txt".format( intScale, patch_size,"AmbiguousStroma")
-
-        #暧昧的癌变图块（癌变区中间质图块），暧昧的间质图块（间质区中的癌变图块）
-        file_map = {pathCancer: 1, pathStroma: 0, pathAmbiguousCancer: 0, pathAmbiguousStroma: 1}
+        # pathCancer = "S{}_{}_{}.txt".format(intScale,patch_size, "ClearCancer")
+        # pathStroma = "S{}_{}_{}.txt".format(intScale,patch_size, "ClearStroma")
+        # pathAmbiguousCancer = "S{}_{}_{}.txt".format(intScale, patch_size,"AmbiguousCancer")
+        # pathAmbiguousStroma = "S{}_{}_{}.txt".format( intScale, patch_size,"AmbiguousStroma")
+        #
+        # #暧昧的癌变图块（癌变区中间质图块），暧昧的间质图块（间质区中的癌变图块）
+        # file_map = {pathCancer: 1, pathStroma: 0, pathAmbiguousCancer: 0, pathAmbiguousStroma: 1}
 
         data_tag = []
 

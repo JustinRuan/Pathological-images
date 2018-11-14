@@ -109,3 +109,12 @@ class TestPatchPack(unittest.TestCase):
                 # os.system('pause')
             # if pos == 19:
             #     break;
+
+    def test_packing_refined_samples(self):
+        c = Params()
+        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+
+        pack = PatchPack(c)
+        dir_map = {"S500_128_True_cancer.txt": 1, "S500_128_True_normal.txt": 0}
+        pack.packing_refined_samples(dir_map, 5, 128)
+
