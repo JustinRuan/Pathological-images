@@ -18,6 +18,11 @@ from feature import FeatureExtractor
 from skimage import io
 from sklearn.model_selection import train_test_split
 from core.util import read_csv_file
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2
+from sklearn import preprocessing
+from sklearn.preprocessing import StandardScaler
+from preparation.normalization import ImageNormalization
 
 class PatchPack(object):
     def __init__(self, params):
@@ -138,11 +143,31 @@ class PatchPack(object):
 
     def extract_feature_save_file(self, train_file_code):
         pf = FeatureExtractor(self._params)
-        features, tag = pf.extract_features_by_file_list("{}.txt".format(train_file_code))
+        features, tag = pf.extract_features_by_file_list("{}.txt".format(train_file_code), features_name = "most")
 
         data_filename = "{}/data/{}_features_tags".format(self._params.PROJECT_ROOT, train_file_code)
         np.savez(data_filename, features, tag)
         return
+
+    def train_SVM(self, train_file_code):
+        data_filename = "{}/data/{}_features_tags.npz".format(self._params.PROJECT_ROOT, train_file_code)
+        D = np.load(data_filename)
+        features = D['arr_0']
+        tag = D['arr_1']
+
+        X_scaled = preprocessing.scale(features)
+        # min_max_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+        # X_scaled = min_max_scaler.fit_transform(features)
+        # x_new = SelectKBest(k=12).fit_transform(X_scaled, tag)
+        x_train, x_test, y_train, y_test = train_test_split(X_scaled, tag, test_size=0.3, random_state=0)
+
+        clf = SVC(C=1, kernel='rbf', probability=False) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
+
+        rf = clf.fit(x_train, y_train)
+        predicted_tags = rf.predict(x_test)
+        print("Classification report for classifier:\n%s\n"
+              % (metrics.classification_report(y_test, predicted_tags)))
+        print("Confusion matrix:\n%s" % metrics.confusion_matrix(y_test, predicted_tags))
 
     def train_SVM_for_refine_sample(self, train_file_code):
         '''
@@ -156,7 +181,11 @@ class PatchPack(object):
         D = np.load(data_filename)
         features = D['arr_0']
         tag = D['arr_1']
-        features_1, features_2, tags_1, tags_2 = train_test_split(features, tag, test_size=0.5, random_state=0)
+
+        # X_scaled = preprocessing.scale(features)
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(features)
+        features_1, features_2, tags_1, tags_2 = train_test_split(X_scaled, tag, test_size=0.5, random_state=0)
 
         clf = SVC(C=1, kernel='rbf', probability=False) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
 
@@ -184,13 +213,13 @@ class PatchPack(object):
         model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_file_code)
         joblib.dump(rf, model_file)
 
-        predicted_tags = rf.predict(features)
+        predicted_tags = rf.predict(X_scaled)
         print("Classification report for classifier %s:\n%s\n"
               % (clf, metrics.classification_report(tag, predicted_tags)))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(tag, predicted_tags))
         return
 
-    def create_refined_sample_txt(self, extract_scale, patch_size, dir_map, tag_name_map, train_code):
+    def create_refined_sample_txt(self, extract_scale, patch_size, dir_map, tag_name_map, train_file_code):
         '''
         用精炼SVM对样本进行分类，找出间质中的癌图块，以及癌变区域中的间质图块
         :param extract_scale: 提取的倍镜数
@@ -199,10 +228,17 @@ class PatchPack(object):
         :param patch_size: 图块大小
         :return:
         '''
-        model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_code)
+
+        data_filename = "{}/data/{}_features_tags.npz".format(self._params.PROJECT_ROOT, train_file_code)
+        D = np.load(data_filename)
+        features = D['arr_0']
+        scaler = StandardScaler()
+        scaler.fit(features)
+
+        model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_file_code)
         classifier = joblib.load(model_file)
 
-        fe = feature_extractor()
+        fe = FeatureExtractor(self._params)
         data_tag = self.initialize_sample_tags(dir_map)
 
         count = 0
@@ -215,8 +251,10 @@ class PatchPack(object):
         for patch_file, tag in data_tag:
             old_path = "{}/{}".format(Root_path, patch_file)
             img = io.imread(old_path)
-            fvector = fe.extract_feature(img, "best")
-            predicted_tags = classifier.predict([fvector])
+            normal_img = ImageNormalization.normalize_mean(img)
+            fvector = fe.extract_feature(normal_img, "most")
+            f_scaled = scaler.transform([fvector])
+            predicted_tags = classifier.predict(f_scaled)
             if (predicted_tags == tag):
                 result_filenames["True_" + tag_name_map[tag]].append((patch_file, tag))
             else:

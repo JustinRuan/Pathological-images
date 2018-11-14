@@ -29,8 +29,8 @@ class FeatureExtractor(object):
             return self.extract_glcm_feature(src_img)
         elif code == "best":
             return self.extract_best_feature(src_img)
-        elif code == "blp":
-            return
+        elif code == "most":
+            return self.extract_most_feature(src_img)
 
     def extract_glcm_feature(self, src_img):
         '''
@@ -77,7 +77,32 @@ class FeatureExtractor(object):
         textural_feature.append(meanValue)
         return  textural_feature
 
-    def extract_features_by_file_list(self, data_filename):
+    def extract_most_feature(self, src_img):
+        '''
+        提取图像的GLCM特征 和 平均亮度
+        :param src_img: 输入图像
+        :return: GLCM特征
+        '''
+        # 存储单张图片的glcm特征
+        textural_feature = []
+        # 以灰度模式读取图片
+        image = np.array(exposure.rescale_intensity(color.rgb2gray(src_img), out_range=(0, 255))).astype(np.uint8)
+        # 计算灰度共生矩阵
+        glcm = feature.greycomatrix(image, [1,3,5], [0], 256, symmetric=True, normed=True)
+        # 得到不同统计量
+        # fes = feature.greycoprops(glcm, 'dissimilarity')
+        # textural_feature.extend(np.array(fes).flatten())
+        feaprops_names = ('contrast', 'dissimilarity',  'homogeneity','ASM','energy','correlation')
+        # 得到不同统计量
+        for fname in feaprops_names:
+            fes = feature.greycoprops(glcm, fname)
+            textural_feature.extend(np.array(fes).flatten())
+
+        meanValue = np.mean(image)
+        textural_feature.append(meanValue)
+        return  textural_feature
+
+    def extract_features_by_file_list(self, data_filename, features_name = "best"):
         '''
         从指定文件列表中，读入图像文件，并计算特征，和分类Tag
         :param data_filename: 图像文件的列表，前项是文件名，后项是tag
@@ -98,7 +123,7 @@ class FeatureExtractor(object):
             tag = int(items[1])
 
             normal_img = ImageNormalization.normalize_mean(img)
-            fvector = self.extract_feature(normal_img, "best")
+            fvector = self.extract_feature(normal_img, features_name)
 
             features.append(fvector)
             tags.append(tag)
@@ -109,3 +134,5 @@ class FeatureExtractor(object):
 
         f.close()
         return features, tags
+
+

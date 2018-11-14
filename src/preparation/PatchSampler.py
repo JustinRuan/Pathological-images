@@ -27,9 +27,6 @@ class PatchSampler(object):
         :param patch_spacing: 图块之间的间距
         :return: 返回种子点的集合的大小
         '''
-        # C_mask, N_mask, E_mask = sourceCone.create_mask_image(lowScale, edgeWidth)
-        # mask1 = sourceCone.get_effective_zone(lowScale)
-        # N_mask = N_mask & mask1
 
         lowScale = self._params.GLOBAL_SCALE
         new_seeds = get_seeds(mask, lowScale, extract_scale, patch_size, patch_spacing)

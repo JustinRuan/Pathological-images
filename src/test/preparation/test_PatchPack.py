@@ -65,7 +65,8 @@ class TestPatchPack(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
 
         pack = PatchPack(c)
-        pack.extract_feature_save_file("T_NC_500_128")
+        # pack.extract_feature_save_file("T_NC_500_128")
+        pack.train_SVM("T_NC_500_128")
 
     def test_train_SVM_for_refine_sample(self):
         c = Params()

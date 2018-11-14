@@ -7,7 +7,7 @@ __mtime__ = '2018-05-27'
 """
 
 from core import *
-from preparation import PatchFeature, PatchPack, PatchSampler
+from preparation import PatchPack, PatchSampler
 
 class SamplePreparation(object):
 
