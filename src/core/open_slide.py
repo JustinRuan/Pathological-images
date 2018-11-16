@@ -125,11 +125,11 @@ class Open_Slide(object):
 
         return
 
-    def create_mask_image(self, scale, width):
+    def create_mask_image(self, scale, edge_width):
         '''
         在设定的倍镜下，生成四种标注区的mask图像（NECL）
         :param scale: 指定的倍镜数
-        :param width: 边缘区单边宽度
+        :param edge_width: 边缘区单边宽度
         :return: 对应的Mask图像
         '''
         w, h = self.get_image_width_height_byScale(scale)
@@ -150,9 +150,14 @@ class Open_Slide(object):
             rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
             img[rr, cc] = 0
 
-        C_img = morphology.binary_erosion(img, selem=square(width))
-        N_img = ~ morphology.binary_dilation(img, selem=square(width))
-        E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, N_img))
+        if edge_width > 1:
+            C_img = morphology.binary_erosion(img, selem=square(edge_width))
+            N_img = ~ morphology.binary_dilation(img, selem=square(edge_width))
+            E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, N_img))
+        else:
+            C_img = img
+            N_img = ~img
+            E_img = np.zeros((h, w), dtype=np.bool)
 
         return {"C": C_img, "N": N_img, "E": E_img}
 

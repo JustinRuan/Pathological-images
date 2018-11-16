@@ -16,7 +16,7 @@ from skimage import segmentation
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds
 import random
-# from cnn import cnn_tensor
+from transfer import Transfer
 from cnn.cnn_simple_5x128 import cnn_simple_5x128
 
 class Detector(object):
@@ -94,7 +94,17 @@ class Detector(object):
 
         return seeds, predictions
 
-    def get_seed_deep_analysis(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):
+    def detect_region_detailed(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):
+        new_seeds = self.get_seeds_under_high_magnification(seeds, predictions, seeds_scale, original_patch_size,
+                                                            new_scale, new_patch_size)
+        cnn = Transfer(self._params)
+        model = cnn.load_model("inception_v3", mode = 0, weights_file="/trained/inception_v3-0040-0.07-0.99.ckpt")
+        model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
+
+        predictions = cnn.predict_on_batch(model, self._imgCone, new_scale, new_patch_size, new_seeds, 100)
+        return new_seeds, predictions
+
+    def get_seeds_under_high_magnification(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):
         '''
         获取置信度不高的种子点在更高倍镜下的图块中心点坐标
         :param seeds: 低倍镜下的种子点集合
@@ -211,7 +221,7 @@ class Detector(object):
             cancer_map[tag] = pre_prob_map[tag] / pre_count_map[tag]
             return cancer_map, pre_prob_map, pre_count_map
 
-    def get_detect_area_img(self, x1, y1, x2, y2, coordinate_scale, img_scale):
+    def get_img_in_detect_area(self, x1, y1, x2, y2, coordinate_scale, img_scale):
         '''
         得到指定的检测区域对应的图像
         :param x1: 左上角x坐标
@@ -227,3 +237,23 @@ class Detector(object):
         h = yy2 - yy1
         block = self._imgCone.get_image_block(img_scale, int(xx1 + (w >> 1)), int(yy1 + (h >> 1)), w, h)
         return block.get_img()
+
+    def get_true_mask_in_detect_area(self, x1, y1, x2, y2, coordinate_scale, img_scale):
+        xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * img_scale / coordinate_scale).astype(np.int)
+        w = xx2 - xx1
+        h = yy2 - yy1
+
+        all_mask = self._imgCone.create_mask_image(img_scale, 0)
+        cancer_mask = all_mask['C']
+        return cancer_mask[yy1:yy2, xx1:xx2]
+
+    def evaluate(self, threshold, cancer_map, true_mask):
+        cancer_tag = np.array(cancer_map).ravel()
+        mask_tag = np.array(true_mask).ravel()
+        predicted_tags = cancer_tag >= threshold
+
+        print("Classification report for classifier:\n%s\n"
+              % (metrics.classification_report(mask_tag, predicted_tags)))
+        print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
+
+        return
