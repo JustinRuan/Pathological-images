@@ -84,3 +84,23 @@ class Test_transfer(unittest.TestCase):
 
         cnn.evaluate_entire_model("inception_v3", "/trained/inception_v3-0040-0.07-0.99.ckpt",
                                   "T_NC_2000_256", 100)
+
+
+    def test_predict(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        cnn = Transfer(c)
+        model = cnn.load_model("inception_v3", mode = 0, weights_file="/trained/inception_v3-0040-0.07-0.99.ckpt")
+        model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
+
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_004.tif",
+                                 None, "Tumor_004")
+        seeds = [(34880, 48960), (36224, 49920), (13312, 57856)]  # C, C, S
+        result = cnn.predict(model, imgCone, 20, 256, seeds)
+        print(result)
+
+        result = cnn.predict_on_batch(model, imgCone, 20, 256, seeds, 2)
+        print(result)

@@ -17,7 +17,7 @@ from tensorflow.keras.models import Model, Sequential, load_model
 from tensorflow.keras.optimizers import SGD, RMSprop
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.utils import to_categorical
-
+from preparation.normalization import ImageNormalization
 from core.util import read_csv_file
 from core import *
 
@@ -187,60 +187,6 @@ class Transfer(object):
     #     '''
     #     self.fine_tuning_model("InceptionV3_2", samples_name, 249, SGD(lr=0.0001, momentum=0.9))
 
-    def predict(self, src_img, scale, patch_size, seeds):
-        '''
-        预测在种子点提取的图块
-        :param src_img: 切片图像
-        :param scale: 提取图块的倍镜数
-        :param patch_size: 图块大小
-        :param seeds: 种子点的集合
-        :return:
-        '''
-        model = self.load_model("InceptionV3/V3-0.10-0.96.h5", False)
-        # model = self.merge_model("InceptionV3_2")
-        print(model.summary())
-
-        result = []
-        for x, y in seeds:
-            block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
-            img = block.get_img()
-
-            x = image.img_to_array(img)
-            x = np.expand_dims(x, axis=0)
-            # x = preprocess_input(x) //训练时没有使用预处理，这里也不能调用
-
-            predictions = model.predict(x)
-            class_id = np.argmax(predictions[0])
-            probability = predictions[0][class_id]
-            result.append((class_id, probability))
-
-        return result
-
-    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
-        '''
-        预测在种子点提取的图块
-        :param src_img: 切片图像
-        :param scale: 提取图块的倍镜数
-        :param patch_size: 图块大小
-        :param seeds: 种子点的集合
-        :param batch_size: 每批处理的图片数量
-        :return:
-        '''
-        model = self.load_model("InceptionV3/V3-0.07-0.99.h5", False)
-        # model = self.merge_model("InceptionV3_2")
-        print(model.summary())
-
-        image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
-
-        predictions = model.predict_generator(image_itor, verbose=1)
-        result = []
-        for pred_dict in predictions:
-            class_id = np.argmax(pred_dict)
-            probability = pred_dict[class_id]
-            result.append((class_id, probability))
-
-        return result
-
     def extract_features_for_train(self, model_name, samples_name, batch_size):
         '''
         从训练的图块中提取 特征， 并存盘
@@ -351,3 +297,54 @@ class Transfer(object):
 
         # result = model.predict_generator(test_gen, steps=10)
         # print(result)
+
+    def predict(self, model, src_img, scale, patch_size, seeds):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return:
+        '''
+        # model = self.load_model("InceptionV3/V3-0.10-0.96.h5", False)
+        # # model = self.merge_model("InceptionV3_2")
+        # print(model.summary())
+
+        result = []
+        for x, y in seeds:
+            block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
+            img = block.get_img()
+
+            x = image.img_to_array(ImageNormalization.normalize_mean(img))
+            x = np.expand_dims(x, axis=0)
+            # x = preprocess_input(x) //训练时没有使用预处理，这里也不能调用
+
+            predictions = model.predict(x)
+            class_id = np.argmax(predictions[0])
+            probability = predictions[0][class_id]
+            result.append((class_id, probability))
+
+        return result
+
+    def predict_on_batch(self, model, src_img, scale, patch_size, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :param batch_size: 每批处理的图片数量
+        :return:
+        '''
+
+        image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
+
+        predictions = model.predict_generator(image_itor, verbose=1)
+        result = []
+        for pred_dict in predictions:
+            class_id = np.argmax(pred_dict)
+            probability = pred_dict[class_id]
+            result.append((class_id, probability))
+
+        return result
