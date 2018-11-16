@@ -14,6 +14,9 @@ import matplotlib.pyplot as plt
 from skimage.io import imread
 from core.util import read_csv_file
 
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
+
 class TestPatchPack(unittest.TestCase):
 
     # def test_pack_refine_sample_tags_SC(self):
@@ -42,14 +45,21 @@ class TestPatchPack(unittest.TestCase):
     #     pack = PatchPack(c)
     #     pack.packing_refined_samples(5, 128)
 
+    #################################################################################################################
+    ####################  20 x 256  ############################
+    ##################################################################################################################
     def test_pack_samples_256(self):
         c = Params()
-        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+        c.load_config_file(JSON_PATH)
 
         pack = PatchPack(c)
-        data_tag = pack.initialize_sample_tags({"S2000_256_cancer":1,"S2000_256_stroma":0})
-        # pack.create_data_txt(data_tag, "SC_20x256")
-        pack.create_train_test_data(data_tag, 0.8, 0.2, "T_SC_2000_256")
+        data_tag = pack.initialize_sample_tags({"S2000_256_cancer":1,"S2000_256_normal":0})
+        # pack.create_data_txt(data_tag, "T_NC_2000_256")
+        pack.create_train_test_data(data_tag, 0.8, 0.2, "T_NC_2000_256")
+
+#################################################################################################################
+####################  5 x 128  ############################
+##################################################################################################################
 
     def test_pack_sample_128(self):
         c = Params()

@@ -42,7 +42,7 @@ class cnn_simple_5x128(object):
         self.model_root = "{}/models/{}".format(self._params.PROJECT_ROOT, model_name)
         return
 
-    def create_model(self):
+    def create_model(self, model_file = None):
         num_classes = 2
 
         model = Sequential()
@@ -54,11 +54,11 @@ class cnn_simple_5x128(object):
         # 池化层 64 x 64 => 32 x 32
         model.add(MaxPooling2D(pool_size=3, strides=2, padding='same'))
         # 第二个卷积层 32 x 32 => 32 x 32
-        model.add(Conv2D(8, kernel_size = (3, 3), strides= 1, padding="same", activation='relu'))
+        model.add(Conv2D(32, kernel_size = (3, 3), strides= 1, padding="same", activation='relu'))
         # 池化层 32 x 32 => 16 x 16
         model.add(MaxPooling2D(pool_size=3, strides=2, padding='same'))
         # 第三个卷积层 16 x 16 => 16 x 16
-        model.add(Conv2D(1, kernel_size=(3, 3), strides=1, padding="same", activation='relu'))
+        model.add(Conv2D(4, kernel_size=(3, 3), strides=1, padding="same", activation='relu'))
         # 池化层 16 x 16 => 8 x 8
         model.add(MaxPooling2D(pool_size=3, strides=2, padding='same'))
 
@@ -68,22 +68,30 @@ class cnn_simple_5x128(object):
         # # model.add(Dropout(0.5))
         # model.add(Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.01)))
         # model.add(Dense(num_classes, activation='softmax', kernel_regularizer=regularizers.l2(0.01)))
-        model.add(Dense(64, activation='relu'))
+        model.add(Dense(128, activation='relu'))
         # model.add(Dropout(0.5))
-        model.add(Dense(64, activation='relu'))
+        model.add(Dense(128, activation='relu'))
         model.add(Dense(num_classes, activation='softmax'))
 
-        checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, self.model_name)
-        latest = tf.train.latest_checkpoint(checkpoint_dir)
+        if model_file is None:
+            checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, self.model_name)
+            latest = tf.train.latest_checkpoint(checkpoint_dir)
 
-        if not latest is None:
-            print("loading >>> ", latest, " ...")
-            model.load_weights(latest)
+            if not latest is None:
+                print("loading >>> ", latest, " ...")
+                model.load_weights(latest)
+        else:
+            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT, model_file)
+            print("loading >>> ", model_path, " ...")
+            model.load_weights(model_path)
 
         return model
 
     def train_model(self, samples_name, batch_size, augmentation):
         train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation)
+
+        train_len = train_gen.__len__()
+        test_len = test_gen.__len__()
 
         # checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, samples_name)
         checkpoint_dir = self.model_root
@@ -100,9 +108,9 @@ class cnn_simple_5x128(object):
         optimizer = RMSprop(lr=1e-4, rho=0.9)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
-        model.fit_generator(train_gen, steps_per_epoch=20, epochs=20, verbose=1,
+        model.fit_generator(train_gen, steps_per_epoch=train_len, epochs=20, verbose=1,
                             callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
-                            validation_data=test_gen, validation_steps=6)
+                            validation_data=test_gen, validation_steps=test_len, initial_epoch = 0)
         return
 
     def load_data(self, samples_name, batch_size, augmentation = (False, False)):
@@ -150,6 +158,79 @@ class cnn_simple_5x128(object):
             result.append((class_id, probability))
         return result
 
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return:
+        '''
+        model = self.create_model()
+        optimizer = RMSprop(lr=1e-4, rho=0.9)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        print(model.summary())
+
+        image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
+
+        predictions = model.predict_generator(image_itor, verbose=1)
+        result = []
+        for pred_dict in predictions:
+            class_id = np.argmax(pred_dict)
+            probability = pred_dict[class_id]
+            result.append((class_id, probability))
+
+        return result
+
+    def predict_test_file(self, model_file, test_file_list):
+        model = self.create_model(model_file)
+        optimizer = RMSprop(lr=1e-4, rho=0.9)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        print(model.summary())
+
+        Xtest = []
+        Ytest = []
+
+        for item in test_file_list:
+            test_list = "{}/{}".format(self._params.PATCHS_ROOT_PATH, item)
+            Xtest1, Ytest1 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+
+            Xtest.extend(Xtest1)
+            Ytest.extend(Ytest1)
+
+        image_itor = ImageSequence(Xtest, Ytest, 20)
+
+        predictions = model.predict_generator(image_itor, verbose=1)
+        predicted_tags = []
+        predicted_probability = []
+        for pred_dict in predictions:
+            class_id = np.argmax(pred_dict)
+            probability = pred_dict[class_id]
+            predicted_tags.append(class_id)
+            predicted_probability.append(probability)
+
+        print("Classification report for classifier:\n%s\n"
+              % ( metrics.classification_report(Ytest, predicted_tags)))
+        print("Confusion matrix:\n%s" % metrics.confusion_matrix(Ytest, predicted_tags))
+
+        print("average predicted probability = %s" % np.mean(predicted_probability))
+
+        Ytest = np.array(Ytest)
+        predicted_tags = np.array(predicted_tags)
+        predicted_probability = np.array(predicted_probability)
+        TP = np.logical_and(Ytest == 1, predicted_tags == 1)
+        FP = np.logical_and(Ytest == 0, predicted_tags == 1)
+        TN = np.logical_and(Ytest == 0, predicted_tags == 0)
+        FN = np.logical_and(Ytest == 1, predicted_tags == 0)
+
+        print("average TP probability = %s" % np.mean(predicted_probability[TP]))
+        print("average FP probability = %s" % np.mean(predicted_probability[FP]))
+        print("average TN probability = %s" % np.mean(predicted_probability[TN]))
+        print("average FN probability = %s" % np.mean(predicted_probability[FN]))
+        return
+
+    # 没有搞定这种写法
     # def get_patches_itor(self, src_img, scale, patch_size, seeds, batch_size):
     #     '''
     #     将所有的图块中心点集，分割成更小的集合，以便减小图块载入的内存压力
@@ -183,33 +264,3 @@ class cnn_simple_5x128(object):
     #             result.append(np.array(ImageNormalization.normalize_mean(img)))
     #         yield result
     #     return
-
-    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
-        '''
-        预测在种子点提取的图块
-        :param src_img: 切片图像
-        :param scale: 提取图块的倍镜数
-        :param patch_size: 图块大小
-        :param seeds: 种子点的集合
-        :return:
-        '''
-        model = self.create_model()
-        optimizer = RMSprop(lr=1e-4, rho=0.9)
-        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
-        print(model.summary())
-
-        image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
-        # test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, "CNN_R_500_128")
-        # Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        # image_itor = ImageSequence(Xtest, Ytest, 20)
-
-        predictions = model.predict_generator(image_itor, verbose=1)
-        result = []
-        for pred_dict in predictions:
-            class_id = np.argmax(pred_dict)
-            probability = pred_dict[class_id]
-            result.append((class_id, probability))
-
-        return result
-
-
