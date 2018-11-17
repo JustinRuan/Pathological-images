@@ -63,17 +63,17 @@ class Detector(object):
         self.valid_map =  np.zeros((self.ImageHeight, self.ImageWidth), dtype=np.bool)
         return
 
-    def get_points_detected_area(self, extract_scale, patch_size_extract, spacing_extract):
+    def get_points_detected_area(self, extract_scale, patch_size_extract, interval):
         '''
         得到检测区域的图块中心点在高分辨率下的坐标
         :param extract_scale: 提取图时时，所使用的高分辨率对应的倍镜数
         :param patch_size_extract: 高分辨率下的图块大小
-        :param spacing_extract: 高分辨率下的图块之间的距离
+        :param interval: 高分辨率下的图块之间的距离
         :return: （x，y）种子点的集合
         '''
-        return get_seeds(self.valid_map, self._params.GLOBAL_SCALE, extract_scale,patch_size_extract, spacing_extract, margin=8)
+        return get_seeds(self.valid_map, self._params.GLOBAL_SCALE, extract_scale,patch_size_extract, interval, margin=8)
 
-    def detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size):
+    def detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size, interval):
         '''
         进行区域内的检测
         :param x1: 左上角x坐标
@@ -86,7 +86,7 @@ class Detector(object):
         :return: 图块中心点集，预测的结果
         '''
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
-        seeds = self.get_points_detected_area(extract_scale, patch_size, patch_size >> 1)
+        seeds = self.get_points_detected_area(extract_scale, patch_size, interval)
 
         cnn = cnn_simple_5x128(self._params, "simplenet128")
         # predictions = cnn.predict(self._imgCone, extract_scale, patch_size, seeds)
@@ -174,6 +174,7 @@ class Detector(object):
         :param seeds: 图块中心点集
         :param predictions: 每个图块的预测结果
         :param seeds_patch_size: 图块的大小
+        :param seed_interval:
         :param pre_prob_map: 上次处理生成癌变概率图
         :param pre_count_map; 上次处理生成癌变的检测计数图
         :return: 癌变可能性Map
