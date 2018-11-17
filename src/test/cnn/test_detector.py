@@ -148,9 +148,12 @@ class Test_detector(unittest.TestCase):
 
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
-        detector.evaluate(0.95, cancer_map, mask_img)
-
-        detector.evaluate(0.8, cancer_map2, mask_img)
+        print("\n低倍镜下的结果：")
+        t1 = 0.8
+        detector.evaluate(t1, cancer_map, mask_img)
+        print("\n高倍镜下增强的结果：")
+        t2 = 0.85
+        detector.evaluate(t2, cancer_map2, mask_img)
 
         fig, axes = plt.subplots(2, 3, figsize=(24, 12), dpi=100)
         ax = axes.ravel()
@@ -167,7 +170,7 @@ class Test_detector(unittest.TestCase):
         ax[1].set_title("cancer_map")
 
         ax[4].imshow(src_img)
-        t1 = 0.8
+
         ax[4].imshow(cancer_map >= t1, alpha=0.6)
         ax[4].set_title("cancer_map t = %s" % t1)
 
@@ -176,7 +179,7 @@ class Test_detector(unittest.TestCase):
         ax[2].set_title("cancer_map2")
 
         ax[5].imshow(src_img)
-        t2 = 0.85
+
         ax[5].imshow(cancer_map2 >= t2, alpha=0.6)
         ax[5].set_title("cancer_map2 t = %s" % t2)
 

@@ -194,21 +194,24 @@ class Detector(object):
         for (x, y), (class_id, probability)  in zip(new_seeds, predictions):
             xx = x - half
             yy = y - half
-            rr, cc = rectangle((yy, xx), extent=(target_patch_size, target_patch_size))
 
-            select_y = (rr >= 0) & (rr < self.valid_area_height)
-            select_x = (cc >= 0) & (cc < self.valid_area_width)
-            select = select_x & select_y
+            for K in np.logspace(0,2,3, base=2): # array([1., 2., 4.])
+                w = int(target_patch_size / K)
+                rr, cc = rectangle((yy, xx), extent=(w, w))
 
-            if class_id == 1 :
-                prob_map[rr[select], cc[select]] = prob_map[rr[select], cc[select]] + probability
-            else:
-                prob_map[rr[select], cc[select]] = prob_map[rr[select], cc[select]] + (1 - probability)
+                select_y = (rr >= 0) & (rr < self.valid_area_height)
+                select_x = (cc >= 0) & (cc < self.valid_area_width)
+                select = select_x & select_y
 
-            count_map[rr[select], cc[select]] = count_map[rr[select], cc[select]] + 1
+                if class_id == 1 :
+                    prob_map[rr[select], cc[select]] = prob_map[rr[select], cc[select]] + probability
+                else:
+                    prob_map[rr[select], cc[select]] = prob_map[rr[select], cc[select]] + (1 - probability)
 
-            if update_mode:
-                vaild_map[rr[select], cc[select]] = True
+                count_map[rr[select], cc[select]] = count_map[rr[select], cc[select]] + 1
+
+                if update_mode:
+                    vaild_map[rr[select], cc[select]] = True
 
         if update_mode:
             pre_cancer_map = np.zeros((self.valid_area_height, self.valid_area_width), dtype=np.float)
