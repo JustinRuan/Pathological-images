@@ -81,7 +81,7 @@ class Test_detector(unittest.TestCase):
         detector = Detector(c, imgCone)
         print(detector.ImageHeight, detector.ImageWidth)
 
-        seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1.25, 5, 128, interval = 32)
+        seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1.25, 5, 128, interval = 64)
         new_seeds, predictions_deep = detector.detect_region_detailed(seeds, predictions, 5, 128, 20, 256)
         # print(predictions_deep)
 
@@ -148,11 +148,11 @@ class Test_detector(unittest.TestCase):
 
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
-        detector.evaluate(0.85, cancer_map, mask_img)
+        detector.evaluate(0.95, cancer_map, mask_img)
 
-        detector.evaluate(0.85, cancer_map2, mask_img)
+        detector.evaluate(0.8, cancer_map2, mask_img)
 
-        fig, axes = plt.subplots(2, 3, figsize=(12, 6), dpi=200)
+        fig, axes = plt.subplots(2, 3, figsize=(24, 12), dpi=100)
         ax = axes.ravel()
 
         ax[0].imshow(src_img)
@@ -167,16 +167,18 @@ class Test_detector(unittest.TestCase):
         ax[1].set_title("cancer_map")
 
         ax[4].imshow(src_img)
-        ax[4].imshow(cancer_map >= 0.7, alpha=0.6)
-        ax[4].set_title("cancer_map2")
+        t1 = 0.8
+        ax[4].imshow(cancer_map >= t1, alpha=0.6)
+        ax[4].set_title("cancer_map t = %s" % t1)
 
         ax[2].imshow(src_img)
         ax[2].imshow(cancer_map2, alpha=0.6)
         ax[2].set_title("cancer_map2")
 
         ax[5].imshow(src_img)
-        ax[5].imshow(cancer_map2 >= 0.85, alpha=0.6)
-        ax[5].set_title("cancer_map2")
+        t2 = 0.85
+        ax[5].imshow(cancer_map2 >= t2, alpha=0.6)
+        ax[5].set_title("cancer_map2 t = %s" % t2)
 
         for a in ax.ravel():
             a.axis('off')

@@ -202,25 +202,27 @@ class Detector(object):
 
             if class_id == 1 :
                 prob_map[rr[select], cc[select]] = prob_map[rr[select], cc[select]] + probability
-                count_map[rr[select], cc[select]] = count_map[rr[select], cc[select]] + 1
+            else:
+                prob_map[rr[select], cc[select]] = prob_map[rr[select], cc[select]] + (1 - probability)
+
+            count_map[rr[select], cc[select]] = count_map[rr[select], cc[select]] + 1
 
             if update_mode:
                 vaild_map[rr[select], cc[select]] = True
 
+        if update_mode:
+            pre_cancer_map = np.zeros((self.valid_area_height, self.valid_area_width), dtype=np.float)
+            tag = pre_count_map > 0
+            pre_cancer_map[tag] = pre_prob_map[tag] / pre_count_map[tag]
+
+            # 更新平均概率
+            keep_tag = (~vaild_map) | (pre_cancer_map >= 0.8) # 提高低倍镜分类器性能，将可以提高这个阈值
+            prob_map[keep_tag] = pre_prob_map[keep_tag]
+            count_map[keep_tag] = pre_count_map[keep_tag]
+
         tag = count_map > 0
         cancer_map[tag] = prob_map[tag] / count_map[tag]
-
-        if not update_mode:
-            #计算平均概率
-            return cancer_map, prob_map, count_map
-        else:
-            # 更新平均概率
-            pre_prob_map[vaild_map] = prob_map[vaild_map]
-            pre_count_map[vaild_map] = count_map[vaild_map]
-
-            tag = pre_count_map > 0
-            cancer_map[tag] = pre_prob_map[tag] / pre_count_map[tag]
-            return cancer_map, pre_prob_map, pre_count_map
+        return cancer_map, prob_map, count_map
 
     def get_img_in_detect_area(self, x1, y1, x2, y2, coordinate_scale, img_scale):
         '''
