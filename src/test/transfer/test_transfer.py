@@ -13,11 +13,11 @@ from transfer import Transfer
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
 
-# PATCH_TYPE = "2000_256"
-# MODEL_NAME = "inception_v3"
-
-PATCH_TYPE = "500_128"
+PATCH_TYPE = "2000_256"
 MODEL_NAME = "inception_v3"
+
+# PATCH_TYPE = "500_128"
+# MODEL_NAME = "inception_v3"
 
 class Test_transfer(unittest.TestCase):
 
@@ -34,7 +34,7 @@ class Test_transfer(unittest.TestCase):
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
         #cnn.fine_tuning_top_model_saved_file("T_NC_2000_256")
-        cnn.fine_tuning_top_model_saved_file("T_NC_500_128", 200, 60, 20)
+        cnn.fine_tuning_top_model_saved_file("T_NC_500_128", batch_size=200, epochs=200, initial_epoch=100)
 
     def test_merge_save_model(self):
         c = Params()
@@ -47,15 +47,16 @@ class Test_transfer(unittest.TestCase):
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
-        cnn.evaluate_entire_model("/trained/inception_v3-0040-0.07-0.99.ckpt",
+        # cnn.evaluate_entire_model("/trained/inception_v3_500_128-0219-0.33-0.90.ckpt",
+        #                           "T_NC_500_128", 100)
+        cnn.evaluate_entire_model("/trained/inception_v3_2000_256-0286-0.20-0.95.ckpt",
                                   "T_NC_2000_256", 100)
-
 
     def test_predict(self):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-        model = cnn.load_model(mode = 0, weights_file="/trained/inception_v3-0040-0.07-0.99.ckpt")
+        model = cnn.load_model(mode = 0, weights_file="/trained/inception_v3_2000_256-0286-0.20-0.95.ckpt")
         model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
 
         imgCone = ImageCone(c, Open_Slide())

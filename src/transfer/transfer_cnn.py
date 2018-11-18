@@ -261,7 +261,7 @@ class Transfer(object):
 
         # print(model.summary())
         # train the model on the new data for a few epochs
-        top_model.fit(train_features, train_label, batch_size = batch_size, epochs=epochs,
+        top_model.fit(train_features, train_label, batch_size = batch_size, epochs=epochs,verbose=0,
                       callbacks=[cp_callback, TensorBoard(log_dir=checkpoint_dir)],
                       validation_data=(test_features, test_label),initial_epoch=initial_epoch)
 
@@ -283,8 +283,8 @@ class Transfer(object):
             weights = old_layer.get_weights()
             new_layer.set_weights(weights)
 
-        model_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
-        model_path = model_dir + "/{}.ckpt".format(self.model_name)
+        model_dir = "{}/models/trained".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+        model_path = model_dir + "/{}_{}.ckpt".format(self.model_name, self.patch_type)
         model.save_weights(model_path, save_format='tf')
 
         return model

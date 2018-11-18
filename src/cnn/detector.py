@@ -88,18 +88,22 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         seeds = self.get_points_detected_area(extract_scale, patch_size, interval)
 
-        cnn = cnn_simple_5x128(self._params, "simplenet128")
-        # predictions = cnn.predict(self._imgCone, extract_scale, patch_size, seeds)
-        predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, seeds, 100)
+        # cnn = cnn_simple_5x128(self._params, "simplenet128")
+        cnn = Transfer(self._params, "inception_v3", "500_128")
+        model = cnn.load_model(mode = 0, weights_file="/trained/inception_v3_500_128-0219-0.33-0.90.ckpt")
+        # model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer="RMSprop")
+        predictions = cnn.predict_on_batch(model, self._imgCone, extract_scale, patch_size, seeds, 100)
 
         return seeds, predictions
 
     def detect_region_detailed(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):
         new_seeds = self.get_seeds_under_high_magnification(seeds, predictions, seeds_scale, original_patch_size,
                                                             new_scale, new_patch_size)
-        cnn = Transfer(self._params)
-        model = cnn.load_model("inception_v3", mode = 0, weights_file="/trained/inception_v3-0040-0.07-0.99.ckpt")
-        model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
+        cnn = Transfer(self._params, "inception_v3", "2000_256")
+        model = cnn.load_model(mode = 0, weights_file="/trained/inception_v3_2000_256-0286-0.20-0.95.ckpt")
+        # model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer="RMSprop")
 
         predictions = cnn.predict_on_batch(model, self._imgCone, new_scale, new_patch_size, new_seeds, 100)
         return new_seeds, predictions
