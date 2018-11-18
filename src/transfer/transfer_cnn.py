@@ -95,17 +95,14 @@ class Transfer(object):
 
             elif mode == 2: # "refine top model"
                 top_model = Sequential()
-                if self.patch_type == "500_128":
-                    top_model.add(Flatten(input_shape=(1, 512)))
-                else: # "2000_256"
-                    top_model.add(Flatten(input_shape=(1, 2048)))
 
+                top_model.add(Flatten(input_shape=(1, 2048)))
                 top_model.add(
                     Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1"))
                 top_model.add(
                     Dense(NUM_CLASSES, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2"))
 
-                checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, model_name, patch_type)
+                checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
                 latest = tf.train.latest_checkpoint(checkpoint_dir)
                 if not latest is None:
                     print("loading >>> ", latest, " ...")
@@ -209,7 +206,7 @@ class Transfer(object):
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
         test_gen = ImageSequence(Xtest, Ytest, batch_size)
 
-        model = self.load_model(self.model_name, mode = 1)
+        model = self.load_model(mode = 1)
 
         step_count = len(Ytest) // batch_size
         # step_count = 10
@@ -258,7 +255,7 @@ class Transfer(object):
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
             period=1)
 
-        top_model = self.load_model(self.model_name, mode = 2)
+        top_model = self.load_model(mode = 2)
 
         top_model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
 
@@ -275,9 +272,9 @@ class Transfer(object):
         :return:
         '''
 
-        top_model = self.load_model(self.model_name, mode = 2)
+        top_model = self.load_model(mode = 2)
 
-        model = self.load_model(self.model_name, mode = 0)
+        model = self.load_model(mode = 0)
 
         layers_set = ["t_Dense_1", "t_Dense_2"]
         for layer_name in layers_set:
@@ -301,7 +298,7 @@ class Transfer(object):
         train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation = (False, False))
         test_len = test_gen.__len__()
 
-        model = self.load_model(self.model_name, mode = 0, weights_file=weights_file)
+        model = self.load_model(mode = 0, weights_file=weights_file)
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
         test_loss, test_acc = model.evaluate_generator(test_gen, steps = 10, verbose=1)
 
