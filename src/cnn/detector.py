@@ -266,4 +266,8 @@ class Detector(object):
               % (metrics.classification_report(mask_tag, predicted_tags)))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
 
-        return
+        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, cancer_tag)
+        roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
+        print("\n auc: %s" % roc_auc)
+        print("############################################################")
+        return false_positive_rate, true_positive_rate, roc_auc

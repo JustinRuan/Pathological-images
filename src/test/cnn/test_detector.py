@@ -150,12 +150,13 @@ class Test_detector(unittest.TestCase):
 
         print("\n低倍镜下的结果：")
         t1 = 0.8
-        detector.evaluate(t1, cancer_map, mask_img)
+        false_positive_rate_x5, true_positive_rate_x5, roc_auc_x5 = detector.evaluate(t1, cancer_map, mask_img)
+
         print("\n高倍镜下增强的结果：")
         t2 = 0.85
-        detector.evaluate(t2, cancer_map2, mask_img)
+        false_positive_rate_x20, true_positive_rate_x20, roc_auc_x20 = detector.evaluate(t2, cancer_map2, mask_img)
 
-        fig, axes = plt.subplots(2, 3, figsize=(24, 12), dpi=100)
+        fig, axes = plt.subplots(2, 4, figsize=(30, 10), dpi=100)
         ax = axes.ravel()
 
         ax[0].imshow(src_img)
@@ -170,7 +171,6 @@ class Test_detector(unittest.TestCase):
         ax[1].set_title("cancer_map")
 
         ax[4].imshow(src_img)
-
         ax[4].imshow(cancer_map >= t1, alpha=0.6)
         ax[4].set_title("cancer_map, t = %s" % t1)
 
@@ -183,8 +183,22 @@ class Test_detector(unittest.TestCase):
         ax[5].imshow(cancer_map2 >= t2, alpha=0.6)
         ax[5].set_title("cancer_map2, t = %s" % t2)
 
+        ax[6].set_title('Receiver Operating Characteristic')
+        ax[6].plot(false_positive_rate_x5, true_positive_rate_x5, 'g',
+                 label='x5  AUC = %0.2f' % roc_auc_x5)
+        ax[6].plot(false_positive_rate_x20, true_positive_rate_x20, 'b',
+                 label='x20 AUC = %0.2f' % roc_auc_x20)
+
+        ax[6].legend(loc='lower right')
+        ax[6].plot([0, 1], [0, 1], 'r--')
+        ax[6].set_xlim([-0.1, 1.2])
+        ax[6].set_ylim([-0.1, 1.2])
+        ax[6].set_ylabel('True Positive Rate')
+        ax[6].set_xlabel('False Positive Rate')
+
         for a in ax.ravel():
             a.axis('off')
+        ax[6].axis("on")
 
         plt.show()
 
