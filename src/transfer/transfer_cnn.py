@@ -221,7 +221,7 @@ class Transfer(object):
         np.savez(save_path + "features_train", train_features, train_label)
         return
 
-    def fine_tuning_top_model_saved_file(self, samples_name):
+    def fine_tuning_top_model_saved_file(self, samples_name, batch_size = 100, epochs = 20, initial_epoch = 0):
         '''
         使用存盘的特征文件来训练 全连接层
         :param samples_name: 存盘的特征文件的代号
@@ -261,9 +261,9 @@ class Transfer(object):
 
         # print(model.summary())
         # train the model on the new data for a few epochs
-        top_model.fit(train_features, train_label, batch_size =200, epochs=20,
+        top_model.fit(train_features, train_label, batch_size = batch_size, epochs=epochs,
                       callbacks=[cp_callback, TensorBoard(log_dir=checkpoint_dir)],
-                      validation_data=(test_features, test_label))
+                      validation_data=(test_features, test_label),initial_epoch=initial_epoch)
 
     def merge_save_model(self):
         '''

@@ -34,7 +34,7 @@ class Test_transfer(unittest.TestCase):
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
         #cnn.fine_tuning_top_model_saved_file("T_NC_2000_256")
-        cnn.fine_tuning_top_model_saved_file("T_NC_500_128")
+        cnn.fine_tuning_top_model_saved_file("T_NC_500_128", 200, 60, 20)
 
     def test_merge_save_model(self):
         c = Params()
