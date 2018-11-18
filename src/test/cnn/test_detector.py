@@ -172,7 +172,7 @@ class Test_detector(unittest.TestCase):
         ax[4].imshow(src_img)
 
         ax[4].imshow(cancer_map >= t1, alpha=0.6)
-        ax[4].set_title("cancer_map t = %s" % t1)
+        ax[4].set_title("cancer_map, t = %s" % t1)
 
         ax[2].imshow(src_img)
         ax[2].imshow(cancer_map2, alpha=0.6)
@@ -181,7 +181,7 @@ class Test_detector(unittest.TestCase):
         ax[5].imshow(src_img)
 
         ax[5].imshow(cancer_map2 >= t2, alpha=0.6)
-        ax[5].set_title("cancer_map2 t = %s" % t2)
+        ax[5].set_title("cancer_map2, t = %s" % t2)
 
         for a in ax.ravel():
             a.axis('off')

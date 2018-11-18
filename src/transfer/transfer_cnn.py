@@ -24,10 +24,11 @@ from core import *
 NUM_CLASSES = 2
 
 class Transfer(object):
-
-    def __init__(self, params):
+    # patch_type 500_128, 2000_256
+    def __init__(self, params, model_name, patch_type):
         self._params = params
-
+        self.model_name = model_name
+        self.patch_type = patch_type
         return
 
     # def extract_features(self, src_img, scale, patch_size, seeds):
@@ -56,9 +57,10 @@ class Transfer(object):
     #
     #     return features
 
-    def load_model(self, model_name, mode, weights_file = None):
+    # patch_type 500_128, 2000_256
+    def load_model(self, mode, weights_file = None):
 
-        if model_name == "inception_v3":
+        if self.model_name == "inception_v3":
             if mode == 0: # "load_entire_model":
                 if weights_file is None:
                     base_model = InceptionV3(weights='imagenet', include_top=False)
@@ -93,13 +95,17 @@ class Transfer(object):
 
             elif mode == 2: # "refine top model"
                 top_model = Sequential()
-                top_model.add(Flatten(input_shape=(1, 2048)))
+                if self.patch_type == "500_128":
+                    top_model.add(Flatten(input_shape=(1, 512)))
+                else: # "2000_256"
+                    top_model.add(Flatten(input_shape=(1, 2048)))
+
                 top_model.add(
                     Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1"))
                 top_model.add(
                     Dense(NUM_CLASSES, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2"))
 
-                checkpoint_dir = "{}/models/{}_top".format(self._params.PROJECT_ROOT, model_name)
+                checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, model_name, patch_type)
                 latest = tf.train.latest_checkpoint(checkpoint_dir)
                 if not latest is None:
                     print("loading >>> ", latest, " ...")
@@ -187,7 +193,8 @@ class Transfer(object):
     #     '''
     #     self.fine_tuning_model("InceptionV3_2", samples_name, 249, SGD(lr=0.0001, momentum=0.9))
 
-    def extract_features_for_train(self, model_name, samples_name, batch_size):
+    def extract_features_for_train(self, samples_name, batch_size, augmentation = (False, False),
+                                   aug_multiple = (1, 1)):
         '''
         从训练的图块中提取 特征， 并存盘
         :param samples_name: 图块文件所在列表txt文件
@@ -195,14 +202,14 @@ class Transfer(object):
         '''
         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        save_path = "{}/data/{}_{}_".format(self._params.PROJECT_ROOT, model_name, samples_name)
+        save_path = "{}/data/{}_{}_".format(self._params.PROJECT_ROOT, self.model_name, samples_name)
 
         Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
         train_gen = ImageSequence(Xtrain, Ytrain, batch_size)
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
         test_gen = ImageSequence(Xtest, Ytest, batch_size)
 
-        model = self.load_model(model_name, mode = 1)
+        model = self.load_model(self.model_name, mode = 1)
 
         step_count = len(Ytest) // batch_size
         # step_count = 10
@@ -217,13 +224,13 @@ class Transfer(object):
         np.savez(save_path + "features_train", train_features, train_label)
         return
 
-    def fine_tuning_top_model_saved_file(self, model_name, samples_name):
+    def fine_tuning_top_model_saved_file(self, samples_name):
         '''
         使用存盘的特征文件来训练 全连接层
         :param samples_name: 存盘的特征文件的代号
         :return:
         '''
-        data_path = "{}/data/{}_{}_".format(self._params.PROJECT_ROOT, model_name, samples_name)
+        data_path = "{}/data/{}_{}_".format(self._params.PROJECT_ROOT, self.model_name, samples_name)
         D = np.load(data_path + "features_test.npz")
         test_features = D['arr_0']
         test_features = test_features[:, np.newaxis]
@@ -238,15 +245,20 @@ class Transfer(object):
         train_label = train_label[:, np.newaxis]
         train_label = to_categorical(train_label, 2)
 
+        if self.patch_type in samples_name:
+            patch_type = self.patch_type
+        else:
+            patch_type = "error"
+
         # include the epoch in the file name. (uses `str.format`)
-        checkpoint_dir = "{}/models/{}_top".format(self._params.PROJECT_ROOT, model_name)
+        checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, patch_type)
         checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.ckpt"
 
         cp_callback = tf.keras.callbacks.ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
             period=1)
 
-        top_model = self.load_model(model_name, mode = 2)
+        top_model = self.load_model(self.model_name, mode = 2)
 
         top_model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
 
@@ -256,16 +268,16 @@ class Transfer(object):
                       callbacks=[cp_callback, TensorBoard(log_dir=checkpoint_dir)],
                       validation_data=(test_features, test_label))
 
-    def merge_save_model(self, model_name):
+    def merge_save_model(self):
         '''
         将新训练的全连接层与 迁移的网络模型进行合并
         :param model_dir:新训练的全连接层的checkpoint文件所在目录
         :return:
         '''
 
-        top_model = self.load_model(model_name, mode = 2)
+        top_model = self.load_model(self.model_name, mode = 2)
 
-        model = self.load_model(model_name, mode = 0)
+        model = self.load_model(self.model_name, mode = 0)
 
         layers_set = ["t_Dense_1", "t_Dense_2"]
         for layer_name in layers_set:
@@ -274,13 +286,13 @@ class Transfer(object):
             weights = old_layer.get_weights()
             new_layer.set_weights(weights)
 
-        model_dir = "{}/models/{}_top".format(self._params.PROJECT_ROOT, model_name)
-        model_path = model_dir + "/{}.ckpt".format(model_name)
+        model_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+        model_path = model_dir + "/{}.ckpt".format(self.model_name)
         model.save_weights(model_path, save_format='tf')
 
         return model
 
-    def evaluate_entire_model(self, model_name, weights_file, samples_name, batch_size):
+    def evaluate_entire_model(self, weights_file, samples_name, batch_size):
         '''
         使用图块文件，评估 合并后的网络
         :param samples_name:图块文件的列表的代号
@@ -289,7 +301,7 @@ class Transfer(object):
         train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation = (False, False))
         test_len = test_gen.__len__()
 
-        model = self.load_model(model_name, mode = 0, weights_file=weights_file)
+        model = self.load_model(self.model_name, mode = 0, weights_file=weights_file)
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
         test_loss, test_acc = model.evaluate_generator(test_gen, steps = 10, verbose=1)
 
