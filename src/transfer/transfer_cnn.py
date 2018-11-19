@@ -22,6 +22,7 @@ from core.util import read_csv_file
 from core import *
 
 NUM_CLASSES = 2
+NUM_WORKERS = 1
 
 class Transfer(object):
     # patch_type 500_128, 2000_256
@@ -210,13 +211,13 @@ class Transfer(object):
 
         step_count = len(Ytest) // batch_size
         # step_count = 10
-        test_features = model.predict_generator(test_gen, steps=step_count, verbose=1)
+        test_features = model.predict_generator(test_gen, steps=step_count, verbose=1,workers=NUM_WORKERS)
         test_label = Ytest[:step_count * batch_size]
         np.savez(save_path + "features_test", test_features, test_label)
 
         step_count = len(Ytrain) // batch_size
         # step_count = 10
-        train_features = model.predict_generator(train_gen, steps=step_count, verbose=1)
+        train_features = model.predict_generator(train_gen, steps=step_count, verbose=1, workers=NUM_WORKERS)
         train_label = Ytrain[:step_count * batch_size]
         np.savez(save_path + "features_train", train_features, train_label)
         return
@@ -300,7 +301,7 @@ class Transfer(object):
 
         model = self.load_model(mode = 0, weights_file=weights_file)
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-        test_loss, test_acc = model.evaluate_generator(test_gen, steps = 10, verbose=1)
+        test_loss, test_acc = model.evaluate_generator(test_gen, steps = 10, verbose=1, workers=NUM_WORKERS)
 
         print('Test accuracy:', test_acc)
 
@@ -349,7 +350,7 @@ class Transfer(object):
 
         image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
 
-        predictions = model.predict_generator(image_itor, verbose=1)
+        predictions = model.predict_generator(image_itor, verbose=1, workers=NUM_WORKERS)
         result = []
         for pred_dict in predictions:
             class_id = np.argmax(pred_dict)

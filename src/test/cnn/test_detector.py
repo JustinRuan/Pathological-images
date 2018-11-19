@@ -82,13 +82,14 @@ class Test_detector(unittest.TestCase):
         print(detector.ImageHeight, detector.ImageWidth)
 
         seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1.25, 5, 128, interval = 64)
-        new_seeds, predictions_deep = detector.detect_region_detailed(seeds, predictions, 5, 128, 20, 256)
+        new20_seeds, new20_predictions = detector.detect_region_detailed(seeds, predictions, 5, 128, 20, 256)
+        new40_seeds, new40_predictions = detector.detect_region_detailed(new20_seeds, new20_predictions, 20, 256, 40, 256)
         # print(predictions_deep)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
         np.savez("{}/data/cancer_predictions_{}".format(c.PROJECT_ROOT, id), src_img,
-                 seeds, predictions, new_seeds, predictions_deep)
+                 seeds, predictions, new20_seeds, new20_predictions, new40_seeds, new40_predictions)
 
         # fig, axes = plt.subplots(2, 2, figsize=(12, 6), dpi=200)
         # ax = axes.ravel()
@@ -129,8 +130,10 @@ class Test_detector(unittest.TestCase):
         src_img = D['arr_0']
         seeds = D['arr_1']
         predictions = D['arr_2']
-        new_seeds = D['arr_3']
-        predictions_deep = D['arr_4']
+        new20_seeds = D['arr_3']
+        new20_predictions = D['arr_4']
+        new40_seeds = D['arr_5']
+        new40_predictions = D['arr_6']
 
         imgCone = ImageCone(c, Open_Slide())
 
@@ -143,62 +146,77 @@ class Test_detector(unittest.TestCase):
         detector.setting_detected_area(x1, y1, x2, y2, 1.25)
         cancer_map, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 5, 1.25, seeds, predictions, 128,
                                                                      None, None)
-        cancer_map2, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 20, 1.25, new_seeds, predictions_deep,
+        cancer_map2, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 20, 1.25, new20_seeds, new20_predictions,
+                                                                      256, prob_map, count_map)
+        cancer_map3, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 40, 1.25, new40_seeds, new40_predictions,
                                                                       256, prob_map, count_map)
 
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
-        print("\n低倍镜下的结果：")
+        print("\n x5 低倍镜下的结果：")
         t1 = 0.8
         false_positive_rate_x5, true_positive_rate_x5, roc_auc_x5 = detector.evaluate(t1, cancer_map, mask_img)
 
-        print("\n高倍镜下增强的结果：")
+        print("\n x20 高倍镜下增强的结果：")
         t2 = 0.85
         false_positive_rate_x20, true_positive_rate_x20, roc_auc_x20 = detector.evaluate(t2, cancer_map2, mask_img)
 
-        fig, axes = plt.subplots(2, 4, figsize=(30, 10), dpi=100)
+        print("\n x40 高倍镜下增强的结果：")
+        t3 = 0.85
+        false_positive_rate_x40, true_positive_rate_x40, roc_auc_x40 = detector.evaluate(t3, cancer_map3, mask_img)
+
+        fig, axes = plt.subplots(2, 5, figsize=(100, 40), dpi=100)
         ax = axes.ravel()
 
-        ax[0].imshow(src_img)
-        ax[0].set_title("src_img")
-
-        ax[3].imshow(src_img)
-        ax[3].imshow(mask_img, alpha=0.6)
-        ax[3].set_title("mask_img")
-
         ax[1].imshow(src_img)
-        ax[1].imshow(cancer_map, alpha=0.6)
-        ax[1].set_title("cancer_map")
+        ax[1].set_title("src_img")
 
-        ax[4].imshow(src_img)
-        ax[4].imshow(cancer_map >= t1, alpha=0.6)
-        ax[4].set_title("cancer_map, t = %s" % t1)
+        ax[6].imshow(src_img)
+        ax[6].imshow(mask_img, alpha=0.6)
+        ax[6].set_title("mask_img")
+
+        ax[0].set_title('Receiver Operating Characteristic')
+        ax[0].plot(false_positive_rate_x5, true_positive_rate_x5, 'g',
+                 label='x5  AUC = %0.2f' % roc_auc_x5)
+        ax[0].plot(false_positive_rate_x20, true_positive_rate_x20, 'b',
+                 label='x20 AUC = %0.2f' % roc_auc_x20)
+        ax[0].plot(false_positive_rate_x40, true_positive_rate_x40, 'c',
+                 label='x40 AUC = %0.2f' % roc_auc_x40)
+
+        ax[0].legend(loc='lower right')
+        ax[0].plot([0, 1], [0, 1], 'r--')
+        ax[0].set_xlim([-0.1, 1.2])
+        ax[0].set_ylim([-0.1, 1.2])
+        ax[0].set_ylabel('True Positive Rate')
+        ax[0].set_xlabel('False Positive Rate')
 
         ax[2].imshow(src_img)
-        ax[2].imshow(cancer_map2, alpha=0.6)
-        ax[2].set_title("cancer_map2")
+        ax[2].imshow(cancer_map, alpha=0.6)
+        ax[2].set_title("cancer_map")
 
-        ax[5].imshow(src_img)
+        ax[7].imshow(src_img)
+        ax[7].imshow(cancer_map >= t1, alpha=0.6)
+        ax[7].set_title("cancer_map, t = %s" % t1)
 
-        ax[5].imshow(cancer_map2 >= t2, alpha=0.6)
-        ax[5].set_title("cancer_map2, t = %s" % t2)
+        ax[3].imshow(src_img)
+        ax[3].imshow(cancer_map2, alpha=0.6)
+        ax[3].set_title("cancer_map2")
 
-        ax[6].set_title('Receiver Operating Characteristic')
-        ax[6].plot(false_positive_rate_x5, true_positive_rate_x5, 'g',
-                 label='x5  AUC = %0.2f' % roc_auc_x5)
-        ax[6].plot(false_positive_rate_x20, true_positive_rate_x20, 'b',
-                 label='x20 AUC = %0.2f' % roc_auc_x20)
+        ax[8].imshow(src_img)
+        ax[8].imshow(cancer_map2 >= t2, alpha=0.6)
+        ax[8].set_title("cancer_map2, t = %s" % t2)
 
-        ax[6].legend(loc='lower right')
-        ax[6].plot([0, 1], [0, 1], 'r--')
-        ax[6].set_xlim([-0.1, 1.2])
-        ax[6].set_ylim([-0.1, 1.2])
-        ax[6].set_ylabel('True Positive Rate')
-        ax[6].set_xlabel('False Positive Rate')
+        ax[4].imshow(src_img)
+        ax[4].imshow(cancer_map3, alpha=0.6)
+        ax[4].set_title("cancer_map3")
+
+        ax[9].imshow(src_img)
+        ax[9].imshow(cancer_map3 >= t3, alpha=0.6)
+        ax[9].set_title("cancer_map3, t = %s" % t3)
 
         for a in ax.ravel():
             a.axis('off')
-        ax[6].axis("on")
+        ax[0].axis("on")
 
         plt.show()
 

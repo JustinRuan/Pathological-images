@@ -100,8 +100,12 @@ class Detector(object):
     def detect_region_detailed(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):
         new_seeds = self.get_seeds_under_high_magnification(seeds, predictions, seeds_scale, original_patch_size,
                                                             new_scale, new_patch_size)
-        cnn = Transfer(self._params, "inception_v3", "2000_256")
-        model = cnn.load_model(mode = 0, weights_file="/trained/inception_v3_2000_256-0286-0.20-0.95.ckpt")
+        if (new_scale == 20):
+            cnn = Transfer(self._params, "inception_v3", "2000_256")
+            model = cnn.load_model(mode = 0, weights_file="/trained/inception_v3_2000_256-0286-0.20-0.95.ckpt")
+        else: # (new_scale == 40):
+            cnn = Transfer(self._params, "inception_v3", "4000_256")
+            model = cnn.load_model(mode=0, weights_file="/trained/inception_v3_4000_256-0396-0.33-0.88.ckpt")
         # model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
         model.compile(optimizer="RMSprop")
 
@@ -201,6 +205,9 @@ class Detector(object):
 
             for K in np.logspace(0,2,3, base=2): # array([1., 2., 4.])
                 w = int(target_patch_size / K)
+                if w == 0:
+                    continue
+
                 rr, cc = rectangle((yy, xx), extent=(w, w))
 
                 select_y = (rr >= 0) & (rr < self.valid_area_height)
