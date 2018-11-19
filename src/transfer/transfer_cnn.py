@@ -134,47 +134,55 @@ class Transfer(object):
         return  train_gen, test_gen
 
 
-    # def fine_tuning_model(self, model_dir, samples_name, freezed_num, optimizer):
-    #     '''
-    #     微调模型，训练时冻结网络中0到freezed_num层
-    #     :param model_dir:训练时checkpoint文件的存盘路径
-    #     :param samples_name:训练所使用的图片列表文件的代号
-    #     :param freezed_num: 训练时冻结网络中 0 到 freezed_num 层
-    #     :param optimizer: 训练用，自适应学习率算法
-    #     :return:
-    #     '''
-    #     train_gen, test_gen = self.load_data(samples_name, 20)
-    #
-    #     # include the epoch in the file name. (uses `str.format`)
-    #     checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, model_dir)
-    #     checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.ckpt"
-    #
-    #     cp_callback = tf.keras.callbacks.ModelCheckpoint(
-    #         checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
-    #         # Save weights, every 5-epochs.
-    #         period=1)
-    #
-    #     model = self.load_model(model_dir)
-    #
-    #     # first: train only the top layers (which were randomly initialized)
-    #     # i.e. freeze all convolutional InceptionV3 layers
-    #     for i, layer in enumerate(model.layers[:freezed_num]):
-    #         layer.trainable = False
-    #         print( " freezed ", i, layer.name, sep="\t\t")
-    #     for i, layer in enumerate(model.layers[freezed_num:]):
-    #         layer.trainable = True
-    #         print("trainable", i + freezed_num, layer.name, sep="\t\t")
-    #
-    #     # compile the model (should be done *after* setting layers to non-trainable)
-    #     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
-    #
-    #     # print(model.summary())
-    #     # train the model on the new data for a few epochs
-    #     model.fit_generator(train_gen, steps_per_epoch=3, epochs=1, verbose=1,
-    #                         callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
-    #                         validation_data=test_gen, validation_steps=3)
-    #     return
-    #
+    def fine_tuning_model(self, freezed_num, optimizer, samples_name,batch_size, epochs = 20, initial_epoch = 0):
+        '''
+        微调模型，训练时冻结网络中0到freezed_num层
+        :param model_dir:训练时checkpoint文件的存盘路径
+        :param samples_name:训练所使用的图片列表文件的代号
+        :param freezed_num: 训练时冻结网络中 0 到 freezed_num 层
+        :param optimizer: 训练用，自适应学习率算法
+        :return:
+        '''
+        train_gen, test_gen = self.load_data(samples_name, batch_size)
+        train_len = train_gen.__len__()
+        test_len = test_gen.__len__()
+
+        # include the epoch in the file name. (uses `str.format`)
+        checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.ckpt"
+        latest = tf.train.latest_checkpoint(checkpoint_dir)
+
+        if latest is None:
+            return
+
+        model = self.load_model(mode = 0, weights_file = None)
+        print("loading >>> ", latest, " ...")
+        model.load_weights(latest)
+
+        # first: train only the top layers (which were randomly initialized)
+        # i.e. freeze all convolutional InceptionV3 layers
+        for i, layer in enumerate(model.layers[:freezed_num]):
+            layer.trainable = False
+            print( " freezed ", i, layer.name, sep="\t\t")
+        for i, layer in enumerate(model.layers[freezed_num:]):
+            layer.trainable = True
+            print("trainable", i + freezed_num, layer.name, sep="\t\t")
+
+        cp_callback = tf.keras.callbacks.ModelCheckpoint(
+            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
+            # Save weights, every 5-epochs.
+            period=1)
+
+        # compile the model (should be done *after* setting layers to non-trainable)
+        model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+
+        print(model.summary())
+        # train the model on the new data for a few epochs
+        model.fit_generator(train_gen, steps_per_epoch=train_len, epochs=epochs, verbose=1, workers=NUM_WORKERS,
+                            callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
+                            validation_data=test_gen, validation_steps=test_len, initial_epoch = initial_epoch)
+        return
+
     # def fine_tuning_1(self, samples_name):
     #     '''
     #     只训练全连接层
@@ -183,73 +191,102 @@ class Transfer(object):
     #     '''
     #     self.fine_tuning_model("InceptionV3", samples_name, 311, RMSprop(lr=1e-4, rho=0.9))
     #
-    # def fine_tuning_2(self, samples_name):
-    #     '''
-    #     训练全连接层，和最后一部分的原网络
-    #     :param samples_name:
-    #     :return:
-    #     '''
-    #     self.fine_tuning_model("InceptionV3_2", samples_name, 249, SGD(lr=0.0001, momentum=0.9))
+    def fine_tuning_inception_v3_249(self, samples_name, batch_size, epochs, initial_epoch):
+        '''
+        训练全连接层，和最后一部分的原网络
+        :param samples_name:
+        :return:
+        '''
+        optimizer = SGD(lr=1e-4, momentum=0.9)
+        self.fine_tuning_model(249, optimizer, samples_name, batch_size, epochs, initial_epoch)
 
-    def extract_features_for_train(self, samples_name, batch_size, augmentation = (False, False),
-                                   aug_multiple = (1, 1)):
+    def extract_features_for_train(self, samples_name, batch_size):
         '''
         从训练的图块中提取 特征， 并存盘
         :param samples_name: 图块文件所在列表txt文件
         :return: 生成两个特征文件
         '''
-        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        save_path = "{}/data/{}_{}_".format(self._params.PROJECT_ROOT, self.model_name, samples_name)
+        # train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        # test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        # save_path = "{}/data/{}_{}_".format(self._params.PROJECT_ROOT, self.model_name, samples_name)
+        #
+        # Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+        # train_gen = ImageSequence(Xtrain, Ytrain, batch_size)
+        # Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        # test_gen = ImageSequence(Xtest, Ytest, batch_size)
+        #
+        # model = self.load_model(mode = 1)
+        #
+        # step_count = len(Ytest) // batch_size
+        # # step_count = 10
+        # test_features = model.predict_generator(test_gen, steps=step_count, verbose=1,workers=NUM_WORKERS)
+        # test_label = Ytest[:step_count * batch_size]
+        # np.savez(save_path + "features_test", test_features, test_label)
+        #
+        # step_count = len(Ytrain) // batch_size
+        # # step_count = 10
+        # train_features = model.predict_generator(train_gen, steps=step_count, verbose=1, workers=NUM_WORKERS)
+        # train_label = Ytrain[:step_count * batch_size]
+        # np.savez(save_path + "features_train", train_features, train_label)
 
-        Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-        train_gen = ImageSequence(Xtrain, Ytrain, batch_size)
-        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        test_gen = ImageSequence(Xtest, Ytest, batch_size)
-
-        model = self.load_model(mode = 1)
-
-        step_count = len(Ytest) // batch_size
-        # step_count = 10
-        test_features = model.predict_generator(test_gen, steps=step_count, verbose=1,workers=NUM_WORKERS)
-        test_label = Ytest[:step_count * batch_size]
-        np.savez(save_path + "features_test", test_features, test_label)
-
-        step_count = len(Ytrain) // batch_size
-        # step_count = 10
-        train_features = model.predict_generator(train_gen, steps=step_count, verbose=1, workers=NUM_WORKERS)
-        train_label = Ytrain[:step_count * batch_size]
-        np.savez(save_path + "features_train", train_features, train_label)
+        train_list = "{}_train.txt".format(samples_name)
+        test_list = "{}_test.txt".format(samples_name)
+        model = self.load_model(mode=1)
+        self.extract_features_save_to_file(model, train_list, batch_size)
+        self.extract_features_save_to_file(model, test_list, batch_size)
         return
 
-    def fine_tuning_top_model_saved_file(self, samples_name, batch_size = 100, epochs = 20, initial_epoch = 0):
+    def extract_features_save_to_file(self, model, samples_file_path, batch_size, augmentation = False, aug_multiple = 1):
+        sample_name = samples_file_path[:-4]
+        file_list = "{}/{}".format(self._params.PATCHS_ROOT_PATH, samples_file_path)
+        if not augmentation:
+            save_path = "{}/data/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, sample_name)
+        else:
+            save_path = "{}/data/{}_{}_Aug{}".format(self._params.PROJECT_ROOT, self.model_name,
+                                                            sample_name, aug_multiple)
+
+        X, Y = read_csv_file(self._params.PATCHS_ROOT_PATH, file_list)
+        data_gen = ImageSequence(X, Y, batch_size, augmentation)
+
+        if not augmentation:
+            aug_multiple = 1
+
+        step_count = int(aug_multiple * len(Y) / batch_size)
+
+        features = model.predict_generator(data_gen, steps=step_count, verbose=1,workers=NUM_WORKERS)
+        labels = Y[:step_count * batch_size]
+        np.savez(save_path + "_features", features, labels)
+        return
+
+    def fine_tuning_top_model_saved_file(self, train_filename, test_filename,
+                                         batch_size = 100, epochs = 20, initial_epoch = 0):
         '''
         使用存盘的特征文件来训练 全连接层
         :param samples_name: 存盘的特征文件的代号
         :return:
         '''
-        data_path = "{}/data/{}_{}_".format(self._params.PROJECT_ROOT, self.model_name, samples_name)
-        D = np.load(data_path + "features_test.npz")
+        if (not self.model_name in train_filename) or (not self.model_name in test_filename) \
+                or (not self.patch_type in train_filename) or (not self.patch_type in test_filename):
+            return
+
+        data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, test_filename)
+        D = np.load(data_path)
         test_features = D['arr_0']
         test_features = test_features[:, np.newaxis]
         test_label = D['arr_1']
         test_label = test_label[:, np.newaxis]
         test_label = to_categorical(test_label, 2)
 
-        D = np.load(data_path + "features_train.npz")
+        data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, train_filename)
+        D = np.load(data_path)
         train_features = D['arr_0']
         train_features = train_features[:, np.newaxis]
         train_label = D['arr_1']
         train_label = train_label[:, np.newaxis]
         train_label = to_categorical(train_label, 2)
 
-        if self.patch_type in samples_name:
-            patch_type = self.patch_type
-        else:
-            patch_type = "error"
-
         # include the epoch in the file name. (uses `str.format`)
-        checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, patch_type)
+        checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.ckpt"
 
         cp_callback = tf.keras.callbacks.ModelCheckpoint(

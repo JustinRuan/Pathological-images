@@ -10,13 +10,13 @@ import unittest
 from core import *
 from transfer import Transfer
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
+# JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
-PATCH_TYPE = "4000_256"
+# PATCH_TYPE = "4000_256"
 # PATCH_TYPE = "2000_256"
-# PATCH_TYPE = "500_128"
+PATCH_TYPE = "500_128"
 
 
 MODEL_NAME = "inception_v3"
@@ -76,3 +76,9 @@ class Test_transfer(unittest.TestCase):
 
         result = cnn.predict_on_batch(model, imgCone, 20, 256, seeds, 2)
         print(result)
+
+    def test_fine_tuning_inception_v3_249(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
+        cnn.fine_tuning_inception_v3_249("T_NC_500_128",100, 3, 0)
