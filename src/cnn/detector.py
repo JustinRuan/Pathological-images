@@ -90,7 +90,9 @@ class Detector(object):
 
         # cnn = cnn_simple_5x128(self._params, "simplenet128")
         cnn = Transfer(self._params, "inception_v3", "500_128")
-        model = cnn.load_model(mode = 0, weights_file="/trained/inception_v3_500_128-0219-0.33-0.90.ckpt")
+        model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
+                                                   "inception_v3_500_128.ckpt")
+        model = cnn.load_model(mode = 0, weights_file=model_path)
         # model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
         model.compile(optimizer="RMSprop")
         predictions = cnn.predict_on_batch(model, self._imgCone, extract_scale, patch_size, seeds, 100)
@@ -102,10 +104,14 @@ class Detector(object):
                                                             new_scale, new_patch_size)
         if (new_scale == 20):
             cnn = Transfer(self._params, "inception_v3", "2000_256")
-            model = cnn.load_model(mode = 0, weights_file="/trained/inception_v3_2000_256-0286-0.20-0.95.ckpt")
+            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
+                                                       "inception_v3_2000_256-0286-0.20-0.95.ckpt")
+            model = cnn.load_model(mode = 0, weights_file=model_path)
         else: # (new_scale == 40):
             cnn = Transfer(self._params, "inception_v3", "4000_256")
-            model = cnn.load_model(mode=0, weights_file="/trained/inception_v3_4000_256-0396-0.33-0.88.ckpt")
+            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
+                                                       "inception_v3_4000_256-0396-0.33-0.88.ckpt")
+            model = cnn.load_model(mode=0, weights_file=model_path)
         # model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
         model.compile(optimizer="RMSprop")
 

@@ -13,7 +13,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import regularizers
 from tensorflow.keras.applications.inception_v3 import InceptionV3
-from tensorflow.keras.applications.inception_v3 import preprocess_input
+from tensorflow.keras.applications.densenet import DenseNet121
+
+
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Flatten
 from tensorflow.keras.models import Model, Sequential, load_model
@@ -46,6 +48,8 @@ class Transfer(object):
         '''
         # create the base pre-trained model
         # base_model = InceptionV3(weights='imagenet', include_top=False, pooling = 'avg')
+        # base_model = DenseNet121(weights='imagenet', include_top=False, pooling = 'avg')
+        # print(base_model.summary())
         f_model = Model(inputs=base_model.input, outputs=base_model.get_layer('avg_pool').output)
 
         features = []
@@ -94,7 +98,7 @@ class Transfer(object):
             elif mode == 1: # "extract features for transfer learning"
                 base_model = InceptionV3(weights='imagenet', include_top=False)
                 x = base_model.output
-                features_layer = GlobalAveragePooling2D()(x)
+                features_layer = GlobalAveragePooling2D(name='avg_pool')(x)
                 model = Model(inputs=base_model.input, outputs=features_layer)
                 return model
 
@@ -115,9 +119,54 @@ class Transfer(object):
 
                 return top_model
 
-        # elif model_name == "others xxxxx":
-        #
-        #     return
+        elif self.model_name == "densenet121":
+            if mode == 0: # "load_entire_model":
+                if weights_file == "imagenet":
+                    base_model = DenseNet121(weights='imagenet', include_top=False)
+                else:
+                    base_model = DenseNet121(weights=None, include_top=False)
+
+                x = base_model.output
+                x = GlobalAveragePooling2D(name='avg_pool')(x)
+                # let's add a fully-connected layer
+                x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1")(x)
+                # and a logistic layer -- let's say we have 2 classes
+                predictions = Dense(NUM_CLASSES, activation='softmax', kernel_regularizer=regularizers.l2(0.01),
+                                    name="t_Dense_2")(x)
+
+                # this is the model we will train
+                model = Model(inputs=base_model.input, outputs=predictions)
+
+                if not (weights_file is None or weights_file == "imagenet"):
+                    # model_path = "{}/models/{}".format(self._params.PROJECT_ROOT, weights_file)
+                    print("loading >>> ", weights_file, " ...")
+                    model.load_weights(weights_file)
+
+                return model
+
+            elif mode == 1: # "extract features for transfer learning"
+                base_model = DenseNet121(weights='imagenet', include_top=False)
+                x = base_model.output
+                features_layer = GlobalAveragePooling2D(name='avg_pool')(x)
+                model = Model(inputs=base_model.input, outputs=features_layer)
+                return model
+
+            elif mode == 2: # "refine top model"
+                top_model = Sequential()
+
+                # top_model.add(Flatten(input_shape=(1, 2048)))
+                top_model.add(
+                    Dense(1024, input_shape=(1024,), activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1"))
+                top_model.add(
+                    Dense(NUM_CLASSES, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2"))
+
+                checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+                latest = tf.train.latest_checkpoint(checkpoint_dir)
+                if not latest is None:
+                    print("loading >>> ", latest, " ...")
+                    top_model.load_weights(latest)
+
+                return top_model
 
         return None
 

@@ -20,7 +20,8 @@ JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 PATCH_TYPE = "500_128"
 
 
-MODEL_NAME = "inception_v3"
+# MODEL_NAME = "inception_v3"
+MODEL_NAME = "densenet121"
 
 class Test_transfer(unittest.TestCase):
 
@@ -29,7 +30,7 @@ class Test_transfer(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-        model = cnn.load_model(mode = 0, weights_file=c.PROJECT_ROOT+"/models/trained/inception_v3_500_128.ckpt")
+        # model = cnn.load_model(mode = 0, weights_file=c.PROJECT_ROOT+"/models/trained/inception_v3_500_128.ckpt")
 
         imgCone = ImageCone(c, Open_Slide())
 
@@ -37,7 +38,7 @@ class Test_transfer(unittest.TestCase):
         tag = imgCone.open_slide("Tumor/Tumor_004.tif",
                                  None, "Tumor_004")
         seeds = [(8800, 12256)] * 10  # C, C, S
-        result = cnn.extract_features(model, imgCone, 5, 128, seeds)
+        result = cnn.extract_features(None, imgCone, 5, 128, seeds)
         print(np.std(result, axis = 1) )
         print(np.std(result, axis=0))
 
@@ -59,6 +60,8 @@ class Test_transfer(unittest.TestCase):
                                              "inception_v3_T_NC_500_128_features_test.npz",
                                              batch_size=200, epochs=20, initial_epoch=0)
         # cnn.fine_tuning_top_model_saved_file("T_NC_4000_256", batch_size=200, epochs=400, initial_epoch=300)
+
+
 
     def test_merge_save_model(self):
         c = Params()
