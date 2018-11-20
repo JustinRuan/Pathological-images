@@ -5,6 +5,9 @@ __author__ = 'Justin'
 __mtime__ = '2018-10-30'
 
 """
+import os
+# os.environ['CUDA_VISIBLE_DEVICES'] = "0" #GPU
+# os.environ['CUDA_VISIBLE_DEVICES'] = "-1" #CPU
 
 import numpy as np
 import tensorflow as tf
@@ -14,7 +17,7 @@ from tensorflow.keras.applications.inception_v3 import preprocess_input
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Flatten
 from tensorflow.keras.models import Model, Sequential, load_model
-from tensorflow.keras.optimizers import SGD, RMSprop
+from tensorflow.keras.optimizers import SGD, RMSprop, Adagrad, Adam, Adamax, Nadam, Adadelta
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.utils import to_categorical
 from preparation.normalization import ImageNormalization
@@ -32,44 +35,45 @@ class Transfer(object):
         self.patch_type = patch_type
         return
 
-    # def extract_features(self, src_img, scale, patch_size, seeds):
-    #     '''
-    #     从切片中提取图块，并用网络提取特征
-    #     :param src_img: 切片图像
-    #     :param scale: 提取的倍镜数
-    #     :param patch_size: 图块大小
-    #     :param seeds: 图块中心点的坐标
-    #     :return: 特征
-    #     '''
-    #     # create the base pre-trained model
-    #     base_model = InceptionV3(weights='imagenet', include_top=False)
-    #     # print(base_model.summary())
-    #     features = []
-    #     for x, y in seeds:
-    #         block= src_img.get_image_block(scale, x, y, patch_size, patch_size)
-    #         img = block.get_img()
-    #
-    #         x = image.img_to_array(img)
-    #         x = np.expand_dims(x, axis=0)
-    #         x = preprocess_input(x)
-    #
-    #         feature = base_model.predict(x)
-    #         features.append(feature)
-    #
-    #     return features
+    def extract_features(self,base_model, src_img, scale, patch_size, seeds):
+        '''
+        从切片中提取图块，并用网络提取特征
+        :param src_img: 切片图像
+        :param scale: 提取的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 图块中心点的坐标
+        :return: 特征
+        '''
+        # create the base pre-trained model
+        # base_model = InceptionV3(weights='imagenet', include_top=False, pooling = 'avg')
+        f_model = Model(inputs=base_model.input, outputs=base_model.get_layer('avg_pool').output)
+
+        features = []
+        for x, y in seeds:
+            block= src_img.get_image_block(scale, x, y, patch_size, patch_size)
+            img = block.get_img()
+
+            x = image.img_to_array(ImageNormalization.normalize_mean(img))
+            x = np.expand_dims(x, axis=0)
+            # x = preprocess_input(x) //训练时没有使用预处理，这里也不能调用
+
+            feature = f_model.predict(x)
+            features.append(feature)
+
+        return features
 
     # patch_type 500_128, 2000_256
     def load_model(self, mode, weights_file = None):
 
         if self.model_name == "inception_v3":
             if mode == 0: # "load_entire_model":
-                if weights_file is None:
+                if weights_file == "imagenet":
                     base_model = InceptionV3(weights='imagenet', include_top=False)
                 else:
                     base_model = InceptionV3(weights=None, include_top=False)
 
                 x = base_model.output
-                x = GlobalAveragePooling2D()(x)
+                x = GlobalAveragePooling2D(name='avg_pool')(x)
                 # let's add a fully-connected layer
                 x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1")(x)
                 # and a logistic layer -- let's say we have 2 classes
@@ -79,13 +83,13 @@ class Transfer(object):
                 # this is the model we will train
                 model = Model(inputs=base_model.input, outputs=predictions)
 
-                if not weights_file is None:
-                    model_path = "{}/models/{}".format(self._params.PROJECT_ROOT, weights_file)
-                    print("loading >>> ", model_path, " ...")
-                    model.load_weights(model_path)
-                    return model
-                else:
-                    return model
+                if not (weights_file is None or weights_file == "imagenet"):
+                    # model_path = "{}/models/{}".format(self._params.PROJECT_ROOT, weights_file)
+                    print("loading >>> ", weights_file, " ...")
+                    model.load_weights(weights_file)
+
+                return model
+
 
             elif mode == 1: # "extract features for transfer learning"
                 base_model = InceptionV3(weights='imagenet', include_top=False)
@@ -97,9 +101,9 @@ class Transfer(object):
             elif mode == 2: # "refine top model"
                 top_model = Sequential()
 
-                top_model.add(Flatten(input_shape=(1, 2048)))
+                # top_model.add(Flatten(input_shape=(1, 2048)))
                 top_model.add(
-                    Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1"))
+                    Dense(1024, input_shape=(2048,), activation='relu', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_1"))
                 top_model.add(
                     Dense(NUM_CLASSES, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="t_Dense_2"))
 
@@ -155,12 +159,9 @@ class Transfer(object):
         if latest is None:
             return
 
-        model = self.load_model(mode = 0, weights_file = None)
-        print("loading >>> ", latest, " ...")
-        model.load_weights(latest)
+        model = self.load_model(mode = 0, weights_file = latest)
+        # model = self.load_model(mode=0, weights_file="imagenet")
 
-        # first: train only the top layers (which were randomly initialized)
-        # i.e. freeze all convolutional InceptionV3 layers
         for i, layer in enumerate(model.layers[:freezed_num]):
             layer.trainable = False
             print( " freezed ", i, layer.name, sep="\t\t")
@@ -197,8 +198,11 @@ class Transfer(object):
         :param samples_name:
         :return:
         '''
-        optimizer = SGD(lr=1e-4, momentum=0.9)
-        self.fine_tuning_model(249, optimizer, samples_name, batch_size, epochs, initial_epoch)
+        # optimizer = SGD(lr=1e-4, momentum=0.9)
+        optimizer = RMSprop(lr=1e-4, rho=0.9)
+        # optimizer = SGD(lr=1e-4, momentum=0.9)
+        # 最后两个Inception的位置：249, 最后一个的位置：280, Top的位置：311
+        self.fine_tuning_model(312, optimizer, samples_name, batch_size, epochs, initial_epoch)
 
     def extract_features_for_train(self, samples_name, batch_size):
         '''
@@ -206,32 +210,10 @@ class Transfer(object):
         :param samples_name: 图块文件所在列表txt文件
         :return: 生成两个特征文件
         '''
-        # train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        # test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        # save_path = "{}/data/{}_{}_".format(self._params.PROJECT_ROOT, self.model_name, samples_name)
-        #
-        # Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-        # train_gen = ImageSequence(Xtrain, Ytrain, batch_size)
-        # Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        # test_gen = ImageSequence(Xtest, Ytest, batch_size)
-        #
-        # model = self.load_model(mode = 1)
-        #
-        # step_count = len(Ytest) // batch_size
-        # # step_count = 10
-        # test_features = model.predict_generator(test_gen, steps=step_count, verbose=1,workers=NUM_WORKERS)
-        # test_label = Ytest[:step_count * batch_size]
-        # np.savez(save_path + "features_test", test_features, test_label)
-        #
-        # step_count = len(Ytrain) // batch_size
-        # # step_count = 10
-        # train_features = model.predict_generator(train_gen, steps=step_count, verbose=1, workers=NUM_WORKERS)
-        # train_label = Ytrain[:step_count * batch_size]
-        # np.savez(save_path + "features_train", train_features, train_label)
-
         train_list = "{}_train.txt".format(samples_name)
         test_list = "{}_test.txt".format(samples_name)
         model = self.load_model(mode=1)
+        print(model.summary())
         self.extract_features_save_to_file(model, train_list, batch_size)
         self.extract_features_save_to_file(model, test_list, batch_size)
         return
@@ -272,7 +254,7 @@ class Transfer(object):
         data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, test_filename)
         D = np.load(data_path)
         test_features = D['arr_0']
-        test_features = test_features[:, np.newaxis]
+        # test_features = test_features[:, np.newaxis]
         test_label = D['arr_1']
         test_label = test_label[:, np.newaxis]
         test_label = to_categorical(test_label, 2)
@@ -280,7 +262,7 @@ class Transfer(object):
         data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, train_filename)
         D = np.load(data_path)
         train_features = D['arr_0']
-        train_features = train_features[:, np.newaxis]
+        # train_features = train_features[:, np.newaxis]
         train_label = D['arr_1']
         train_label = train_label[:, np.newaxis]
         train_label = to_categorical(train_label, 2)
@@ -291,7 +273,7 @@ class Transfer(object):
 
         cp_callback = tf.keras.callbacks.ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
-            period=1)
+            period=5)
 
         top_model = self.load_model(mode = 2)
 
@@ -312,7 +294,7 @@ class Transfer(object):
 
         top_model = self.load_model(mode = 2)
 
-        model = self.load_model(mode = 0)
+        model = self.load_model(mode = 0, weights_file="imagenet")
 
         layers_set = ["t_Dense_1", "t_Dense_2"]
         for layer_name in layers_set:
@@ -334,14 +316,18 @@ class Transfer(object):
         :return:
         '''
         train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation = (False, False))
+        train_len = train_gen.__len__()
         test_len = test_gen.__len__()
-
-        model = self.load_model(mode = 0, weights_file=weights_file)
+        weights_path = "{}/models/{}".format(self._params.PROJECT_ROOT, weights_file)
+        model = self.load_model(mode = 0, weights_file=weights_path)
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-        test_loss, test_acc = model.evaluate_generator(test_gen, steps = 10, verbose=1, workers=NUM_WORKERS)
+        print(model.summary())
 
-        print('Test accuracy:', test_acc)
+        test_loss, test_acc = model.evaluate_generator(test_gen, steps = test_len, verbose=1, workers=NUM_WORKERS)
+        print('Test loss:', test_loss, 'Test accuracy:', test_acc)
 
+        train_loss, train_acc = model.evaluate_generator(train_gen, steps = train_len, verbose=1, workers=NUM_WORKERS)
+        print('Train loss:', train_loss, 'Train accuracy:', train_acc)
         # result = model.predict_generator(test_gen, steps=10)
         # print(result)
 
