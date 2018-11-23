@@ -6,8 +6,8 @@ __mtime__ = '2018-10-30'
 
 """
 
-from tensorflow.keras.utils import Sequence, to_categorical
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from keras.utils import Sequence, to_categorical
+from keras.preprocessing.image import ImageDataGenerator
 from skimage.io import imread
 from skimage.transform import resize
 import numpy as np
