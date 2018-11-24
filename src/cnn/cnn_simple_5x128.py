@@ -12,22 +12,26 @@ import os
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import regularizers
-from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Flatten, Conv2D, MaxPooling2D, Dropout
-from tensorflow.keras.models import Model, Sequential, load_model
-from tensorflow.keras.optimizers import SGD, RMSprop
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.utils import to_categorical
+import keras
+from keras import regularizers
+from keras.callbacks import TensorBoard
+from keras.layers import Dense, GlobalAveragePooling2D, Flatten, Conv2D, MaxPooling2D, Dropout
+from keras.models import Model, Sequential, load_model
+from keras.optimizers import SGD, RMSprop
+from keras.preprocessing import image
+from keras.utils import to_categorical
 from sklearn import metrics
 from skimage import io, util
 from core import *
 from core.util import read_csv_file
 from preparation.normalization import ImageNormalization
 
+# NUM_CLASSES = 2
+NUM_WORKERS = 2
+
 class cnn_simple_5x128(object):
 
-    def __init__(self, params, model_name):
+    def __init__(self, params, model_name, num_classes, class_weight_mode):
         '''
          初始化CNN分类器
         :param params: 参数
@@ -35,15 +39,30 @@ class cnn_simple_5x128(object):
         :param samples_name: 使用的标本集的关键字（标记符），为None时是进入预测模式
         '''
 
-        model_name = model_name + "_keras"
+        model_name = model_name
         self._params = params
         self.model_name = model_name
+        self.num_classes = num_classes
+        self.class_weight_mode = class_weight_mode
 
-        self.model_root = "{}/models/{}".format(self._params.PROJECT_ROOT, model_name)
+        if num_classes == 2:
+            self.model_root = "{}/models/{}".format(self._params.PROJECT_ROOT, model_name)
+        else:
+            self.model_root = "{}/models/{}_W{}".format(self._params.PROJECT_ROOT, model_name, class_weight_mode)
+
+            if class_weight_mode == 0 or class_weight_mode is None:
+                self.class_weight = {0: 1, 1: 1, 2: 1, 3: 1}
+            elif class_weight_mode == 1:
+                self.class_weight = {0: 1, 1: 1, 2: 0.5, 3: 0.5}
+            else:
+                self.class_weight = {0: 1, 1: 1, 2: 0.1, 3: 0.1}
+
+        if (not os.path.exists(self.model_root)):
+            os.makedirs(self.model_root)
+
         return
 
     def create_model(self, model_file = None):
-        num_classes = 2
 
         model = Sequential()
         # input: 128x128 images with 3 channels -> (128, 128, 3) tensors.
@@ -58,7 +77,7 @@ class cnn_simple_5x128(object):
         # 池化层 32 x 32 => 16 x 16
         model.add(MaxPooling2D(pool_size=3, strides=2, padding='same'))
         # 第三个卷积层 16 x 16 => 16 x 16
-        model.add(Conv2D(4, kernel_size=(3, 3), strides=1, padding="same", activation='relu'))
+        model.add(Conv2D(32, kernel_size=(3, 3), strides=1, padding="same", activation='relu'))
         # 池化层 16 x 16 => 8 x 8
         model.add(MaxPooling2D(pool_size=3, strides=2, padding='same'))
 
@@ -68,39 +87,38 @@ class cnn_simple_5x128(object):
         # # model.add(Dropout(0.5))
         # model.add(Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.01)))
         # model.add(Dense(num_classes, activation='softmax', kernel_regularizer=regularizers.l2(0.01)))
-        model.add(Dense(128, activation='relu'))
+        # model.add(Dense(128, activation='relu'))
         # model.add(Dropout(0.5))
-        model.add(Dense(128, activation='relu'))
-        model.add(Dense(num_classes, activation='softmax'))
+        model.add(Dense(512, activation='relu'))
+        model.add(Dense(self.num_classes, activation='softmax'))
 
         if model_file is None:
-            checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, self.model_name)
+            checkpoint_dir = self.model_root
             latest = tf.train.latest_checkpoint(checkpoint_dir)
 
             if not latest is None:
                 print("loading >>> ", latest, " ...")
                 model.load_weights(latest)
         else:
-            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT, model_file)
+            model_path = "{}/models/{}".format(self._params.PROJECT_ROOT, model_file)
             print("loading >>> ", model_path, " ...")
             model.load_weights(model_path)
 
         return model
 
-    def train_model(self, samples_name, batch_size, augmentation):
+    def train_model(self, samples_name, batch_size, augmentation, epochs, initial_epoch):
         train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation)
 
-        train_len = train_gen.__len__()
-        test_len = test_gen.__len__()
-
-        # checkpoint_dir = "{}/models/{}".format(self._params.PROJECT_ROOT, samples_name)
         checkpoint_dir = self.model_root
         checkpoint_path = self.model_root + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.ckpt"
 
-        cp_callback = tf.keras.callbacks.ModelCheckpoint(
+        cp_callback = keras.callbacks.ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
             # Save weights, every 5-epochs.
             period=1)
+        early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
+        reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, mode='auto',
+                                          epsilon=0.0001, cooldown=0, min_lr=0)
 
         model = self.create_model()
         print(model.summary())
@@ -108,9 +126,19 @@ class cnn_simple_5x128(object):
         optimizer = RMSprop(lr=1e-4, rho=0.9)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
-        model.fit_generator(train_gen, steps_per_epoch=train_len, epochs=20, verbose=1,
-                            callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
-                            validation_data=test_gen, validation_steps=test_len, initial_epoch = 0)
+        steps_per_epoch = 200
+        validation_steps = 100
+        if self.num_classes == 2:
+            model.fit_generator(train_gen, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=1, workers=NUM_WORKERS,
+                                # callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
+                                callbacks=[cp_callback, early_stopping, reduce_lr],
+                                validation_data=test_gen, validation_steps=validation_steps, initial_epoch = initial_epoch)
+        else:
+            model.fit_generator(train_gen, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=1, workers=NUM_WORKERS,
+                                class_weight = self.class_weight,
+                                # callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
+                                callbacks=[cp_callback, early_stopping, reduce_lr],
+                                validation_data=test_gen, validation_steps=validation_steps, initial_epoch = initial_epoch)
         return
 
     def load_data(self, samples_name, batch_size, augmentation = (False, False)):
@@ -130,7 +158,7 @@ class cnn_simple_5x128(object):
         test_gen = ImageSequence(Xtest, Ytest, batch_size, augmentation[1])
         return  train_gen, test_gen
 
-    def predict(self, src_img, scale, patch_size, seeds):
+    def predict(self, src_img, scale, patch_size, seeds, model_file):
         '''
         预测在种子点提取的图块
         :param src_img: 切片图像
@@ -139,7 +167,7 @@ class cnn_simple_5x128(object):
         :param seeds: 种子点的集合
         :return:
         '''
-        model = self.create_model()
+        model = self.create_model(model_file)
         optimizer = RMSprop(lr=1e-4, rho=0.9)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         print(model.summary())
@@ -158,7 +186,7 @@ class cnn_simple_5x128(object):
             result.append((class_id, probability))
         return result
 
-    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size, model_file):
         '''
         预测在种子点提取的图块
         :param src_img: 切片图像
@@ -167,14 +195,14 @@ class cnn_simple_5x128(object):
         :param seeds: 种子点的集合
         :return:
         '''
-        model = self.create_model()
+        model = self.create_model(model_file)
         optimizer = RMSprop(lr=1e-4, rho=0.9)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         print(model.summary())
 
         image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
 
-        predictions = model.predict_generator(image_itor, verbose=1)
+        predictions = model.predict_generator(image_itor, verbose=1, workers=NUM_WORKERS)
         result = []
         for pred_dict in predictions:
             class_id = np.argmax(pred_dict)
@@ -183,7 +211,7 @@ class cnn_simple_5x128(object):
 
         return result
 
-    def predict_test_file(self, model_file, test_file_list):
+    def predict_test_file(self, model_file, test_file_list, batch_size):
         model = self.create_model(model_file)
         optimizer = RMSprop(lr=1e-4, rho=0.9)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
@@ -199,9 +227,9 @@ class cnn_simple_5x128(object):
             Xtest.extend(Xtest1)
             Ytest.extend(Ytest1)
 
-        image_itor = ImageSequence(Xtest, Ytest, 20)
+        image_itor = ImageSequence(Xtest, Ytest, batch_size)
 
-        predictions = model.predict_generator(image_itor, verbose=1)
+        predictions = model.predict_generator(image_itor, verbose=1, workers=NUM_WORKERS)
         predicted_tags = []
         predicted_probability = []
         for pred_dict in predictions:

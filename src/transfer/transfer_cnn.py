@@ -31,7 +31,7 @@ from core.util import read_csv_file
 from core import *
 
 NUM_CLASSES = 2
-NUM_WORKERS = 3
+NUM_WORKERS = 1
 
 # def categorical_crossentropy2(y_true, y_pred):
 #   return K.categorical_crossentropy(y_true, y_pred)
