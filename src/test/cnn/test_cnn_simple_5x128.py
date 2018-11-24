@@ -20,13 +20,16 @@ class Test_cnn_simple_5x128(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        mode = -1
-        if mode == -1: # 标准2分类
-            cnn = cnn_simple_5x128(c, "simplenet128", 2, None)
-            cnn.train_model("T_NC_500_128", batch_size = 100, augmentation = (False, False), epochs=500, initial_epoch=0)
-        elif mode >= 0:
-            cnn = cnn_simple_5x128(c, "simplenet128", 4, mode)
-            cnn.train_model("T_NC_500_128", batch_size = 100, augmentation = (False, False), epochs=500, initial_epoch=0)
+        cnn = cnn_simple_5x128(c, "simplenet128")
+        cnn.train_model("T_NC_500_128", batch_size=100, augmentation=(False, False), epochs=500, initial_epoch=0)
+
+        # mode = 4
+        # if mode == -1: # 标准2分类
+        #     cnn = cnn_simple_5x128(c, "simplenet128", 2, None)
+        #     cnn.train_model("T_NC_500_128", batch_size=100, augmentation=(False, False), epochs=500, initial_epoch=0)
+        # elif mode >= 0:
+        #     cnn = cnn_simple_5x128(c, "simplenet128", 4, mode)
+        #     cnn.train_model("CNN_R_500_128", batch_size = 32, augmentation = (False, False), epochs=500, initial_epoch=0)
 
     def test_predict(self):
         c = Params()
@@ -52,3 +55,16 @@ class Test_cnn_simple_5x128(unittest.TestCase):
 
         cnn.predict_test_file("simplenet128/cp-0031-0.26-0.89.ckpt",
                               ["T_NC_500_128_test.txt"], 100)
+
+        # mode = 0
+        # cnn = cnn_simple_5x128(c, "simplenet128", 4, mode)
+        # # cnn.predict_test_file("simplenet128_W4/cp-0015-0.52-0.81.ckpt",
+        # #                       ["CNN_R_500_128_test.txt"], 100)
+        # # cnn.predict_test_file("simplenet128_W3/cp-0043-0.59-0.85.ckpt",
+        # #                       ["CNN_R_500_128_test.txt"], 100)
+        # # cnn.predict_test_file("simplenet128_W2/cp-0029-0.48-0.84.ckpt",
+        # #                       ["CNN_R_500_128_test.txt"], 100)
+        # # cnn.predict_test_file("simplenet128_W1/cp-0032-0.37-0.86.ckpt",
+        # #                       ["CNN_R_500_128_test.txt"], 100)
+        # cnn.predict_test_file("simplenet128_W0/cp-0046-0.35-0.87.ckpt",
+        #                       ["CNN_R_500_128_test.txt"], 100)

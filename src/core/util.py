@@ -76,6 +76,8 @@ def latest_checkpoint(search_dir):
         loss.append(float(value[2]))
         accuracy.append(float(value[3]))
 
+    if len(filename) == 0: return None
+
     data = {'filename':filename, 'epoch':epoch, 'loss':loss, 'accuracy':accuracy}
     df = pd.DataFrame(data, columns=['filename','epoch','loss','accuracy'])
     result = df.sort_values(['loss', 'accuracy', 'epoch'], ascending=[True, False, False])

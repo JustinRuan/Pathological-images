@@ -29,9 +29,9 @@ from preparation.normalization import ImageNormalization
 # NUM_CLASSES = 2
 NUM_WORKERS = 1
 
-class cnn_simple_5x128(object):
+class cnn_simple_5x128_W(object):
 
-    def __init__(self, params, model_name):
+    def __init__(self, params, model_name, weight_mode):
         '''
          初始化CNN分类器
         :param params: 参数
@@ -43,28 +43,20 @@ class cnn_simple_5x128(object):
         self._params = params
         self.model_name = model_name
         self.num_classes = 2
-        # self.class_weight_mode = class_weight_mode
+        self.weight_mode = weight_mode
 
-        # if num_classes == 2:
-        #     self.model_root = "{}/models/{}".format(self._params.PROJECT_ROOT, model_name)
-        # else:
-        #     self.model_root = "{}/models/{}_W{}".format(self._params.PROJECT_ROOT, model_name, class_weight_mode)
-        #
-        #     # 无类权重模式
-        #     if class_weight_mode == 0 or class_weight_mode is None:
-        #         self.class_weight = None
-        #     elif class_weight_mode == 1:
-        #         self.class_weight = {0: 1, 1: 1, 2: 0.5, 3: 0.5}
-        #     # elif class_weight_mode == 2:
-        #     #     self.class_weight = {0: 0.5, 1: 0.5, 2: 1, 3: 1}
-        #     # elif class_weight_mode == 3:
-        #     #     self.class_weight = {0: 1, 1: 1, 2: 0.1, 3: 0.1}
-        #     elif class_weight_mode == 4:
-        #         self.class_weight = {0: 0.1, 1: 0.1, 2: 1, 3: 1}
-        #     else:
-        #         self.class_weight = None
 
-        self.model_root = "{}/models/{}".format(self._params.PROJECT_ROOT, model_name)
+        self.model_root = "{}/models/{}_W{}".format(self._params.PROJECT_ROOT, model_name, weight_mode)
+
+        # 无样本权重模式
+        if weight_mode == 0 or weight_mode is None:
+            self.class_weight = {0: 1, 1: 1, 2: 1, 3: 1}
+        elif weight_mode == 1:
+            self.class_weight = {0: 1, 1: 1, 2: 0.5, 3: 0.5}
+        elif weight_mode == 2:
+            self.class_weight = {0: 0.1, 1: 0.1, 2: 1, 3: 1}
+        else:
+            self.class_weight = None
 
         if (not os.path.exists(self.model_root)):
             os.makedirs(self.model_root)
@@ -138,21 +130,12 @@ class cnn_simple_5x128(object):
 
         steps_per_epoch = 200
         validation_steps = 100
-        # if self.num_classes == 2:
-        #     model.fit_generator(train_gen, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=1, workers=NUM_WORKERS,
-        #                         # callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
-        #                         callbacks=[cp_callback, early_stopping, reduce_lr],
-        #                         validation_data=test_gen, validation_steps=validation_steps, initial_epoch = initial_epoch)
-        # else:
-        #     model.fit_generator(train_gen, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=1, workers=NUM_WORKERS,
-        #                         class_weight = self.class_weight,
-        #                         # callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
-        #                         callbacks=[cp_callback, early_stopping, reduce_lr],
-        #                         validation_data=test_gen, validation_steps=validation_steps, initial_epoch = initial_epoch)
+
         model.fit_generator(train_gen, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=1, workers=NUM_WORKERS,
                             # callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
                             callbacks=[cp_callback, early_stopping, reduce_lr],
-                            validation_data=test_gen, validation_steps=validation_steps, initial_epoch=initial_epoch)
+                            validation_data=test_gen, validation_steps=validation_steps, initial_epoch = initial_epoch)
+
         return
 
     def load_data(self, samples_name, batch_size, augmentation = (False, False)):
@@ -166,10 +149,14 @@ class cnn_simple_5x128(object):
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, self.num_classes, augmentation[0])
+        Ytrain_new = [class_id % self.num_classes for class_id in Ytrain]
+        Wtrain = [self.class_weight[class_id] for class_id in Ytrain]
+        train_gen = ImageWeightSequence(Xtrain, Ytrain_new, Wtrain, batch_size, self.num_classes, augmentation[0])
 
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        test_gen = ImageSequence(Xtest, Ytest, batch_size, self.num_classes, augmentation[1])
+        Ytest_new = [class_id % self.num_classes for class_id in Ytest]
+        Wtest = [self.class_weight[class_id] for class_id in Ytest]
+        test_gen = ImageWeightSequence(Xtest, Ytest_new, Wtest, batch_size, self.num_classes, augmentation[1])
         return  train_gen, test_gen
 
     def predict(self, src_img, scale, patch_size, seeds, model_file):
