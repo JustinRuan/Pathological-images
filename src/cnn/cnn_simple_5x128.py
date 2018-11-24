@@ -27,7 +27,7 @@ from core.util import read_csv_file
 from preparation.normalization import ImageNormalization
 
 # NUM_CLASSES = 2
-NUM_WORKERS = 2
+NUM_WORKERS = 3
 
 class cnn_simple_5x128(object):
 
@@ -50,12 +50,19 @@ class cnn_simple_5x128(object):
         else:
             self.model_root = "{}/models/{}_W{}".format(self._params.PROJECT_ROOT, model_name, class_weight_mode)
 
+            # 无类权重模式
             if class_weight_mode == 0 or class_weight_mode is None:
-                self.class_weight = {0: 1, 1: 1, 2: 1, 3: 1}
+                self.class_weight = None
             elif class_weight_mode == 1:
                 self.class_weight = {0: 1, 1: 1, 2: 0.5, 3: 0.5}
-            else:
+            elif class_weight_mode == 2:
+                self.class_weight = {0: 0.5, 1: 0.5, 2: 1, 3: 1}
+            elif class_weight_mode == 3:
                 self.class_weight = {0: 1, 1: 1, 2: 0.1, 3: 0.1}
+            elif class_weight_mode == 4:
+                self.class_weight = {0: 0.1, 1: 0.1, 2: 1, 3: 1}
+            else:
+                self.class_weight = None
 
         if (not os.path.exists(self.model_root)):
             os.makedirs(self.model_root)
@@ -94,7 +101,8 @@ class cnn_simple_5x128(object):
 
         if model_file is None:
             checkpoint_dir = self.model_root
-            latest = tf.train.latest_checkpoint(checkpoint_dir)
+            # latest = tf.train.latest_checkpoint(checkpoint_dir)
+            latest = util.latest_checkpoint(checkpoint_dir)
 
             if not latest is None:
                 print("loading >>> ", latest, " ...")
@@ -152,10 +160,10 @@ class cnn_simple_5x128(object):
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, augmentation[0])
+        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, self.num_classes, augmentation[0])
 
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        test_gen = ImageSequence(Xtest, Ytest, batch_size, augmentation[1])
+        test_gen = ImageSequence(Xtest, Ytest, batch_size, self.num_classes, augmentation[1])
         return  train_gen, test_gen
 
     def predict(self, src_img, scale, patch_size, seeds, model_file):
@@ -227,7 +235,7 @@ class cnn_simple_5x128(object):
             Xtest.extend(Xtest1)
             Ytest.extend(Ytest1)
 
-        image_itor = ImageSequence(Xtest, Ytest, batch_size)
+        image_itor = ImageSequence(Xtest, Ytest, batch_size, self.num_classes)
 
         predictions = model.predict_generator(image_itor, verbose=1, workers=NUM_WORKERS)
         predicted_tags = []

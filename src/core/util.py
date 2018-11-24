@@ -8,6 +8,8 @@ __mtime__ = '2018-06-02'
 import numpy as np
 from skimage import color, morphology
 from skimage.morphology import square
+import os
+import pandas as pd
 
 def get_seeds(MaskLow, lowScale, highScale, patch_size_high, spacingHigh, margin = -8):
     '''
@@ -59,3 +61,24 @@ def read_csv_file(root_path, csv_path):
         patch_file = "{}/{}".format(root_path, items[0])
         filenames_list.append(patch_file)
     return filenames_list, labels_list
+
+def latest_checkpoint(search_dir):
+
+    filename = []
+    epoch = []
+    loss = []
+    accuracy = []
+
+    for ckpt_name in os.listdir(search_dir):
+        value = ckpt_name[:-5].split("-")
+        filename.append(ckpt_name)
+        epoch.append(int(value[1]))
+        loss.append(float(value[2]))
+        accuracy.append(float(value[3]))
+
+    data = {'filename':filename, 'epoch':epoch, 'loss':loss, 'accuracy':accuracy}
+    df = pd.DataFrame(data, columns=['filename','epoch','loss','accuracy'])
+    result = df.sort_values(['loss', 'accuracy', 'epoch'], ascending=[True, False, False])
+
+    path = "{}/{}".format(search_dir, result.iloc[0,0])
+    return path
