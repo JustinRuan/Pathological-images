@@ -45,18 +45,24 @@ class cnn_simple_5x128_W(object):
         self.num_classes = 2
         self.weight_mode = weight_mode
 
-
-        self.model_root = "{}/models/{}_W{}".format(self._params.PROJECT_ROOT, model_name, weight_mode)
-
         # 无样本权重模式
-        if weight_mode == 0 or weight_mode is None:
-            self.class_weight = {0: 1, 1: 1, 2: 1, 3: 1}
-        elif weight_mode == 1:
+        # if weight_mode == 0 or weight_mode is None:
+        #     self.class_weight = None
+        #     self.model_root = "{}/models/{}".format(self._params.PROJECT_ROOT, model_name)
+        # elif weight_mode == 1:
+        #     self.class_weight = {0: 1, 1: 1, 2: 0.5, 3: 0.5}
+        #     self.model_root = "{}/models/{}_W{}".format(self._params.PROJECT_ROOT, model_name, weight_mode)
+        # elif weight_mode == 2:
+        #     self.class_weight = {0: 0.1, 1: 0.1, 2: 1, 3: 1}
+        #     self.model_root = "{}/models/{}_W{}".format(self._params.PROJECT_ROOT, model_name, weight_mode)
+        # else:
+        #     self.class_weight = None
+        if weight_mode == 1:
             self.class_weight = {0: 1, 1: 1, 2: 0.5, 3: 0.5}
-        elif weight_mode == 2:
-            self.class_weight = {0: 0.1, 1: 0.1, 2: 1, 3: 1}
+            self.model_root = "{}/models/{}_W{}".format(self._params.PROJECT_ROOT, model_name, weight_mode)
         else:
-            self.class_weight = None
+            print("Error!!!")
+            return
 
         if (not os.path.exists(self.model_root)):
             os.makedirs(self.model_root)
