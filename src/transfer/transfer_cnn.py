@@ -20,7 +20,7 @@ from keras import backend as K
 from keras.losses import categorical_crossentropy
 
 from keras.callbacks import TensorBoard
-from keras.layers import Dense, GlobalAveragePooling2D, Input, BatchNormalization, Dropout
+from keras.layers import Dense, GlobalAveragePooling2D, Input, BatchNormalization, Dropout, Activation
 from keras.models import Model, Sequential, load_model
 from keras.optimizers import SGD, RMSprop, Adagrad, Adam, Adamax, Nadam, Adadelta
 from keras.preprocessing import image
@@ -30,7 +30,7 @@ from preparation.normalization import ImageNormalization
 from core.util import read_csv_file
 from core import *
 
-NUM_CLASSES = 2
+NUM_CLASSES = 4
 NUM_WORKERS = 1
 
 # def categorical_crossentropy2(y_true, y_pred):
@@ -82,9 +82,9 @@ class Transfer(object):
         # x = BatchNormalization(name="top_bn")(x)
         # x = Dropout(0.5)(x)
         # let's add a fully-connected layer, kernel_regularizer=regularizers.l2(0.01),
-        x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01), name="top_Dense")(x)
+        x = Dense(1024, activation='relu', name="top_Dense")(x)
         # and a logistic layer -- let's say we have 2 classes
-        predictions = Dense(NUM_CLASSES, activation='softmax', kernel_regularizer=regularizers.l2(0.01), name="predictions")(x)
+        predictions = Dense(NUM_CLASSES, activation='softmax', name="predictions")(x)
         return predictions
 
     def create_initial_model(self):
@@ -98,14 +98,20 @@ class Transfer(object):
 
              return
 
-    def load_model(self, mode):
+    def load_model(self, mode, model_file = None):
         if mode == 0:  # "load_entire_model"
-            best_model_path = "{}/models/{}_{}_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
-                                                               self.patch_type)
-            if os.path.exists(best_model_path):
-                model = load_model(best_model_path)
+            checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+            if (not os.path.exists(checkpoint_dir)):
+                os.makedirs(checkpoint_dir)
+
+            latest = util.latest_checkpoint(checkpoint_dir)
+            if latest is not None:
+                model = load_model(latest, compile=False)
             else:
-                model = self.create_initial_model()
+                if model_file is not None and os.path.exists(model_file):
+                    model = load_model(model_file, compile=False)
+                else:
+                    model = self.create_initial_model()
 
             return model
         elif mode == 1:  # "extract features for transfer learning"
@@ -115,10 +121,13 @@ class Transfer(object):
             return feature_model
 
         elif mode == 2:
-            best_top_path = "{}/models/{}_{}_top_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
-                                                                 self.patch_type)
-            if os.path.exists(best_top_path):
-                top_model = load_model(best_top_path)
+            checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+            if (not os.path.exists(checkpoint_dir)):
+                os.makedirs(checkpoint_dir)
+
+            latest_top = util.latest_checkpoint(checkpoint_dir)
+            if latest_top is not None:
+                top_model = load_model(latest_top, compile=False)
             else:
                 if self.model_name == "inception_v3":
                     input_layer = Input(shape=(2048,))
@@ -137,9 +146,9 @@ class Transfer(object):
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, augmentation[0])
+        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, NUM_CLASSES, augmentation[0])
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        test_gen = ImageSequence(Xtest, Ytest, batch_size, augmentation[1])
+        test_gen = ImageSequence(Xtest, Ytest, batch_size, NUM_CLASSES, augmentation[1])
         return  train_gen, test_gen
 
 
@@ -156,11 +165,7 @@ class Transfer(object):
 
         # include the epoch in the file name. (uses `str.format`)
         checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
-        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.ckpt"
-        # latest = tf.train.latest_checkpoint(checkpoint_dir)
-        #
-        # if latest is None:
-        #     return
+        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.h5"
 
         model = self.load_model(mode = 0)
 
@@ -172,26 +177,24 @@ class Transfer(object):
             print("trainable", i + freezed_num, layer.name, sep="\t\t")
 
         cp_callback = keras.callbacks.ModelCheckpoint(
-            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
+            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=False,
             # Save weights, every 5-epochs.
-            period=1)
+            period=3)
         early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
         reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, mode='auto',
                                           epsilon=0.0001, cooldown=0, min_lr=0)
 
-        # compile the model (should be done *after* setting layers to non-trainable)
+        # compile the model (should be done *after* setting layers to non-trainable) 'categorical_crossentropy'
         model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
         print(model.summary())
+        train_step = min(200, train_gen.__len__())
+        test_step = min(100, test_gen.__len__())
         # train the model on the new data for a few epochs
-        model.fit_generator(train_gen, steps_per_epoch=300, epochs=epochs, verbose=1, workers=NUM_WORKERS,
+        model.fit_generator(train_gen, steps_per_epoch=train_step, epochs=epochs, verbose=1, workers=NUM_WORKERS,
                             # callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
-                            callbacks=[early_stopping, reduce_lr],
-                            validation_data=test_gen, validation_steps=100, initial_epoch = initial_epoch)
-
-        best_model_path = "{}/models/{}_{}_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
-                                                           self.patch_type)
-        model.save(best_model_path)
+                            callbacks=[cp_callback, early_stopping, reduce_lr],
+                            validation_data=test_gen, validation_steps=test_step, initial_epoch = initial_epoch)
         return
 
 
@@ -272,7 +275,7 @@ class Transfer(object):
 
         # include the epoch in the file name. (uses `str.format`)
         checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
-        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.ckpt"
+        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.h5"
 
         cp_callback = tf.keras.callbacks.ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
@@ -291,22 +294,19 @@ class Transfer(object):
         # train the model on the new data for a few epochs
         top_model.fit(train_features, train_label, batch_size = batch_size, epochs=epochs,verbose=1,
                       # callbacks=[cp_callback, TensorBoard(log_dir=checkpoint_dir)],
-                      callbacks=[early_stopping, reduce_lr],
+                      callbacks=[cp_callback, early_stopping, reduce_lr],
                       validation_data=(test_features, test_label),initial_epoch=initial_epoch)
 
-        best_top_path = "{}/models/{}_{}_top_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
-                                                             self.patch_type)
-        top_model.save(best_top_path)
-
     def merge_save_model(self):
-        best_top_path = "{}/models/{}_{}_top_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
-                                                             self.patch_type)
-        full_model = self.create_initial_model()
-        full_model.load_weights(best_top_path, by_name=True)
+        checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+        latest_top = util.latest_checkpoint(checkpoint_dir)
 
-        best_model_path = "{}/models/{}_{}_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
+        full_model = self.create_initial_model()
+        full_model.load_weights(latest_top, by_name=True)
+
+        best_model_path = "{}/models/{}_{}_merge_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
                                                            self.patch_type)
-        full_model.save(best_model_path)
+        full_model.save(best_model_path, include_optimizer=False)
 
         # plot_model(full_model, to_file='{}/models/{}.png'.format(self._params.PROJECT_ROOT, self.model_name))
 

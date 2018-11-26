@@ -70,13 +70,14 @@ def latest_checkpoint(search_dir):
     accuracy = []
 
     for ckpt_name in os.listdir(search_dir):
-        value = ckpt_name[:-5].split("-")
+        file_name = os.path.splitext(ckpt_name)[0]
+        value = file_name.split("-")
         filename.append(ckpt_name)
         epoch.append(int(value[1]))
         loss.append(float(value[2]))
         accuracy.append(float(value[3]))
 
-    if len(filename) == 0: return None
+    if len(filename) ==  0: return None
 
     data = {'filename':filename, 'epoch':epoch, 'loss':loss, 'accuracy':accuracy}
     df = pd.DataFrame(data, columns=['filename','epoch','loss','accuracy'])

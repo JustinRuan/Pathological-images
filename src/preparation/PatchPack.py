@@ -272,7 +272,7 @@ class PatchPack(object):
 
         return
 
-    def packing_refined_samples(self, file_map, extract_scale, patch_size):
+    def packing_refined_samples(self, file_map, extract_scale, patch_size, sample_code):
 
         root_path = self._params.PATCHS_ROOT_PATH
         intScale = np.rint(extract_scale * 100).astype(np.int)
@@ -288,6 +288,6 @@ class PatchPack(object):
                 tag = int(items[1])
                 data_tag.append((items[0], tag))
 
-        self.create_train_test_data(data_tag, 0.8, 0.2, "CNN_R_{}_{}".format(intScale, patch_size))
+        self.create_train_test_data(data_tag, 0.9, 0.1, "{}_{}_{}".format(sample_code, intScale, patch_size))
 
         return

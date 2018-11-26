@@ -138,7 +138,10 @@ class TestPatchPack(unittest.TestCase):
         c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
 
         pack = PatchPack(c)
-        dir_map = {"S500_128_True_cancer.txt": 1, "S500_128_True_normal.txt": 0,
-                   "S500_128_False_cancer.txt": 3, "S500_128_False_normal.txt": 2}
-        pack.packing_refined_samples(dir_map, 5, 128)
+        # dir_map = {"S500_128_True_cancer.txt": 1, "S500_128_True_normal.txt": 0,
+        #            "S500_128_False_cancer.txt": 3, "S500_128_False_normal.txt": 2}
+        # pack.packing_refined_samples(dir_map, 5, 128)
+
+        dir_map = {"S500_128_True_cancer.txt": 1, "S500_128_True_normal.txt": 0}
+        pack.packing_refined_samples(dir_map, 5, 128, "TrueS")
 
