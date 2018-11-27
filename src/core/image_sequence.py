@@ -21,11 +21,12 @@ from preparation.normalization import ImageNormalization
 
 class ImageSequence(Sequence):
 
-    def __init__(self, x_set, y_set, batch_size, num_classes = 2, augmentation = False):
+    def __init__(self, x_set, y_set, batch_size, output_size, num_classes = 2, augmentation = False):
         self.x, self.y = x_set, y_set
         self.batch_size = batch_size
         self._augmentation = augmentation
         self.num_classes = num_classes
+        self.output_size = output_size
 
         self.datagen = ImageDataGenerator(
             rotation_range=90,
@@ -48,9 +49,10 @@ class ImageSequence(Sequence):
         if self._augmentation:
             return np.array([
                 # resize(imread(file_name),(299,299))
-                ImageNormalization.normalize_mean(self.datagen.random_transform(imread(file_name)))
+                resize(ImageNormalization.normalize_mean(self.datagen.random_transform(imread(file_name))),
+                       (self.output_size, self.output_size))
                 for file_name in batch_x]), to_categorical(batch_y, self.num_classes)
         else:
             return np.array([
-                ImageNormalization.normalize_mean(imread(file_name))
+                resize(ImageNormalization.normalize_mean(imread(file_name)),(self.output_size, self.output_size))
                 for file_name in batch_x]), to_categorical(batch_y, self.num_classes)

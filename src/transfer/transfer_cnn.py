@@ -25,6 +25,11 @@ from keras.models import Model, Sequential, load_model
 from keras.optimizers import SGD, RMSprop, Adagrad, Adam, Adamax, Nadam, Adadelta
 from keras.preprocessing import image
 from keras.utils import to_categorical, plot_model
+from skimage.transform import resize
+
+from sklearn.svm import LinearSVC
+from sklearn.externals import joblib
+from sklearn import metrics
 
 from preparation.normalization import ImageNormalization
 from core.util import read_csv_file
@@ -43,6 +48,12 @@ class Transfer(object):
         self.model_name = model_name
         self.patch_type = patch_type
         self.NUM_WORKERS = params.NUM_WORKERS
+
+        if self.model_name == "inception_v3":
+            self.input_image_size = 299
+        else:
+            self.input_image_size = 224
+
         return
 
     def extract_features(self,base_model, src_img, scale, patch_size, seeds):
@@ -80,8 +91,6 @@ class Transfer(object):
         else:
             x = input_layer
 
-        # x = BatchNormalization(name="top_bn")(x)
-        # x = Dropout(0.5)(x)
         # let's add a fully-connected layer, kernel_regularizer=regularizers.l2(0.01),
         x = Dense(1024, activation='relu', name="top_Dense")(x)
         # and a logistic layer -- let's say we have 2 classes
@@ -149,9 +158,9 @@ class Transfer(object):
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, NUM_CLASSES, augmentation[0])
+        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, self.input_image_size, NUM_CLASSES, augmentation[0])
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        test_gen = ImageSequence(Xtest, Ytest, batch_size, NUM_CLASSES, augmentation[1])
+        test_gen = ImageSequence(Xtest, Ytest, batch_size, self.input_image_size, NUM_CLASSES, augmentation[1])
         return  train_gen, test_gen
 
 
@@ -203,7 +212,7 @@ class Transfer(object):
         return
 
 
-    def fine_tuning_inception_v3_249(self, samples_name, batch_size, freezed_num, epochs, initial_epoch):
+    def fine_tuning_model_with_freezed(self, samples_name, batch_size, freezed_num, epochs, initial_epoch):
         '''
         训练全连接层，和最后一部分的原网络
         :param samples_name:
@@ -239,7 +248,7 @@ class Transfer(object):
                                                             sample_name, aug_multiple)
 
         X, Y = read_csv_file(self._params.PATCHS_ROOT_PATH, file_list)
-        data_gen = ImageSequence(X, Y, batch_size, augmentation)
+        data_gen = ImageSequence(X, Y, batch_size, self.input_image_size, augmentation)
 
         if not augmentation:
             aug_multiple = 1
@@ -251,7 +260,7 @@ class Transfer(object):
         np.savez(save_path + "_features", features, labels)
         return
 
-    def fine_tuning_top_model_saved_file(self, train_filename, test_filename,
+    def fine_tuning_top_cnn_model_saved_file(self, train_filename, test_filename,
                                          batch_size = 100, epochs = 20, initial_epoch = 0):
         '''
         使用存盘的特征文件来训练 全连接层
@@ -265,7 +274,6 @@ class Transfer(object):
         data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, test_filename)
         D = np.load(data_path)
         test_features = D['arr_0']
-        # test_features = test_features[:, np.newaxis]
         test_label = D['arr_1']
         test_label = test_label[:, np.newaxis]
         test_label = to_categorical(test_label, NUM_CLASSES)
@@ -273,7 +281,6 @@ class Transfer(object):
         data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, train_filename)
         D = np.load(data_path)
         train_features = D['arr_0']
-        # train_features = train_features[:, np.newaxis]
         train_label = D['arr_1']
         train_label = train_label[:, np.newaxis]
         train_label = to_categorical(train_label, NUM_CLASSES)
@@ -289,11 +296,10 @@ class Transfer(object):
         reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, mode='auto',
                                           epsilon=0.0001, cooldown=0, min_lr=0)
         top_model = self.load_model(mode = 2)
-        # optimizer = RMSprop(lr=1e-4, rho=0.9)
+
         optimizer = SGD(lr=1e-3, momentum=0.9)
 
         top_model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
-        # top_model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss=categorical_crossentropy2, metrics=['accuracy'])
 
         # print(model.summary())
         # train the model on the new data for a few epochs
@@ -314,33 +320,6 @@ class Transfer(object):
         full_model.save(best_model_path, include_optimizer=False)
 
         # plot_model(full_model, to_file='{}/models/{}.png'.format(self._params.PROJECT_ROOT, self.model_name))
-
-    # def merge_save_model(self):
-    #     '''
-    #     将新训练的全连接层与 迁移的网络模型进行合并
-    #     :param model_dir:新训练的全连接层的checkpoint文件所在目录
-    #     :return:
-    #     '''
-    #
-    #     top_model = self.load_model(mode = 2)
-    #
-    #     model = self.load_model(mode = 0, weights_file="imagenet")
-    #
-    #     layers_set = ["t_Dense_1", "t_Dense_2"]
-    #     for layer_name in layers_set:
-    #         new_layer = model.get_layer(name=layer_name)
-    #         old_layer = top_model.get_layer(name=layer_name)
-    #         weights = old_layer.get_weights()
-    #         new_layer.set_weights(weights)
-    #
-    #     model_dir = "{}/models/trained".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
-    #     model_path = model_dir + "/{}_{}.ckpt".format(self.model_name, self.patch_type)
-    #     # model.save_weights(model_path, save_format='tf')
-    #     model.save_weights(model_path)
-    #
-    #     plot_model(model, to_file = '{}/models/{}.png'.format(self._params.PROJECT_ROOT, self.model_name))
-    #
-    #     return model
 
     def evaluate_entire_model(self, samples_name, batch_size):
         '''
@@ -377,7 +356,8 @@ class Transfer(object):
             block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
             img = block.get_img()
 
-            x = image.img_to_array(ImageNormalization.normalize_mean(img))
+            x = image.img_to_array(resize(ImageNormalization.normalize_mean(img)),
+                                   (self.input_image_size, self.input_image_size))
             x = np.expand_dims(x, axis=0)
             # x = preprocess_input(x) //训练时没有使用预处理，这里也不能调用
 
@@ -398,7 +378,7 @@ class Transfer(object):
         :param batch_size: 每批处理的图片数量
         :return:
         '''
-        image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
+        image_itor = SeedSequence(src_img, scale, patch_size, self.input_image_size, seeds, batch_size)
 
         predictions = model.predict_generator(image_itor, verbose=1, workers=self.NUM_WORKERS)
         result = []
@@ -408,3 +388,51 @@ class Transfer(object):
             result.append((class_id, probability))
 
         return result
+
+    #################################################################################################
+    #              SVM
+    ##################################################################################################
+
+    def train_top_svm(self, train_filename, test_filename):
+        if (not self.model_name in train_filename) or (not self.model_name in test_filename) \
+                or (not self.patch_type in train_filename) or (not self.patch_type in test_filename):
+            return
+
+        data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, test_filename)
+        D = np.load(data_path)
+        test_features = D['arr_0']
+        test_label = D['arr_1']
+
+        data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, train_filename)
+        D = np.load(data_path)
+        train_features = D['arr_0']
+        train_label = D['arr_1']
+
+        model_params = [ {'C':0.0001 ,'max_iter':3000}, {'C':0.001 ,'max_iter':3000},
+                         {'C':0.01 ,'max_iter':3000}, {'C':0.1,'max_iter':3000},
+                         {'C':0.5,'max_iter':3000}, {'C':1.0,'max_iter':3000},
+                         {'C':1.2,'max_iter':3000}, {'C':1.5,'max_iter':3000},
+                         {'C':2.0,'max_iter':3000}, {'C':10.0,'max_iter':3000} ]
+
+        result = {'pred': None, 'score': 0, 'clf': None}
+
+        for params in model_params:
+            clf = LinearSVC(**params, verbose=0)
+            clf.fit(train_features, train_label)
+            y_pred = clf.predict(test_features)
+            score = metrics.accuracy_score(test_label, y_pred)
+            print('C={:8f} => score={:5f}'.format(params['C'], score))
+
+            if score > result["score"]:
+                result = {'pred': y_pred, 'score': score, 'clf': clf}
+
+        print("the best score = {}".format(result["score"]))
+
+        print("Classification report for classifier %s:\n%s\n"
+              % (result["clf"], metrics.classification_report(test_label, result["pred"])))
+        print("Confusion matrix:\n%s" % metrics.confusion_matrix(test_label, result["pred"]))
+
+        model_file = self._params.PROJECT_ROOT + "/models/svm_{}_{}.model".format(self.model_name, self.patch_type)
+        joblib.dump(result["clf"], model_file)
+
+        return
