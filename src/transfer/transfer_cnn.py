@@ -34,6 +34,7 @@ from sklearn import metrics
 from preparation.normalization import ImageNormalization
 from core.util import read_csv_file
 from core import *
+from sklearn.feature_selection import SelectKBest
 
 NUM_CLASSES = 10
 # NUM_WORKERS = 1
@@ -408,31 +409,35 @@ class Transfer(object):
         train_features = D['arr_0']
         train_label = D['arr_1']
 
-        model_params = [ {'C':0.0001 ,'max_iter':3000}, {'C':0.001 ,'max_iter':3000},
-                         {'C':0.01 ,'max_iter':3000}, {'C':0.1,'max_iter':3000},
-                         {'C':0.5,'max_iter':3000}, {'C':1.0,'max_iter':3000},
-                         {'C':1.2,'max_iter':3000}, {'C':1.5,'max_iter':3000},
-                         {'C':2.0,'max_iter':3000}, {'C':10.0,'max_iter':3000} ]
+        max_iter = 500
+        model_params = [ {'C':0.0001}, {'C':0.001 }, {'C':0.01}, {'C':0.1},
+                         {'C':0.5}, {'C':1.0}, {'C':1.2}, {'C':1.5},
+                         {'C':2.0}, {'C':10.0} ]
+        K_num = [50, 100, 200, 300, 500, 1024, 2048]
 
         result = {'pred': None, 'score': 0, 'clf': None}
+        for item in K_num:
+            sb = SelectKBest(k=item).fit(train_features, train_label)
+            train_x_new = sb.transform(train_features)
+            test_x_new = sb.transform(test_features)
 
-        for params in model_params:
-            clf = LinearSVC(**params, verbose=0)
-            clf.fit(train_features, train_label)
-            y_pred = clf.predict(test_features)
-            score = metrics.accuracy_score(test_label, y_pred)
-            print('C={:8f} => score={:5f}'.format(params['C'], score))
+            for params in model_params:
+                clf = LinearSVC(**params, max_iter=max_iter, verbose=0)
+                clf.fit(train_x_new, train_label)
+                y_pred = clf.predict(test_x_new)
+                score = metrics.accuracy_score(test_label, y_pred)
+                print('K = {}, C={:8f} => score={:5f}'.format(item, params['C'], score))
 
-            if score > result["score"]:
-                result = {'pred': y_pred, 'score': score, 'clf': clf}
+                if score > result["score"]:
+                    result = {'pred': y_pred, 'score': score, 'clf': clf, "k": item, "kBest": sb}
 
-        print("the best score = {}".format(result["score"]))
+        print("the best score = {}, k = {}".format(result["score"], result["k"]))
 
         print("Classification report for classifier %s:\n%s\n"
               % (result["clf"], metrics.classification_report(test_label, result["pred"])))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(test_label, result["pred"]))
 
         model_file = self._params.PROJECT_ROOT + "/models/svm_{}_{}.model".format(self.model_name, self.patch_type)
-        joblib.dump(result["clf"], model_file)
+        joblib.dump({"clf":result["clf"], "selectKBest":sb}, model_file)
 
         return
