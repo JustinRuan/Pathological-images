@@ -400,7 +400,7 @@ class Transfer(object):
         '''
         image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
 
-        predictions = model.predict_generator(image_itor, verbose=1, workers=NUM_WORKERS)
+        predictions = model.predict_generator(image_itor, verbose=1, workers=self.NUM_WORKERS)
         result = []
         for pred_dict in predictions:
             class_id = np.argmax(pred_dict)
