@@ -132,4 +132,4 @@ class Test_transfer(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-        cnn.fine_tuning_inception_v3_249("T_NC_500_128",batch_size=16, epochs=500, initial_epoch=0)
+        cnn.fine_tuning_inception_v3_249("T_NC_500_128",batch_size=32, freezed_num=311, epochs=500, initial_epoch=0)

@@ -30,8 +30,8 @@ from preparation.normalization import ImageNormalization
 from core.util import read_csv_file
 from core import *
 
-NUM_CLASSES = 4
-NUM_WORKERS = 1
+NUM_CLASSES = 10
+# NUM_WORKERS = 1
 
 # def categorical_crossentropy2(y_true, y_pred):
 #   return K.categorical_crossentropy(y_true, y_pred)
@@ -42,6 +42,7 @@ class Transfer(object):
         self._params = params
         self.model_name = model_name
         self.patch_type = patch_type
+        self.NUM_WORKERS = params.NUM_WORKERS
         return
 
     def extract_features(self,base_model, src_img, scale, patch_size, seeds):
@@ -106,9 +107,11 @@ class Transfer(object):
 
             latest = util.latest_checkpoint(checkpoint_dir)
             if latest is not None:
+                print("loading >>> ", latest, " ...")
                 model = load_model(latest, compile=False)
             else:
                 if model_file is not None and os.path.exists(model_file):
+                    print("loading >>> ", model_file, " ...")
                     model = load_model(model_file, compile=False)
                 else:
                     model = self.create_initial_model()
@@ -152,7 +155,7 @@ class Transfer(object):
         return  train_gen, test_gen
 
 
-    def fine_tuning_model(self, freezed_num, optimizer, samples_name,batch_size, epochs = 20, initial_epoch = 0):
+    def fine_tuning_model(self, optimizer, samples_name,batch_size, freezed_num, epochs = 20, initial_epoch = 0):
         '''
         微调模型，训练时冻结网络中0到freezed_num层
         :param model_dir:训练时checkpoint文件的存盘路径
@@ -167,7 +170,9 @@ class Transfer(object):
         checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.h5"
 
-        model = self.load_model(mode = 0)
+        merged_model = "{}/models/{}_{}_merge_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
+                                                           self.patch_type)
+        model = self.load_model(mode = 0, model_file= merged_model)
 
         for i, layer in enumerate(model.layers[:freezed_num]):
             layer.trainable = False
@@ -191,14 +196,14 @@ class Transfer(object):
         train_step = min(200, train_gen.__len__())
         test_step = min(100, test_gen.__len__())
         # train the model on the new data for a few epochs
-        model.fit_generator(train_gen, steps_per_epoch=train_step, epochs=epochs, verbose=1, workers=NUM_WORKERS,
+        model.fit_generator(train_gen, steps_per_epoch=train_step, epochs=epochs, verbose=1, workers=self.NUM_WORKERS,
                             # callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
                             callbacks=[cp_callback, early_stopping, reduce_lr],
                             validation_data=test_gen, validation_steps=test_step, initial_epoch = initial_epoch)
         return
 
 
-    def fine_tuning_inception_v3_249(self, samples_name, batch_size, epochs, initial_epoch):
+    def fine_tuning_inception_v3_249(self, samples_name, batch_size, freezed_num, epochs, initial_epoch):
         '''
         训练全连接层，和最后一部分的原网络
         :param samples_name:
@@ -208,7 +213,7 @@ class Transfer(object):
         # optimizer = RMSprop(lr=1e-4, rho=0.9)
         optimizer = SGD(lr=1e-3, momentum=0.9)
         # 最后两个Inception的位置：249, 最后一个的位置：280, Top的位置：311
-        self.fine_tuning_model(249, optimizer, samples_name, batch_size, epochs, initial_epoch)
+        self.fine_tuning_model(optimizer, samples_name, batch_size, freezed_num, epochs, initial_epoch)
 
     def extract_features_for_train(self, samples_name, batch_size):
         '''
@@ -241,7 +246,7 @@ class Transfer(object):
 
         step_count = int(aug_multiple * len(Y) / batch_size)
 
-        features = model.predict_generator(data_gen, steps=step_count, verbose=1,workers=NUM_WORKERS)
+        features = model.predict_generator(data_gen, steps=step_count, verbose=1,workers=self.NUM_WORKERS)
         labels = Y[:len(features)]
         np.savez(save_path + "_features", features, labels)
         return
@@ -263,7 +268,7 @@ class Transfer(object):
         # test_features = test_features[:, np.newaxis]
         test_label = D['arr_1']
         test_label = test_label[:, np.newaxis]
-        test_label = to_categorical(test_label, 2)
+        test_label = to_categorical(test_label, NUM_CLASSES)
 
         data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, train_filename)
         D = np.load(data_path)
@@ -271,7 +276,7 @@ class Transfer(object):
         # train_features = train_features[:, np.newaxis]
         train_label = D['arr_1']
         train_label = train_label[:, np.newaxis]
-        train_label = to_categorical(train_label, 2)
+        train_label = to_categorical(train_label, NUM_CLASSES)
 
         # include the epoch in the file name. (uses `str.format`)
         checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
@@ -349,10 +354,10 @@ class Transfer(object):
 
         print(model.summary())
 
-        test_loss, test_acc = model.evaluate_generator(test_gen, steps = None, verbose=1, workers=NUM_WORKERS)
+        test_loss, test_acc = model.evaluate_generator(test_gen, steps = None, verbose=1, workers=self.NUM_WORKERS)
         print('Test loss:', test_loss, 'Test accuracy:', test_acc)
 
-        train_loss, train_acc = model.evaluate_generator(train_gen, steps = None, verbose=1, workers=NUM_WORKERS)
+        train_loss, train_acc = model.evaluate_generator(train_gen, steps = None, verbose=1, workers=self.NUM_WORKERS)
         print('Train loss:', train_loss, 'Train accuracy:', train_acc)
         # result = model.predict_generator(test_gen, steps=10)
         # print(result)

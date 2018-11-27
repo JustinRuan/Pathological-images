@@ -9,5 +9,8 @@
     "KFB_SDK_PATH": "D:/CloudSpace/WorkSpace/lib/KFB_SDK",
     "PROJECT_ROOT": "D:/CloudSpace/WorkSpace/PatholImage",
     "PATCHS_ROOT_PATH": "D:/Data/Patches/P1013"
+  },
+  {
+    "NUM_WORKERS": 1
   }
 ]
