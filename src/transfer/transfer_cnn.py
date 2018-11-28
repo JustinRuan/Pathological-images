@@ -37,6 +37,7 @@ from core import *
 from sklearn.feature_selection import SelectKBest
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
+from statistics import mode
 
 NUM_CLASSES = 2
 # NUM_WORKERS = 1
@@ -95,16 +96,13 @@ class Transfer(object):
         predictions = Dense(NUM_CLASSES, activation='softmax', name="predictions")(x)
         return predictions
 
-    def create_initial_model(self, feature_output = False):
+    def create_initial_model(self):
         if self.model_name == "inception_v3":
             base_model = InceptionV3(weights='imagenet', include_top=False)
             top_avg_pool =  GlobalAveragePooling2D(name='top_avg_pool')(base_model.output)
             predictions = self.add_new_top_layers(top_avg_pool)
 
-            if feature_output:
-                model = Model(inputs=base_model.input, outputs=[predictions, top_avg_pool])
-            else:
-                model = Model(inputs=base_model.input, outputs=predictions)
+            model = Model(inputs=base_model.input, outputs=predictions)
             return model
 
         elif self.model_name == "densenet121":
@@ -112,12 +110,7 @@ class Transfer(object):
              return
 
     def load_model(self, mode, model_file = None):
-        if mode == 999: # 直接加载
-            print("loading >>> ", model_file, " ...")
-            model = load_model(model_file, compile=False)
-            return model
-
-        elif mode == 0:  # "load_entire_model"
+        if mode == 0:  # "load_entire_model"
             checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
             if (not os.path.exists(checkpoint_dir)):
                 os.makedirs(checkpoint_dir)
@@ -125,11 +118,11 @@ class Transfer(object):
             latest = util.latest_checkpoint(checkpoint_dir)
             if latest is not None:
                 print("loading >>> ", latest, " ...")
-                model = load_model(latest, compile=False)
+                model = load_model(latest)
             else:
                 if model_file is not None and os.path.exists(model_file):
                     print("loading >>> ", model_file, " ...")
-                    model = load_model(model_file, compile=False)
+                    model = load_model(model_file)
                 else:
                     model = self.create_initial_model()
 
@@ -151,7 +144,7 @@ class Transfer(object):
             else:
                 if self.model_name == "inception_v3":
                     input_layer = Input(shape=(2048,))
-                predictions = self.add_new_top_layers(input_layer, False)
+                predictions = self.add_new_top_layers(input_layer)
                 top_model = Model(inputs=input_layer, outputs=predictions)
             return top_model
 
@@ -298,7 +291,7 @@ class Transfer(object):
         checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.h5"
 
         cp_callback = tf.keras.callbacks.ModelCheckpoint(
-            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
+            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=False,
             period=1)
         early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
         reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, mode='auto',
@@ -316,18 +309,14 @@ class Transfer(object):
                       callbacks=[cp_callback, early_stopping, reduce_lr],
                       validation_data=(test_features, test_label),initial_epoch=initial_epoch)
 
-    def merge_save_model(self, feature_output = False):
+    def merge_save_model(self):
         checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         latest_top = util.latest_checkpoint(checkpoint_dir)
 
-        full_model = self.create_initial_model(feature_output)
+        full_model = self.create_initial_model()
         full_model.load_weights(latest_top, by_name=True)
 
-        if feature_output:
-            best_model_path = "{}/models/{}_{}_merge_cnn_svm.h5".format(self._params.PROJECT_ROOT, self.model_name,
-                                                                     self.patch_type)
-        else:
-            best_model_path = "{}/models/{}_{}_merge_cnn.h5".format(self._params.PROJECT_ROOT, self.model_name,
+        best_model_path = "{}/models/{}_{}_merge_cnn.h5".format(self._params.PROJECT_ROOT, self.model_name,
                                                            self.patch_type)
         full_model.save(best_model_path, include_optimizer=False)
 
@@ -353,32 +342,52 @@ class Transfer(object):
         # result = model.predict_generator(test_gen, steps=10)
         # print(result)
 
-    def evaluate_entire_cnn_svm_model(self, samples_name, batch_size):
-        cnn_model_file = "{}/models/{}_{}_merge_cnn_svm.h5".format(self._params.PROJECT_ROOT, self.model_name,
-                                                                    self.patch_type)
+    def evaluate_cnn_svm_rf_model(self, samples_name, batch_size):
         train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation = (False, False))
-        model = self.load_model(mode = 999, model_file=cnn_model_file)
-        model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+        feature_model = self.load_model(mode = 1)
+        feature_model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
 
-        result = model.predict_generator(test_gen, steps=10)
+        output_features = feature_model.predict_generator(test_gen, steps=None, verbose=1)
+
+        cnn_model = self.load_model(mode = 2)
+        cnn_model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
+        result = cnn_model.predict(output_features)
+
         y_cnn_pred = []
-        for pred_dict in result[0]:
+        for pred_dict in result:
             class_id = np.argmax(pred_dict)
             y_cnn_pred.append(class_id)
 
-        cnn_features = result[1]
-
         svm_model_file = self._params.PROJECT_ROOT + "/models/svm_{}_{}.model".format(self.model_name, self.patch_type)
         clf = joblib.load(svm_model_file)
-        y_svm_pred = clf.predict(cnn_features)
+        y_svm_pred = clf.predict(output_features)
+
+        rf_model_file = self._params.PROJECT_ROOT + "/models/rf_{}_{}.model".format(self.model_name, self.patch_type)
+        clf = joblib.load(rf_model_file)
+        y_rf_pred = clf.predict(output_features)
 
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
         y_true = Ytest[:len(y_cnn_pred)]
         cnn_score = metrics.accuracy_score(y_true, y_cnn_pred)
         svm_score = metrics.accuracy_score(y_true, y_svm_pred)
+        rf_score = metrics.accuracy_score(y_true, y_rf_pred)
         print("cnn score = ", cnn_score)
         print( "svm score = ", svm_score)
+        print("rf score = ", rf_score)
+
+        voting_result = []
+        for y_cnn, y_svm, y_rf in zip(y_cnn_pred, y_svm_pred, y_rf_pred):
+            most = mode([y_cnn, y_svm, y_rf])
+            voting_result.append(most)
+
+        voting_score = metrics.accuracy_score(y_true, voting_result)
+        print("voting score = ", voting_score)
+
+    def ensemble_predcit(self):
+
+        return
+
 
 
     def predict(self, model, src_img, scale, patch_size, seeds):
@@ -504,18 +513,24 @@ class Transfer(object):
         train_features = D['arr_0']
         train_label = D['arr_1']
 
-        result = {'pred': None, 'score': 0, 'clf': None}
-        param_grid = [
-            {'n_estimators': range(8, 64, 8)},
-            {'criterion': ['gini'],'min_impurity_decrease': np.linspace(0,0.5, 20)},
-            {'min_samples_split': range(10, 100, 10)}
-        ]
+        # ###########################  参数寻优  #############################
+        # param_grid = [
+        #     {'n_estimators': [50, 100, 200, 300]},
+        #     # {'n_estimators': [200], 'criterion': ['gini'],'min_impurity_decrease': np.linspace(0,0.5, 20)}
+        #     # {'n_estimators': [200], 'min_samples_split': range(10, 100, 10)}
+        # ]
+        #
+        # clf = GridSearchCV(RandomForestClassifier(), param_grid, cv=3, n_jobs = self.NUM_WORKERS)
+        # clf.fit(train_features, train_label)
+        #
+        # print("the best score = {}".format(clf.best_score_))
+        # print("the best param = {}".format(clf.best_params_))
 
-        clf = GridSearchCV(RandomForestClassifier(), param_grid, cv=3, n_jobs = self.NUM_WORKERS)
-        clf.fit(train_features, train_label)
-
-        print("the best score = {}".format(clf.best_score_))
-        print("the best param = {}".format(clf.best_params_))
+        clf = RandomForestClassifier(n_estimators = 100, max_depth=10, n_jobs=self.NUM_WORKERS)
+        clf = clf.fit(train_features, train_label)
+        y_pred = clf.predict(test_features)
+        score = metrics.accuracy_score(test_label, y_pred)
+        print("score = ", score)
 
         model_file = self._params.PROJECT_ROOT + "/models/rf_{}_{}.model".format(self.model_name, self.patch_type)
         joblib.dump(clf, model_file)
