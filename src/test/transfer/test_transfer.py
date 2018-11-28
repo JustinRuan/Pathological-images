@@ -147,3 +147,10 @@ class Test_transfer(unittest.TestCase):
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
         cnn.train_top_svm("inception_v3_T_NC_500_128_train_features.npz",
                             "inception_v3_T_NC_500_128_test_features.npz")
+
+    def test_train_top_rf(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
+        cnn.train_top_rf("inception_v3_T_NC_500_128_train_features.npz",
+                            "inception_v3_T_NC_500_128_test_features.npz")

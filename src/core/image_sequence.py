@@ -46,13 +46,18 @@ class ImageSequence(Sequence):
         batch_y = self.y[idx * self.batch_size:(idx + 1) *
                                                self.batch_size]
 
-        if self._augmentation:
-            return np.array([
-                # resize(imread(file_name),(299,299))
-                resize(ImageNormalization.normalize_mean(self.datagen.random_transform(imread(file_name))),
-                       (self.output_size, self.output_size))
-                for file_name in batch_x]), to_categorical(batch_y, self.num_classes)
-        else:
-            return np.array([
-                resize(ImageNormalization.normalize_mean(imread(file_name)),(self.output_size, self.output_size))
+        # if self._augmentation:
+        #     return np.array([
+        #         # resize(imread(file_name),(299,299))
+        #         resize(ImageNormalization.normalize_mean(self.datagen.random_transform(imread(file_name))),
+        #                (self.output_size, self.output_size))
+        #         for file_name in batch_x]), to_categorical(batch_y, self.num_classes)
+        # else:
+        #     return np.array([
+        #         resize(ImageNormalization.normalize_mean(imread(file_name)),(self.output_size, self.output_size))
+        #         for file_name in batch_x]), to_categorical(batch_y, self.num_classes)
+
+        # resize 太费时间，暂时先不用，提高程序调试的效率
+        return np.array([
+                ImageNormalization.normalize_mean(imread(file_name))
                 for file_name in batch_x]), to_categorical(batch_y, self.num_classes)

@@ -35,6 +35,8 @@ from preparation.normalization import ImageNormalization
 from core.util import read_csv_file
 from core import *
 from sklearn.feature_selection import SelectKBest
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
 
 NUM_CLASSES = 2
 # NUM_WORKERS = 1
@@ -483,3 +485,37 @@ class Transfer(object):
         model_file = self._params.PROJECT_ROOT + "/models/svm_{}_{}.model".format(self.model_name, self.patch_type)
         joblib.dump(result["clf"], model_file)
         return
+
+    #################################################################################################
+    #              Random Forest
+    ##################################################################################################
+    def train_top_rf(self, train_filename, test_filename):
+        if (not self.model_name in train_filename) or (not self.model_name in test_filename) \
+                or (not self.patch_type in train_filename) or (not self.patch_type in test_filename):
+            return
+
+        data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, test_filename)
+        D = np.load(data_path)
+        test_features = D['arr_0']
+        test_label = D['arr_1']
+
+        data_path = "{}/data/{}".format(self._params.PROJECT_ROOT, train_filename)
+        D = np.load(data_path)
+        train_features = D['arr_0']
+        train_label = D['arr_1']
+
+        result = {'pred': None, 'score': 0, 'clf': None}
+        param_grid = [
+            {'n_estimators': range(8, 64, 8)},
+            {'criterion': ['gini'],'min_impurity_decrease': np.linspace(0,0.5, 20)},
+            {'min_samples_split': range(10, 100, 10)}
+        ]
+
+        clf = GridSearchCV(RandomForestClassifier(), param_grid, cv=3, n_jobs = self.NUM_WORKERS)
+        clf.fit(train_features, train_label)
+
+        print("the best score = {}".format(clf.best_score_))
+        print("the best param = {}".format(clf.best_params_))
+
+        model_file = self._params.PROJECT_ROOT + "/models/rf_{}_{}.model".format(self.model_name, self.patch_type)
+        joblib.dump(clf, model_file)
