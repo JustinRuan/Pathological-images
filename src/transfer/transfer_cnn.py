@@ -36,14 +36,14 @@ from core.util import read_csv_file
 from core import *
 from sklearn.feature_selection import SelectKBest
 
-NUM_CLASSES = 10
+NUM_CLASSES = 2
 # NUM_WORKERS = 1
 
 # def categorical_crossentropy2(y_true, y_pred):
 #   return K.categorical_crossentropy(y_true, y_pred)
 
 class Transfer(object):
-    # patch_type 500_128, 2000_256
+    # patch_type 500_128, 2000_256, 4000_256
     def __init__(self, params, model_name, patch_type):
         self._params = params
         self.model_name = model_name
@@ -51,7 +51,7 @@ class Transfer(object):
         self.NUM_WORKERS = params.NUM_WORKERS
 
         if self.model_name == "inception_v3":
-            self.input_image_size = 299
+            self.input_image_size = 299 #299
         else:
             self.input_image_size = 224
 
@@ -86,23 +86,23 @@ class Transfer(object):
 
         return features
 
-    def add_new_top_layers(self, input_layer, include_avg_pool = True):
-        if include_avg_pool:
-            x = GlobalAveragePooling2D(name='top_avg_pool')(input_layer)
-        else:
-            x = input_layer
-
+    def add_new_top_layers(self, input_layer):
         # let's add a fully-connected layer, kernel_regularizer=regularizers.l2(0.01),
-        x = Dense(1024, activation='relu', name="top_Dense")(x)
+        x = Dense(1024, activation='relu', name="top_Dense")(input_layer)
         # and a logistic layer -- let's say we have 2 classes
         predictions = Dense(NUM_CLASSES, activation='softmax', name="predictions")(x)
         return predictions
 
-    def create_initial_model(self):
+    def create_initial_model(self, feature_output = False):
         if self.model_name == "inception_v3":
             base_model = InceptionV3(weights='imagenet', include_top=False)
-            predictions = self.add_new_top_layers(base_model.output)
-            model = Model(inputs=base_model.input, outputs=predictions)
+            top_avg_pool =  GlobalAveragePooling2D(name='top_avg_pool')(base_model.output)
+            predictions = self.add_new_top_layers(top_avg_pool)
+
+            if feature_output:
+                model = Model(inputs=base_model.input, outputs=[predictions, top_avg_pool])
+            else:
+                model = Model(inputs=base_model.input, outputs=predictions)
             return model
 
         elif self.model_name == "densenet121":
@@ -110,7 +110,12 @@ class Transfer(object):
              return
 
     def load_model(self, mode, model_file = None):
-        if mode == 0:  # "load_entire_model"
+        if mode == 999: # 直接加载
+            print("loading >>> ", model_file, " ...")
+            model = load_model(model_file, compile=False)
+            return model
+
+        elif mode == 0:  # "load_entire_model"
             checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
             if (not os.path.exists(checkpoint_dir)):
                 os.makedirs(checkpoint_dir)
@@ -309,20 +314,24 @@ class Transfer(object):
                       callbacks=[cp_callback, early_stopping, reduce_lr],
                       validation_data=(test_features, test_label),initial_epoch=initial_epoch)
 
-    def merge_save_model(self):
+    def merge_save_model(self, feature_output = False):
         checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         latest_top = util.latest_checkpoint(checkpoint_dir)
 
-        full_model = self.create_initial_model()
+        full_model = self.create_initial_model(feature_output)
         full_model.load_weights(latest_top, by_name=True)
 
-        best_model_path = "{}/models/{}_{}_merge_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
+        if feature_output:
+            best_model_path = "{}/models/{}_{}_merge_cnn_svm.h5".format(self._params.PROJECT_ROOT, self.model_name,
+                                                                     self.patch_type)
+        else:
+            best_model_path = "{}/models/{}_{}_merge_cnn.h5".format(self._params.PROJECT_ROOT, self.model_name,
                                                            self.patch_type)
         full_model.save(best_model_path, include_optimizer=False)
 
         # plot_model(full_model, to_file='{}/models/{}.png'.format(self._params.PROJECT_ROOT, self.model_name))
 
-    def evaluate_entire_model(self, samples_name, batch_size):
+    def evaluate_entire_cnn_model(self, samples_name, batch_size):
         '''
         使用图块文件，评估 合并后的网络
         :param samples_name:图块文件的列表的代号
@@ -341,6 +350,34 @@ class Transfer(object):
         print('Train loss:', train_loss, 'Train accuracy:', train_acc)
         # result = model.predict_generator(test_gen, steps=10)
         # print(result)
+
+    def evaluate_entire_cnn_svm_model(self, samples_name, batch_size):
+        cnn_model_file = "{}/models/{}_{}_merge_cnn_svm.h5".format(self._params.PROJECT_ROOT, self.model_name,
+                                                                    self.patch_type)
+        train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation = (False, False))
+        model = self.load_model(mode = 999, model_file=cnn_model_file)
+        model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+
+        result = model.predict_generator(test_gen, steps=10)
+        y_cnn_pred = []
+        for pred_dict in result[0]:
+            class_id = np.argmax(pred_dict)
+            y_cnn_pred.append(class_id)
+
+        cnn_features = result[1]
+
+        svm_model_file = self._params.PROJECT_ROOT + "/models/svm_{}_{}.model".format(self.model_name, self.patch_type)
+        clf = joblib.load(svm_model_file)
+        y_svm_pred = clf.predict(cnn_features)
+
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        y_true = Ytest[:len(y_cnn_pred)]
+        cnn_score = metrics.accuracy_score(y_true, y_cnn_pred)
+        svm_score = metrics.accuracy_score(y_true, y_svm_pred)
+        print("cnn score = ", cnn_score)
+        print( "svm score = ", svm_score)
+
 
     def predict(self, model, src_img, scale, patch_size, seeds):
         '''
@@ -390,6 +427,8 @@ class Transfer(object):
 
         return result
 
+
+
     #################################################################################################
     #              SVM
     ##################################################################################################
@@ -410,34 +449,37 @@ class Transfer(object):
         train_label = D['arr_1']
 
         max_iter = 500
-        model_params = [ {'C':0.0001}, {'C':0.001 }, {'C':0.01}, {'C':0.1},
-                         {'C':0.5}, {'C':1.0}, {'C':1.2}, {'C':1.5},
-                         {'C':2.0}, {'C':10.0} ]
-        K_num = [50, 100, 200, 300, 500, 1024, 2048]
-
+        # model_params = [ {'C':0.0001}, {'C':0.001 }, {'C':0.01}, {'C':0.1},
+        #                  {'C':0.5}, {'C':1.0}, {'C':1.2}, {'C':1.5},
+        #                  {'C':2.0}, {'C':10.0} ]
+        model_params = [{'C': 0.0001}]
+        # K_num = [100, 200, 300, 500, 1024, 2048]
+        #
         result = {'pred': None, 'score': 0, 'clf': None}
-        for item in K_num:
-            sb = SelectKBest(k=item).fit(train_features, train_label)
-            train_x_new = sb.transform(train_features)
-            test_x_new = sb.transform(test_features)
+        # for item in K_num:
+        #     sb = SelectKBest(k=item).fit(train_features, train_label)
+        #     train_x_new = sb.transform(train_features)
+        #     test_x_new = sb.transform(test_features)
 
-            for params in model_params:
-                clf = LinearSVC(**params, max_iter=max_iter, verbose=0)
-                clf.fit(train_x_new, train_label)
-                y_pred = clf.predict(test_x_new)
-                score = metrics.accuracy_score(test_label, y_pred)
-                print('K = {}, C={:8f} => score={:5f}'.format(item, params['C'], score))
+        # 进行了简单的特征选择，选择全部特征。
+        # the best score = 0.8891836734693878, k = 2048， C=0.0001
+        feature_num = len(train_features[0])
+        for params in model_params:
+            clf = LinearSVC(**params, max_iter=max_iter, verbose=0)
+            clf.fit(train_features, train_label)
+            y_pred = clf.predict(test_features)
+            score = metrics.accuracy_score(test_label, y_pred)
+            print('feature num = {}, C={:8f} => score={:5f}'.format(feature_num, params['C'], score))
 
-                if score > result["score"]:
-                    result = {'pred': y_pred, 'score': score, 'clf': clf, "k": item, "kBest": sb}
+            if score > result["score"]:
+                result = {'pred': y_pred, 'score': score, 'clf': clf}
 
-        print("the best score = {}, k = {}".format(result["score"], result["k"]))
+        print("the best score = {}".format(result["score"]))
 
         print("Classification report for classifier %s:\n%s\n"
               % (result["clf"], metrics.classification_report(test_label, result["pred"])))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(test_label, result["pred"]))
 
         model_file = self._params.PROJECT_ROOT + "/models/svm_{}_{}.model".format(self.model_name, self.patch_type)
-        joblib.dump({"clf":result["clf"], "selectKBest":sb}, model_file)
-
+        joblib.dump(result["clf"], model_file)
         return

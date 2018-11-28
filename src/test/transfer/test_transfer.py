@@ -99,15 +99,22 @@ class Test_transfer(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-        cnn.merge_save_model()
+        cnn.merge_save_model(True)
+        cnn.merge_save_model(False)
 
-    def test_evaluate_entire_model(self):
+    def test_evaluate_entire_cnn_model(self):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
-        cnn.evaluate_entire_model("T_NC_500_128", 100)
+        cnn.evaluate_entire_cnn_model("T_NC_500_128", 100)
 
+    def test_evaluate_entire_cnn_svm_model(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
+
+        cnn.evaluate_entire_cnn_svm_model("T_NC_500_128", 100)
 
     def test_predict(self):
         c = Params()
