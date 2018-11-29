@@ -108,8 +108,20 @@ class Transfer(object):
             return model
 
         elif self.model_name == "densenet121":
+            base_model = DenseNet121(weights='imagenet', include_top=False)
+            top_avg_pool = GlobalAveragePooling2D(name='top_avg_pool')(base_model.output)
+            predictions = self.add_new_top_layers(top_avg_pool)
 
-             return
+            model = Model(inputs=base_model.input, outputs=predictions)
+            return model
+
+        elif self.model_name == "resnet50":
+            base_model = ResNet50(weights='imagenet', include_top=False)
+            top_avg_pool = GlobalAveragePooling2D(name='top_avg_pool')(base_model.output)
+            predictions = self.add_new_top_layers(top_avg_pool)
+
+            model = Model(inputs=base_model.input, outputs=predictions)
+            return model
 
     def load_model(self, mode, model_file = None):
         if mode == 0:  # "load_entire_model"
@@ -467,10 +479,10 @@ class Transfer(object):
         train_label = D['arr_1']
 
         max_iter = 500
-        # model_params = [ {'C':0.0001}, {'C':0.001 }, {'C':0.01}, {'C':0.1},
-        #                  {'C':0.5}, {'C':1.0}, {'C':1.2}, {'C':1.5},
-        #                  {'C':2.0}, {'C':10.0} ]
-        model_params = [{'C': 0.0001}]
+        model_params = [ {'C':0.0001}, {'C':0.001 }, {'C':0.01}, {'C':0.1},
+                         {'C':0.5}, {'C':1.0}, {'C':1.2}, {'C':1.5},
+                         {'C':2.0}, {'C':10.0} ]
+        # model_params = [{'C': 0.0001}]
         # K_num = [100, 200, 300, 500, 1024, 2048]
         #
         result = {'pred': None, 'score': 0, 'clf': None}
@@ -481,6 +493,7 @@ class Transfer(object):
 
         # 进行了简单的特征选择，选择全部特征。
         # inception_v3 ： the best score = 0.8891836734693878, k = 2048， C=0.0001
+        # densenet121:
         feature_num = len(train_features[0])
         for params in model_params:
             clf = LinearSVC(**params, max_iter=max_iter, verbose=0)
