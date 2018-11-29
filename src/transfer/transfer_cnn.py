@@ -15,6 +15,7 @@ import keras
 from keras import regularizers
 from keras.applications.inception_v3 import InceptionV3
 from keras.applications.densenet import DenseNet121
+from keras.applications.resnet50 import ResNet50
 
 from keras import backend as K
 from keras.losses import categorical_crossentropy
@@ -72,7 +73,8 @@ class Transfer(object):
         # create the base pre-trained model
         # base_model = InceptionV3(weights='imagenet', include_top=False, pooling = 'avg')
         # base_model = DenseNet121(weights='imagenet', include_top=False, pooling = 'avg')
-        # print(base_model.summary())
+        # base_model = ResNet50(weights='imagenet', include_top=False, pooling = 'avg')
+        print(base_model.summary())
         f_model = Model(inputs=base_model.input, outputs=base_model.get_layer('avg_pool').output)
 
         features = []
@@ -144,6 +146,11 @@ class Transfer(object):
             else:
                 if self.model_name == "inception_v3":
                     input_layer = Input(shape=(2048,))
+                elif self.model_name == "densenet121":
+                    input_layer = Input(shape=(1024,))
+                elif self.model_name == "resnet50":
+                    input_layer = Input(shape=(2048,))
+
                 predictions = self.add_new_top_layers(input_layer)
                 top_model = Model(inputs=input_layer, outputs=predictions)
             return top_model
@@ -473,7 +480,7 @@ class Transfer(object):
         #     test_x_new = sb.transform(test_features)
 
         # 进行了简单的特征选择，选择全部特征。
-        # the best score = 0.8891836734693878, k = 2048， C=0.0001
+        # inception_v3 ： the best score = 0.8891836734693878, k = 2048， C=0.0001
         feature_num = len(train_features[0])
         for params in model_params:
             clf = LinearSVC(**params, max_iter=max_iter, verbose=0)
@@ -513,20 +520,22 @@ class Transfer(object):
         train_features = D['arr_0']
         train_label = D['arr_1']
 
-        # ###########################  参数寻优  #############################
+        # # ###########################  参数寻优  #############################
         # param_grid = [
-        #     {'n_estimators': [50, 100, 200, 300]},
+        #     {'n_estimators': [50, 100, 150, 200], "max_depth":[10, 20]},
         #     # {'n_estimators': [200], 'criterion': ['gini'],'min_impurity_decrease': np.linspace(0,0.5, 20)}
         #     # {'n_estimators': [200], 'min_samples_split': range(10, 100, 10)}
         # ]
         #
-        # clf = GridSearchCV(RandomForestClassifier(), param_grid, cv=3, n_jobs = self.NUM_WORKERS)
+        # clf = GridSearchCV(RandomForestClassifier(), param_grid, cv=2, n_jobs = self.NUM_WORKERS)
         # clf.fit(train_features, train_label)
         #
         # print("the best score = {}".format(clf.best_score_))
         # print("the best param = {}".format(clf.best_params_))
 
-        clf = RandomForestClassifier(n_estimators = 100, max_depth=10, n_jobs=self.NUM_WORKERS)
+        # inception_v3 the best score = 0.8675879396984925， param = {'max_depth': 20, 'n_estimators': 150}
+
+        clf = RandomForestClassifier(n_estimators = 150, max_depth=20, n_jobs=self.NUM_WORKERS)
         clf = clf.fit(train_features, train_label)
         y_pred = clf.predict(test_features)
         score = metrics.accuracy_score(test_label, y_pred)

@@ -20,27 +20,27 @@ JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 PATCH_TYPE = "500_128"
 
 
-MODEL_NAME = "inception_v3"
-# MODEL_NAME = "densenet121"
+# MODEL_NAME = "inception_v3"
+MODEL_NAME = "densenet121"
 
 class Test_transfer(unittest.TestCase):
 
-    # # 检测特征提取的 稳定性
-    # def test_extract_features(self):
-    #     c = Params()
-    #     c.load_config_file(JSON_PATH)
-    #     cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-    #     # model = cnn.load_model(mode = 0, weights_file=c.PROJECT_ROOT+"/models/trained/inception_v3_500_128.ckpt")
-    #
-    #     imgCone = ImageCone(c, Open_Slide())
-    #
-    #     # 读取数字全扫描切片图像
-    #     tag = imgCone.open_slide("Tumor/Tumor_004.tif",
-    #                              None, "Tumor_004")
-    #     seeds = [(8800, 12256)] * 10  # C, C, S
-    #     result = cnn.extract_features(None, imgCone, 5, 128, seeds)
-    #     print(np.std(result, axis = 1) )
-    #     print(np.std(result, axis=0))
+    # 检测特征提取的 稳定性
+    def test_extract_features(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
+        # model = cnn.load_model(mode = 0, weights_file=c.PROJECT_ROOT+"/models/trained/inception_v3_500_128.ckpt")
+
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_004.tif",
+                                 None, "Tumor_004")
+        seeds = [(8800, 12256)] * 10  # C, C, S
+        result = cnn.extract_features(None, imgCone, 5, 128, seeds)
+        print(np.std(result, axis = 1) )
+        print(np.std(result, axis=0))
     #
     # def test_compare_weights(self):
     #     c = Params()
@@ -87,12 +87,18 @@ class Test_transfer(unittest.TestCase):
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
-        #cnn.fine_tuning_top_model_saved_file("T_NC_2000_256")
-        cnn.fine_tuning_top_cnn_model_saved_file("inception_v3_T_NC_500_128_train_features.npz",
-                                             "inception_v3_T_NC_500_128_test_features.npz",
-                                              batch_size=None, epochs=500, initial_epoch=0)
-        # cnn.fine_tuning_top_model_saved_file("T_NC_4000_256", batch_size=200, epochs=400, initial_epoch=300)
+        if MODEL_NAME == "inception_v3":
+            train_file = "inception_v3_T_NC_500_128_train_features.npz"
+            test_file = "inception_v3_T_NC_500_128_test_features.npz"
+        elif MODEL_NAME == "densenet121":
+            train_file = "densenet121_T_NC_500_128_train_features.npz"
+            test_file = "densenet121_T_NC_500_128_test_features.npz"
+        elif MODEL_NAME == "resnet50":
+            train_file = "resnet50_T_NC_500_128_train_features.npz"
+            test_file = "resnet50_T_NC_500_128_test_features.npz"
 
+        cnn.fine_tuning_top_cnn_model_saved_file(train_file, test_file,
+                                                 batch_size=None, epochs=500, initial_epoch=0)
 
 
     def test_merge_save_model(self):
