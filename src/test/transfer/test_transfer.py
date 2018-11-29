@@ -15,6 +15,10 @@ JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
+SAMPLE_FIlENAME = "T_NC_500_128"
+# SAMPLE_FIlENAME = "T_NC_2000_256"
+# SAMPLE_FIlENAME = "T_NC_4000_256"
+
 # PATCH_TYPE = "4000_256"
 # PATCH_TYPE = "2000_256"
 PATCH_TYPE = "500_128"
@@ -22,6 +26,14 @@ PATCH_TYPE = "500_128"
 
 # MODEL_NAME = "inception_v3"
 MODEL_NAME = "densenet121"
+# MODEL_NAME = "densenet169"
+# MODEL_NAME = "densenet201"
+# MODEL_NAME = "resnet50"
+# MODEL_NAME = "inception_resnet_v2"
+# MODEL_NAME = "vgg16"
+# MODEL_NAME = "mobilenet_v2"
+# MODEL_NAME = "nasnet"
+# MODEL_NAME = ""
 
 class Test_transfer(unittest.TestCase):
 
@@ -80,22 +92,15 @@ class Test_transfer(unittest.TestCase):
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
         # cnn.extract_features_for_train("T_NC_4000_256", 100)
         # cnn.extract_features_for_train("T_NC_2000_256", 100)
-        cnn.extract_features_for_train("T_NC_500_128", 100)
+        cnn.extract_features_for_train(SAMPLE_FIlENAME, 100)
 
     def test_fine_tuning_data_file(self):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
-        if MODEL_NAME == "inception_v3":
-            train_file = "inception_v3_T_NC_500_128_train_features.npz"
-            test_file = "inception_v3_T_NC_500_128_test_features.npz"
-        elif MODEL_NAME == "densenet121":
-            train_file = "densenet121_T_NC_500_128_train_features.npz"
-            test_file = "densenet121_T_NC_500_128_test_features.npz"
-        elif MODEL_NAME == "resnet50":
-            train_file = "resnet50_T_NC_500_128_train_features.npz"
-            test_file = "resnet50_T_NC_500_128_test_features.npz"
+        train_file = "{}_{}_train_features.npz".format(MODEL_NAME, SAMPLE_FIlENAME)
+        test_file = "{}_{}_test_features.npz".format(MODEL_NAME, SAMPLE_FIlENAME)
 
         cnn.fine_tuning_top_cnn_model_saved_file(train_file, test_file,
                                                  batch_size=None, epochs=500, initial_epoch=0)
@@ -112,14 +117,14 @@ class Test_transfer(unittest.TestCase):
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
-        cnn.evaluate_entire_cnn_model("T_NC_500_128", 100)
+        cnn.evaluate_entire_cnn_model(SAMPLE_FIlENAME, 100)
 
     def test_evaluate_cnn_svm_rf_model(self):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
-        cnn.evaluate_cnn_svm_rf_model("T_NC_500_128", 100)
+        cnn.evaluate_cnn_svm_rf_model(SAMPLE_FIlENAME, 100)
 
     def test_predict(self):
         c = Params()
@@ -147,15 +152,8 @@ class Test_transfer(unittest.TestCase):
         cnn.fine_tuning_model_with_freezed("T_NC_500_128",batch_size=32, freezed_num=311, epochs=500, initial_epoch=0)
 
     def test_train_top_svm(self):
-        if MODEL_NAME == "inception_v3":
-            train_file = "inception_v3_T_NC_500_128_train_features.npz"
-            test_file = "inception_v3_T_NC_500_128_test_features.npz"
-        elif MODEL_NAME == "densenet121":
-            train_file = "densenet121_T_NC_500_128_train_features.npz"
-            test_file = "densenet121_T_NC_500_128_test_features.npz"
-        elif MODEL_NAME == "resnet50":
-            train_file = "resnet50_T_NC_500_128_train_features.npz"
-            test_file = "resnet50_T_NC_500_128_test_features.npz"
+        train_file = "{}_{}_train_features.npz".format(MODEL_NAME, SAMPLE_FIlENAME)
+        test_file = "{}_{}_test_features.npz".format(MODEL_NAME, SAMPLE_FIlENAME)
 
         c = Params()
         c.load_config_file(JSON_PATH)
@@ -163,15 +161,8 @@ class Test_transfer(unittest.TestCase):
         cnn.train_top_svm(train_file, test_file)
 
     def test_train_top_rf(self):
-        if MODEL_NAME == "inception_v3":
-            train_file = "inception_v3_T_NC_500_128_train_features.npz"
-            test_file = "inception_v3_T_NC_500_128_test_features.npz"
-        elif MODEL_NAME == "densenet121":
-            train_file = "densenet121_T_NC_500_128_train_features.npz"
-            test_file = "densenet121_T_NC_500_128_test_features.npz"
-        elif MODEL_NAME == "resnet50":
-            train_file = "resnet50_T_NC_500_128_train_features.npz"
-            test_file = "resnet50_T_NC_500_128_test_features.npz"
+        train_file = "{}_{}_train_features.npz".format(MODEL_NAME, SAMPLE_FIlENAME)
+        test_file = "{}_{}_test_features.npz".format(MODEL_NAME, SAMPLE_FIlENAME)
 
         c = Params()
         c.load_config_file(JSON_PATH)

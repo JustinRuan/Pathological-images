@@ -13,9 +13,16 @@ import numpy as np
 import tensorflow as tf
 import keras
 from keras import regularizers
-from keras.applications.inception_v3 import InceptionV3
-from keras.applications.densenet import DenseNet121
+from keras.applications.vgg16 import VGG16
+from keras.applications.vgg19 import VGG19
 from keras.applications.resnet50 import ResNet50
+from keras.applications.inception_v3 import InceptionV3
+from keras.applications.inception_resnet_v2 import InceptionResNetV2
+from keras.applications.xception import Xception
+from keras.applications.mobilenet import MobileNet
+from keras.applications.mobilenet_v2 import MobileNetV2
+from keras.applications.densenet import DenseNet121, DenseNet169, DenseNet201
+from keras.applications.nasnet import NASNetMobile, NASNetLarge
 
 from keras import backend as K
 from keras.losses import categorical_crossentropy
@@ -101,27 +108,28 @@ class Transfer(object):
     def create_initial_model(self):
         if self.model_name == "inception_v3":
             base_model = InceptionV3(weights='imagenet', include_top=False)
-            top_avg_pool =  GlobalAveragePooling2D(name='top_avg_pool')(base_model.output)
-            predictions = self.add_new_top_layers(top_avg_pool)
-
-            model = Model(inputs=base_model.input, outputs=predictions)
-            return model
-
         elif self.model_name == "densenet121":
             base_model = DenseNet121(weights='imagenet', include_top=False)
-            top_avg_pool = GlobalAveragePooling2D(name='top_avg_pool')(base_model.output)
-            predictions = self.add_new_top_layers(top_avg_pool)
-
-            model = Model(inputs=base_model.input, outputs=predictions)
-            return model
-
+        elif self.model_name == "densenet169":
+            base_model = DenseNet169(weights='imagenet', include_top=False)
+        elif self.model_name == "densenet201":
+            base_model = DenseNet201(weights='imagenet', include_top=False)
         elif self.model_name == "resnet50":
             base_model = ResNet50(weights='imagenet', include_top=False)
-            top_avg_pool = GlobalAveragePooling2D(name='top_avg_pool')(base_model.output)
-            predictions = self.add_new_top_layers(top_avg_pool)
+        elif self.model_name == "inception_resnet_v2":
+            base_model = InceptionResNetV2(weights='imagenet', include_top=False)
+        elif self.model_name == "vgg16":
+            base_model = VGG16(weights='imagenet', include_top=False)
+        elif self.model_name == "mobilenet_v2":
+            base_model = MobileNetV2(weights='imagenet', include_top=False)
+        elif self.model_name == "nasnet":
+            base_model = NASNetMobile(weights='imagenet', include_top=False)
 
-            model = Model(inputs=base_model.input, outputs=predictions)
-            return model
+        top_avg_pool = GlobalAveragePooling2D(name='top_avg_pool')(base_model.output)
+        predictions = self.add_new_top_layers(top_avg_pool)
+
+        model = Model(inputs=base_model.input, outputs=predictions)
+        return model
 
     def load_model(self, mode, model_file = None):
         if mode == 0:  # "load_entire_model"
@@ -493,7 +501,8 @@ class Transfer(object):
 
         # 进行了简单的特征选择，选择全部特征。
         # inception_v3 ： the best score = 0.8891836734693878, k = 2048， C=0.0001
-        # densenet121:
+        # densenet121: the best score = 0.9151020408163265, k=1024, C=0.01
+        # resnet50: the best score = 0.8187755102040817, C=0.5
         feature_num = len(train_features[0])
         for params in model_params:
             clf = LinearSVC(**params, max_iter=max_iter, verbose=0)
@@ -534,25 +543,27 @@ class Transfer(object):
         train_label = D['arr_1']
 
         # # ###########################  参数寻优  #############################
-        # param_grid = [
-        #     {'n_estimators': [50, 100, 150, 200], "max_depth":[10, 20]},
-        #     # {'n_estimators': [200], 'criterion': ['gini'],'min_impurity_decrease': np.linspace(0,0.5, 20)}
-        #     # {'n_estimators': [200], 'min_samples_split': range(10, 100, 10)}
-        # ]
-        #
-        # clf = GridSearchCV(RandomForestClassifier(), param_grid, cv=2, n_jobs = self.NUM_WORKERS)
-        # clf.fit(train_features, train_label)
-        #
-        # print("the best score = {}".format(clf.best_score_))
-        # print("the best param = {}".format(clf.best_params_))
+        param_grid = [
+            {'n_estimators': [50, 100, 150, 200], "max_depth":[10, 20]},
+            # {'n_estimators': [200], 'criterion': ['gini'],'min_impurity_decrease': np.linspace(0,0.5, 20)}
+            # {'n_estimators': [200], 'min_samples_split': range(10, 100, 10)}
+        ]
 
-        # inception_v3 the best score = 0.8675879396984925， param = {'max_depth': 20, 'n_estimators': 150}
+        clf = GridSearchCV(RandomForestClassifier(), param_grid, cv=2, n_jobs = self.NUM_WORKERS)
+        clf.fit(train_features, train_label)
 
-        clf = RandomForestClassifier(n_estimators = 150, max_depth=20, n_jobs=self.NUM_WORKERS)
-        clf = clf.fit(train_features, train_label)
-        y_pred = clf.predict(test_features)
-        score = metrics.accuracy_score(test_label, y_pred)
-        print("score = ", score)
+        print("the best score = {}".format(clf.best_score_))
+        print("the best param = {}".format(clf.best_params_))
+
+        # 5 x 128
+        # # inception_v3 the best score = 0.8675879396984925， param = {'max_depth': 20, 'n_estimators': 150}
+        # # densenet121: the best score = 0.911608040201005, param = {'max_depth': 20, 'n_estimators': 150}
+        # # resnet50: the best score = 0.8113065326633165, param = {'max_depth': 20, 'n_estimators': 200}
+        # clf = RandomForestClassifier(n_estimators = 150, max_depth=20, n_jobs=self.NUM_WORKERS)
+        # clf = clf.fit(train_features, train_label)
+        # y_pred = clf.predict(test_features)
+        # score = metrics.accuracy_score(test_label, y_pred)
+        # print("score = ", score)
 
         model_file = self._params.PROJECT_ROOT + "/models/rf_{}_{}.model".format(self.model_name, self.patch_type)
         joblib.dump(clf, model_file)
