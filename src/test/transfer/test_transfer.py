@@ -147,15 +147,33 @@ class Test_transfer(unittest.TestCase):
         cnn.fine_tuning_model_with_freezed("T_NC_500_128",batch_size=32, freezed_num=311, epochs=500, initial_epoch=0)
 
     def test_train_top_svm(self):
+        if MODEL_NAME == "inception_v3":
+            train_file = "inception_v3_T_NC_500_128_train_features.npz"
+            test_file = "inception_v3_T_NC_500_128_test_features.npz"
+        elif MODEL_NAME == "densenet121":
+            train_file = "densenet121_T_NC_500_128_train_features.npz"
+            test_file = "densenet121_T_NC_500_128_test_features.npz"
+        elif MODEL_NAME == "resnet50":
+            train_file = "resnet50_T_NC_500_128_train_features.npz"
+            test_file = "resnet50_T_NC_500_128_test_features.npz"
+
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-        cnn.train_top_svm("inception_v3_T_NC_500_128_train_features.npz",
-                            "inception_v3_T_NC_500_128_test_features.npz")
+        cnn.train_top_svm(train_file, test_file)
 
     def test_train_top_rf(self):
+        if MODEL_NAME == "inception_v3":
+            train_file = "inception_v3_T_NC_500_128_train_features.npz"
+            test_file = "inception_v3_T_NC_500_128_test_features.npz"
+        elif MODEL_NAME == "densenet121":
+            train_file = "densenet121_T_NC_500_128_train_features.npz"
+            test_file = "densenet121_T_NC_500_128_test_features.npz"
+        elif MODEL_NAME == "resnet50":
+            train_file = "resnet50_T_NC_500_128_train_features.npz"
+            test_file = "resnet50_T_NC_500_128_test_features.npz"
+
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-        cnn.train_top_rf("inception_v3_T_NC_500_128_train_features.npz",
-                            "inception_v3_T_NC_500_128_test_features.npz")
+        cnn.train_top_rf(train_file, test_file)
