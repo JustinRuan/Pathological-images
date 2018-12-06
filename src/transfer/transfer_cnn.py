@@ -48,14 +48,20 @@ from sklearn.model_selection import GridSearchCV
 from statistics import mode
 
 NUM_CLASSES = 2
-# NUM_WORKERS = 1
 
 # def categorical_crossentropy2(y_true, y_pred):
 #   return K.categorical_crossentropy(y_true, y_pred)
 
 class Transfer(object):
-    # patch_type 500_128, 2000_256, 4000_256
+
     def __init__(self, params, model_name, patch_type):
+        '''
+        初始化各种参数
+        :param params: 外部参数
+        :param model_name: 当前所使用的迁移模型的名称
+        :param patch_type: 所使用的图块的倍镜和大小：
+                         # patch_type 500_128, 2000_256, 4000_256
+        '''
         self._params = params
         self.model_name = model_name
         self.patch_type = patch_type
@@ -71,11 +77,12 @@ class Transfer(object):
     def extract_features(self,base_model, src_img, scale, patch_size, seeds):
         '''
         从切片中提取图块，并用网络提取特征
+        :param base_model: 加载的模型
         :param src_img: 切片图像
         :param scale: 提取的倍镜数
         :param patch_size: 图块大小
         :param seeds: 图块中心点的坐标
-        :return: 特征
+        :return: 特征数据
         '''
         # create the base pre-trained model
         # base_model = InceptionV3(weights='imagenet', include_top=False, pooling = 'avg')
@@ -99,6 +106,11 @@ class Transfer(object):
         return features
 
     def add_new_top_layers(self, input_layer):
+        '''
+        生成Top的全连接层
+        :param input_layer: 输入
+        :return:
+        '''
         # let's add a fully-connected layer, kernel_regularizer=regularizers.l2(0.01),
         x = Dense(1024, activation='relu', name="top_Dense")(input_layer)
         # and a logistic layer -- let's say we have 2 classes
@@ -106,6 +118,11 @@ class Transfer(object):
         return predictions
 
     def create_initial_model(self):
+        '''
+        使用由imagenet所训练的权重来初始化网络，不包括原来的top层
+        并加入全局平均池化和新的全连接层
+        :return: 完整的模型
+        '''
         if self.model_name == "inception_v3":
             base_model = InceptionV3(weights='imagenet', include_top=False)
         elif self.model_name == "densenet121":
@@ -122,8 +139,10 @@ class Transfer(object):
             base_model = VGG16(weights='imagenet', include_top=False)
         elif self.model_name == "mobilenet_v2":
             base_model = MobileNetV2(weights='imagenet', include_top=False)
-        elif self.model_name == "nasnet":
-            base_model = NASNetMobile(weights='imagenet', include_top=False)
+        # elif self.model_name == "nasnet": # 这个有问题： Exception: Incompatible shapes: [100,22,15,15] vs. [100,22,31,31]
+        #     base_model = NASNetMobile(weights=None, include_top=False)
+        #     weights_path = os.path.join(os.path.expanduser('~'), '.keras/models/nasnet_mobile_no_top.h5')
+        #     base_model.load_weights(weights_path, by_name=True)
 
         top_avg_pool = GlobalAveragePooling2D(name='top_avg_pool')(base_model.output)
         predictions = self.add_new_top_layers(top_avg_pool)
@@ -132,7 +151,18 @@ class Transfer(object):
         return model
 
     def load_model(self, mode, model_file = None):
-        if mode == 0:  # "load_entire_model"
+        '''
+        加载模型
+        :param mode: 加载的方式
+        :param model_file: 已经有的模型文件
+        :return:
+        '''
+        if mode == 999: # 直接加载模型文件
+            print("loading >>> ", model_file, " ...")
+            model = load_model(model_file)
+            return model
+
+        elif mode == 0:  # "load_entire_model, 优先加载checkpoint_dir下最新的模型文件，用于整个网络微调时"
             checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
             if (not os.path.exists(checkpoint_dir)):
                 os.makedirs(checkpoint_dir)
@@ -149,13 +179,14 @@ class Transfer(object):
                     model = self.create_initial_model()
 
             return model
+
         elif mode == 1:  # "extract features for transfer learning"
 
             full_model = self.create_initial_model()
             feature_model = Model(inputs=full_model.input, outputs=full_model.get_layer('top_avg_pool').output)
             return feature_model
 
-        elif mode == 2:
+        elif mode == 2: # 仅训练top层
             checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
             if (not os.path.exists(checkpoint_dir)):
                 os.makedirs(checkpoint_dir)
@@ -164,13 +195,16 @@ class Transfer(object):
             if latest_top is not None:
                 top_model = load_model(latest_top, compile=False)
             else:
-                if self.model_name == "inception_v3":
-                    input_layer = Input(shape=(2048,))
-                elif self.model_name == "densenet121":
-                    input_layer = Input(shape=(1024,))
-                elif self.model_name == "resnet50":
-                    input_layer = Input(shape=(2048,))
+                features_num = {"inception_v3": 2048,
+                                "densenet121": 1024,
+                                "densenet169": 1664,
+                                "densenet201": 1920,
+                                "resnet50": 2048,
+                                "inception_resnet_v2": 1536,
+                                "vgg16": 512,
+                                "mobilenet_v2": 1280}
 
+                input_layer = Input(shape=(features_num[self.model_name],))
                 predictions = self.add_new_top_layers(input_layer)
                 top_model = Model(inputs=input_layer, outputs=predictions)
             return top_model
@@ -180,7 +214,8 @@ class Transfer(object):
         从图片的列表文件中加载数据，到Sequence中
         :param samples_name: 列表文件的代号
         :param batch_size: 图片读取时的每批的图片数量
-        :return:用于train和test的两个Sequence
+        :param augmentation: 训练集和测试集是否进行实时的扩增
+        :return:
         '''
         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
@@ -192,20 +227,25 @@ class Transfer(object):
         return  train_gen, test_gen
 
 
-    def fine_tuning_model(self, optimizer, samples_name,batch_size, freezed_num, epochs = 20, initial_epoch = 0):
+    ##############################################################################################################
+    #        全网络的微调过程
+    ##############################################################################################################
+    def fine_tuning_model(self, optimizer, samples_name, batch_size, freezed_num, epochs=20, initial_epoch=0):
         '''
-        微调模型，训练时冻结网络中0到freezed_num层
-        :param model_dir:训练时checkpoint文件的存盘路径
-        :param samples_name:训练所使用的图片列表文件的代号
-        :param freezed_num: 训练时冻结网络中 0 到 freezed_num 层
-        :param optimizer: 训练用，自适应学习率算法
+        微调全网模型，训练时冻结网络中0到freezed_num层
+        :param optimizer: 优化器
+        :param samples_name: 训练所使用的图片列表文件的代号
+        :param batch_size: 图片读取时的每批的图片数量
+        :param freezed_num:  训练时冻结网络中 0 到 freezed_num 层
+        :param epochs: 当前训练所设定的epochs
+        :param initial_epoch: 本次训练的起点epochs
         :return:
         '''
         train_gen, test_gen = self.load_data(samples_name, batch_size)
 
         # include the epoch in the file name. (uses `str.format`)
         checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
-        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.h5"
+        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.4f}-{val_acc:.4f}.h5"
 
         merged_model = "{}/models/{}_{}_merge_best.h5".format(self._params.PROJECT_ROOT, self.model_name,
                                                            self.patch_type)
@@ -242,8 +282,12 @@ class Transfer(object):
 
     def fine_tuning_model_with_freezed(self, samples_name, batch_size, freezed_num, epochs, initial_epoch):
         '''
-        训练全连接层，和最后一部分的原网络
-        :param samples_name:
+        训练整个网络，可以冻结前面部分，只训练全连接层，和最后一部分的原网络
+        :param samples_name: 训练所使用的图片列表文件的代号
+        :param batch_size: 图片读取时的每批的图片数量
+        :param freezed_num: 训练时冻结网络中 0 到 freezed_num 层
+        :param epochs: 当前训练所设定的epochs
+        :param initial_epoch: 本次训练的起点epochs
         :return:
         '''
         # optimizer = SGD(lr=1e-4, momentum=0.9)
@@ -252,10 +296,15 @@ class Transfer(object):
         # 最后两个Inception的位置：249, 最后一个的位置：280, Top的位置：311
         self.fine_tuning_model(optimizer, samples_name, batch_size, freezed_num, epochs, initial_epoch)
 
+    #################################################################################################################
+    #     提取图块的特征并存盘，只训练Top部分的过程
+    #################################################################################################################
+
     def extract_features_for_train(self, samples_name, batch_size):
         '''
         从训练的图块中提取 特征， 并存盘
         :param samples_name: 图块文件所在列表txt文件
+        :param batch_size: 每个批次中图片的数量
         :return: 生成两个特征文件
         '''
         train_list = "{}_train.txt".format(samples_name)
@@ -267,6 +316,15 @@ class Transfer(object):
         return
 
     def extract_features_save_to_file(self, model, samples_file_path, batch_size, augmentation = False, aug_multiple = 1):
+        '''
+        读取文件列表，加载图块提取 特征， 并存盘
+        :param model: 提取特征所使用的网络模型
+        :param samples_file_path: 图块列表文件的文件名
+        :param batch_size: 每个批次的图片数量
+        :param augmentation: 是否进行实时的数据提升
+        :param aug_multiple: 当进行提升时，提升后的数据集与原来数据集的倍数关系
+        :return: 将提取特征进行存盘
+        '''
         sample_name = samples_file_path[:-4]
         file_list = "{}/{}".format(self._params.PATCHS_ROOT_PATH, samples_file_path)
         if not augmentation:
@@ -291,8 +349,12 @@ class Transfer(object):
     def fine_tuning_top_cnn_model_saved_file(self, train_filename, test_filename,
                                          batch_size = 100, epochs = 20, initial_epoch = 0):
         '''
-        使用存盘的特征文件来训练 全连接层
-        :param samples_name: 存盘的特征文件的代号
+         使用存盘的特征文件来训练 全连接层
+        :param train_filename: 训练集的文件
+        :param test_filename: 测试集的文件
+        :param batch_size: 每个批次使用的数据量
+        :param epochs: 当前训练所设定的epochs
+        :param initial_epoch: 本次训练的起点epochs
         :return:
         '''
         if (not self.model_name in train_filename) or (not self.model_name in test_filename) \
@@ -315,7 +377,7 @@ class Transfer(object):
 
         # include the epoch in the file name. (uses `str.format`)
         checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
-        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.h5"
+        checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.4f}-{val_acc:.4f}.h5"
 
         cp_callback = tf.keras.callbacks.ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=False,
@@ -337,6 +399,10 @@ class Transfer(object):
                       validation_data=(test_features, test_label),initial_epoch=initial_epoch)
 
     def merge_save_model(self):
+        '''
+        当训练好的Top部分与前端的网络进行融合，并存盘
+        :return:
+        '''
         checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         latest_top = util.latest_checkpoint(checkpoint_dir)
 
@@ -349,14 +415,16 @@ class Transfer(object):
 
         # plot_model(full_model, to_file='{}/models/{}.png'.format(self._params.PROJECT_ROOT, self.model_name))
 
-    def evaluate_entire_cnn_model(self, samples_name, batch_size):
+    def evaluate_entire_cnn_model(self, samples_name, batch_size, model_file = None):
         '''
         使用图块文件，评估 合并后的网络
-        :param samples_name:图块文件的列表的代号
+        :param samples_name: 图块文件的列表的代号
+        :param batch_size:每个批次所使用的图片数量
+        :param model_file: 指定的模型文件
         :return:
         '''
         train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation = (False, False))
-        model = self.load_model(mode = 0)
+        model = self.load_model(mode = 999, model_file=model_file)
         model.compile(optimizer=RMSprop(lr=1e-4, rho=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
 
         print(model.summary())
@@ -370,6 +438,12 @@ class Transfer(object):
         # print(result)
 
     def evaluate_cnn_svm_rf_model(self, samples_name, batch_size):
+        '''
+        使用CNN提取特征，分别用NN, SVM, RF分类器进行分类测试，并完成集成的投票功能
+        :param samples_name: 特征文件的代号
+        :param batch_size: 每批次的图片数量
+        :return:
+        '''
         train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation = (False, False))
         feature_model = self.load_model(mode = 1)
         feature_model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
@@ -414,8 +488,6 @@ class Transfer(object):
     def ensemble_predcit(self):
 
         return
-
-
 
     def predict(self, model, src_img, scale, patch_size, seeds):
         '''
@@ -472,6 +544,12 @@ class Transfer(object):
     ##################################################################################################
 
     def train_top_svm(self, train_filename, test_filename):
+        '''
+        训练SVM分类器，作为CNN网络的新TOP。 包含参数寻优过程
+        :param train_filename: 保存特征的训练集文件
+        :param test_filename: 测试集文件
+        :return:
+        '''
         if (not self.model_name in train_filename) or (not self.model_name in test_filename) \
                 or (not self.patch_type in train_filename) or (not self.patch_type in test_filename):
             return
@@ -528,6 +606,12 @@ class Transfer(object):
     #              Random Forest
     ##################################################################################################
     def train_top_rf(self, train_filename, test_filename):
+        '''
+        训练RF分类器，作为CNN网络的新TOP。 包含参数寻优过程
+        :param train_filename: 保存特征的训练集文件
+        :param test_filename: 测试集文件
+        :return:
+        '''
         if (not self.model_name in train_filename) or (not self.model_name in test_filename) \
                 or (not self.patch_type in train_filename) or (not self.patch_type in test_filename):
             return

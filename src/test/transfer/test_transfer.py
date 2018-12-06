@@ -12,7 +12,7 @@ from core import *
 from transfer import Transfer
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 SAMPLE_FIlENAME = "T_NC_500_128"
@@ -90,9 +90,28 @@ class Test_transfer(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-        # cnn.extract_features_for_train("T_NC_4000_256", 100)
-        # cnn.extract_features_for_train("T_NC_2000_256", 100)
+
         cnn.extract_features_for_train(SAMPLE_FIlENAME, 100)
+
+    def test_extract_features_for_train_batch(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        # "inception_v3", "densenet121", "densenet169", "densenet201", "resnet50", "inception_resnet_v2",
+        #                           "vgg16", "mobilenet_v2"
+        MODEL_NAME_set = ["densenet169"]
+        SAMPLE_FIlENAME_set = ["T_NC_2000_256","T_NC_4000_256"] # "T_NC_500_128", , "T_NC_4000_256" "T_NC_2000_256"
+        PATCH_TYPE_set = ["2000_256", "4000_256"] # "500_128", , "4000_256" "2000_256"
+
+        type_set = zip(PATCH_TYPE_set, SAMPLE_FIlENAME_set)
+
+        for p_item, f_item in type_set:
+            for net_item in MODEL_NAME_set:
+
+                cnn = Transfer(c, net_item, p_item)
+                cnn.extract_features_for_train(f_item, 100)
+
+
 
     def test_fine_tuning_data_file(self):
         c = Params()
@@ -117,7 +136,8 @@ class Test_transfer(unittest.TestCase):
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
-        cnn.evaluate_entire_cnn_model(SAMPLE_FIlENAME, 100)
+        model_file = "{}/models/trained/{}".format(c.PROJECT_ROOT, "densenet121_500_128_0045-0.1972-0.9267.h5")
+        cnn.evaluate_entire_cnn_model(SAMPLE_FIlENAME, 100, model_file)
 
     def test_evaluate_cnn_svm_rf_model(self):
         c = Params()

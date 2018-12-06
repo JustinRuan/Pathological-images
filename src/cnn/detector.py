@@ -89,12 +89,12 @@ class Detector(object):
         seeds = self.get_points_detected_area(extract_scale, patch_size, interval)
 
         # cnn = cnn_simple_5x128(self._params, "simplenet128")
-        cnn = Transfer(self._params, "inception_v3", "500_128")
+        cnn = Transfer(self._params, "densenet121", "500_128")
         model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                   "inception_v3_500_128.ckpt")
-        model = cnn.load_model(mode = 0, weights_file=model_path)
-        # model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
-        model.compile(optimizer="RMSprop")
+                                                   "densenet121_500_128_0045-0.1972-0.9267.h5")
+        model = cnn.load_model(mode = 999, model_file=model_path)
+        model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
+        # model.compile(optimizer="RMSprop", loss='categorical_crossentropy')
         predictions = cnn.predict_on_batch(model, self._imgCone, extract_scale, patch_size, seeds, 100)
 
         return seeds, predictions
@@ -103,17 +103,17 @@ class Detector(object):
         new_seeds = self.get_seeds_under_high_magnification(seeds, predictions, seeds_scale, original_patch_size,
                                                             new_scale, new_patch_size)
         if (new_scale == 20):
-            cnn = Transfer(self._params, "inception_v3", "2000_256")
+            cnn = Transfer(self._params, "densenet121", "2000_256")
             model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                       "inception_v3_2000_256-0286-0.20-0.95.ckpt")
-            model = cnn.load_model(mode = 0, weights_file=model_path)
+                                                       "densenet121_2000_256_0052-0.0752-0.9745.h5")
+            model = cnn.load_model(mode = 999, model_file=model_path)
         else: # (new_scale == 40):
-            cnn = Transfer(self._params, "inception_v3", "4000_256")
+            cnn = Transfer(self._params, "densenet121", "4000_256")
             model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                       "inception_v3_4000_256-0396-0.33-0.88.ckpt")
-            model = cnn.load_model(mode=0, weights_file=model_path)
-        # model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
-        model.compile(optimizer="RMSprop")
+                                                       "densenet121_4000_256_0042-0.2115-0.9157.h5")
+            model = cnn.load_model(mode=999, model_file=model_path)
+        model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
+        # model.compile(optimizer="RMSprop", loss='categorical_crossentropy')
 
         predictions = cnn.predict_on_batch(model, self._imgCone, new_scale, new_patch_size, new_seeds, 100)
         return new_seeds, predictions
