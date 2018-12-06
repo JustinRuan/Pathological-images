@@ -95,7 +95,7 @@ class CNN_Classifier(object):
         model = self.load_model(model_file=None)
 
         cp_callback = keras.callbacks.ModelCheckpoint(
-            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True,
+            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=False,
             # Save weights, every 5-epochs.
             period=1)
         early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)

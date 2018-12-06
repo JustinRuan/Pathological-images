@@ -21,4 +21,4 @@ class Test_cnn_classifier(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         cnn = CNN_Classifier(c, "simple_cnn", "cifar10")
-        cnn.train_model_cifar(batch_size=32, epochs = 20, initial_epoch = 0)
+        cnn.train_model_cifar(batch_size=32, epochs = 100, initial_epoch = 0)
