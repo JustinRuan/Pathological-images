@@ -5,19 +5,12 @@ __author__ = 'Justin'
 __mtime__ = '2018-10-26'
 
 """
-from core import *
 import numpy as np
 from sklearn import metrics
-from feature import feature_extractor
-from skimage import io, util
-from sklearn.svm import SVC
-from sklearn.externals import joblib
-from skimage import segmentation
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds
-import random
 from transfer import Transfer
-from cnn.cnn_simple_5x128 import cnn_simple_5x128
+
 
 class Detector(object):
 

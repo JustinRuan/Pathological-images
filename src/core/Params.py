@@ -40,7 +40,7 @@ class Params(object):
         self.PATCHS_ROOT_PATH = data[1]['PATCHS_ROOT_PATH']
         self.PROJECT_ROOT = data[1]['PROJECT_ROOT']
 
-        # self.NUM_WORKERS = data[2]['NUM_WORKERS']
+        self.NUM_WORKERS = data[2]['NUM_WORKERS']
 
         return
 
