@@ -10,7 +10,7 @@ import unittest
 from core import *
 from cnn.cnn_classifier import CNN_Classifier
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "H:\yeguanglu\Pathological-images-newest\config\ygl.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
@@ -21,4 +21,6 @@ class Test_cnn_classifier(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         cnn = CNN_Classifier(c, "simple_cnn", "cifar10")
+        cnn.train_model_cifar(batch_size=32, epochs = 100, initial_epoch = 0)
+        cnn = CNN_Classifier(c, "densenet", "cifar10")
         cnn.train_model_cifar(batch_size=32, epochs = 100, initial_epoch = 0)

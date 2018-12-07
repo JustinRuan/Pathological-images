@@ -30,6 +30,7 @@ from keras.datasets import cifar10
 from keras.datasets import cifar100
 
 from .net.simple_cnn import create_simple_cnn
+from .net.densenet import createDenseNet
 
 
 class CNN_Classifier(object):
@@ -39,7 +40,7 @@ class CNN_Classifier(object):
         self._params = params
         self.model_name = model_name
         self.patch_type = patch_type
-        self.NUM_WORKERS = params.NUM_WORKERS
+        # self.NUM_WORKERS = params.NUM_WORKERS
 
     def create_initial_model(self):
 
@@ -52,6 +53,25 @@ class CNN_Classifier(object):
                 model = create_simple_cnn(num_classes=10, input_shape=(32, 32, 3), top_units=512)
             elif self.patch_type == "cifar100":
                 model = create_simple_cnn(num_classes=100, input_shape=(32, 32, 3), top_units=512)
+
+        elif self.model_name=="densenet":
+            if self.patch_type == "500_128":
+                 model = createDenseNet(nb_classes=2, input_shape=(128, 128, 3), depth=40, nb_dense_block=3,
+                                        growth_rate=12, nb_filter=16, dropout_rate=None,
+                                         weight_decay=1E-4, verbose=True)
+            elif self.patch_type in ["2000_256", "4000_256"] :
+                model = createDenseNet(nb_classes=2, input_shape=(256, 256, 3), depth=40, nb_dense_block=3,
+                                       growth_rate=12, nb_filter=16, dropout_rate=None,
+                                       weight_decay=1E-4, verbose=True)
+            elif self.patch_type == "cifar10":
+                model = createDenseNet(nb_classes=10, input_shape=(32, 32, 3), depth=40, nb_dense_block=3,
+                                       growth_rate=12, nb_filter=16, dropout_rate=None,
+                                       weight_decay=1E-4, verbose=True)
+            elif self.patch_type == "cifar100":
+                model = createDenseNet(nb_classes=100, input_shape=(32, 32, 3), depth=40, nb_dense_block=3,
+                                       growth_rate=12, nb_filter=16, dropout_rate=None,
+                                       weight_decay=1E-4, verbose=True)
+
 
         return model
 
