@@ -7,5 +7,6 @@ __mtime__ = '2018-07-03'
 """
 
 from . import simple_cnn
+from . import densenet
 
 # __all__ = []
