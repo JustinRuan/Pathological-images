@@ -105,7 +105,7 @@ class CNN_Classifier(object):
 
         print(model.summary())
         # optimizer = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-        optimizer = RMSprop(lr=1e-4, rho=0.9)
+        optimizer = RMSprop(lr=1e-3, rho=0.9)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
         model.fit(x_train, y_train, batch_size = batch_size, epochs=epochs, verbose=1,
