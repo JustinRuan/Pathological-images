@@ -39,6 +39,7 @@ from keras.models import Model, Sequential, load_model
 #
 #     return model
 
+# cifar 10的准确率为76%
 def create_simple_cnn(num_classes, input_shape, top_units):
 
     model = Sequential()
@@ -48,7 +49,7 @@ def create_simple_cnn(num_classes, input_shape, top_units):
     model.add(Conv2D(32, kernel_size=(3, 3), strides=1, padding="same", activation='relu'))
     model.add(MaxPooling2D(pool_size=3, strides=2, padding='same'))
 
-    model.add(Conv2D(64, kernel_size=(3, 3), strides=1, padding="same", activation='relu'))
+    model.add(Conv2D(48, kernel_size=(3, 3), strides=1, padding="same", activation='relu'))
     model.add(MaxPooling2D(pool_size=3, strides=2, padding='same'))
 
     model.add(Conv2D(64, kernel_size=(3, 3), strides=1, padding="same", activation='relu'))

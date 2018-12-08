@@ -78,7 +78,7 @@ def dense_block(x, nb_layers, nb_filter, growth_rate, dropout_rate=None, weight_
     return x, nb_filter
 
 
-def createDenseNet(nb_classes, input_shape, depth, nb_dense_block, growth_rate, nb_filter, dropout_rate=None,
+def create_DenseNet(nb_classes, input_shape, depth, nb_dense_block, growth_rate, nb_filter, dropout_rate=None,
                      weight_decay=1E-4, verbose=True):
     ''' Build the create_dense_net model
     Args:
@@ -130,4 +130,9 @@ def createDenseNet(nb_classes, input_shape, depth, nb_dense_block, growth_rate, 
         print("DenseNet-%d-%d created." % (depth, growth_rate))
 
     return densenet
+
+def create_densenet_40(nb_classes, input_shape):
+    return create_DenseNet(nb_classes, input_shape, depth=40, nb_dense_block=3,
+                                       growth_rate=12, nb_filter=16, dropout_rate=None,
+                                       weight_decay=1E-4, verbose=True)
 

@@ -30,7 +30,7 @@ from keras.datasets import cifar10
 from keras.datasets import cifar100
 
 from .net.simple_cnn import create_simple_cnn
-from .net.densenet import createDenseNet
+from .net.densenet import create_densenet_40
 
 
 class CNN_Classifier(object):
@@ -50,27 +50,19 @@ class CNN_Classifier(object):
             elif self.patch_type in ["2000_256", "4000_256"] :
                 model = create_simple_cnn(num_classes=2, input_shape=(256, 256, 3), top_units=512)
             elif self.patch_type == "cifar10":
-                model = create_simple_cnn(num_classes=10, input_shape=(32, 32, 3), top_units=512)
+                model = create_simple_cnn(num_classes=10, input_shape=(32, 32, 3), top_units=256)
             elif self.patch_type == "cifar100":
-                model = create_simple_cnn(num_classes=100, input_shape=(32, 32, 3), top_units=512)
+                model = create_simple_cnn(num_classes=100, input_shape=(32, 32, 3), top_units=256)
 
-        elif self.model_name=="densenet":
+        elif self.model_name=="densenet_40":
             if self.patch_type == "500_128":
-                 model = createDenseNet(nb_classes=2, input_shape=(128, 128, 3), depth=40, nb_dense_block=3,
-                                        growth_rate=12, nb_filter=16, dropout_rate=None,
-                                         weight_decay=1E-4, verbose=True)
+                 model = create_densenet_40(nb_classes=2, input_shape=(128, 128, 3))
             elif self.patch_type in ["2000_256", "4000_256"] :
-                model = createDenseNet(nb_classes=2, input_shape=(256, 256, 3), depth=40, nb_dense_block=3,
-                                       growth_rate=12, nb_filter=16, dropout_rate=None,
-                                       weight_decay=1E-4, verbose=True)
+                model = create_densenet_40(nb_classes=2, input_shape=(256, 256, 3))
             elif self.patch_type == "cifar10":
-                model = createDenseNet(nb_classes=10, input_shape=(32, 32, 3), depth=40, nb_dense_block=3,
-                                       growth_rate=12, nb_filter=16, dropout_rate=None,
-                                       weight_decay=1E-4, verbose=True)
+                model = create_densenet_40(nb_classes=10, input_shape=(32, 32, 3))
             elif self.patch_type == "cifar100":
-                model = createDenseNet(nb_classes=100, input_shape=(32, 32, 3), depth=40, nb_dense_block=3,
-                                       growth_rate=12, nb_filter=16, dropout_rate=None,
-                                       weight_decay=1E-4, verbose=True)
+                model = create_densenet_40(nb_classes=100, input_shape=(32, 32, 3))
 
 
         return model
@@ -106,8 +98,6 @@ class CNN_Classifier(object):
             y_test = to_categorical(y_test, 100)
         else:
             return
-
-
 
         checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.4f}-{val_acc:.4f}.h5"
