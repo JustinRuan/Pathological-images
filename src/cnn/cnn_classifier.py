@@ -10,6 +10,7 @@ import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0" #GPU
 # os.environ['CUDA_VISIBLE_DEVICES'] = "-1" #CPU
 
+import math
 import numpy as np
 import tensorflow as tf
 import keras
@@ -30,7 +31,7 @@ from keras.datasets import cifar10
 from keras.datasets import cifar100
 
 from .net.simple_cnn import create_simple_cnn
-from .net.densenet import create_densenet_40
+from .net.densenet import create_densenet_40, create_densenet_22
 
 
 class CNN_Classifier(object):
@@ -40,30 +41,31 @@ class CNN_Classifier(object):
         self._params = params
         self.model_name = model_name
         self.patch_type = patch_type
-        # self.NUM_WORKERS = params.NUM_WORKERS
+        self.NUM_WORKERS = params.NUM_WORKERS
+
+        if self.patch_type == "500_128":
+            self.num_classes = 2
+            self.input_shape = (128, 128, 3)
+        elif self.patch_type in ["2000_256", "4000_256"]:
+            self.num_classes = 2
+            self.input_shape = (256, 256, 3)
+        elif self.patch_type == "cifar10":
+            self.num_classes = 10
+            self.input_shape = (32, 32, 3)
+        elif self.patch_type == "cifar100":
+            self.num_classes = 100
+            self.input_shape = (32, 32, 3)
 
     def create_initial_model(self):
 
         if self.model_name == "simple_cnn":
-            if self.patch_type == "500_128":
-                model = create_simple_cnn(num_classes = 2, input_shape = (128, 128, 3), top_units = 512)
-            elif self.patch_type in ["2000_256", "4000_256"] :
-                model = create_simple_cnn(num_classes=2, input_shape=(256, 256, 3), top_units=512)
-            elif self.patch_type == "cifar10":
-                model = create_simple_cnn(num_classes=10, input_shape=(32, 32, 3), top_units=256)
-            elif self.patch_type == "cifar100":
-                model = create_simple_cnn(num_classes=100, input_shape=(32, 32, 3), top_units=256)
+            model = create_simple_cnn(num_classes=self.num_classes, input_shape=self.input_shape, top_units=256)
 
         elif self.model_name=="densenet_40":
-            if self.patch_type == "500_128":
-                 model = create_densenet_40(nb_classes=2, input_shape=(128, 128, 3))
-            elif self.patch_type in ["2000_256", "4000_256"] :
-                model = create_densenet_40(nb_classes=2, input_shape=(256, 256, 3))
-            elif self.patch_type == "cifar10":
-                model = create_densenet_40(nb_classes=10, input_shape=(32, 32, 3))
-            elif self.patch_type == "cifar100":
-                model = create_densenet_40(nb_classes=100, input_shape=(32, 32, 3))
+            model = create_densenet_40(nb_classes=self.num_classes, input_shape=self.input_shape)
 
+        elif self.model_name == "densenet_22":
+            model = create_densenet_22(nb_classes=self.num_classes, input_shape=self.input_shape)
 
         return model
 
@@ -86,18 +88,25 @@ class CNN_Classifier(object):
                 model = self.create_initial_model()
             return model
 
+    # def generate_arrays_on_batch(self, x_set, y_set, batch_size, num_classes):
+    #     len_data = math.ceil(len(x_set) / batch_size)
+    #
+    #     while 1:
+    #         for idx in range(len_data):
+    #             batch_x = x_set[idx * batch_size:(idx + 1) * batch_size]
+    #             batch_y = y_set[idx * batch_size:(idx + 1) * batch_size]
+    #             yield (np.array(batch_x), to_categorical(batch_y, num_classes))
 
     def train_model_cifar(self, batch_size = 100, epochs = 20, initial_epoch = 0):
         if self.patch_type == "cifar10":
             (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-            y_train = to_categorical(y_train, 10)
-            y_test = to_categorical(y_test, 10)
         elif self.patch_type == "cifar100":
             (x_train, y_train), (x_test, y_test) = cifar100.load_data(label_mode='fine')
-            y_train = to_categorical(y_train, 100)
-            y_test = to_categorical(y_test, 100)
         else:
             return
+
+        y_train = to_categorical(y_train, self.num_classes)
+        y_test = to_categorical(y_test, self.num_classes)
 
         checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.4f}-{val_acc:.4f}.h5"

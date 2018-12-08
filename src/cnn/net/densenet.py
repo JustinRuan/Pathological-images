@@ -136,3 +136,7 @@ def create_densenet_40(nb_classes, input_shape):
                                        growth_rate=12, nb_filter=16, dropout_rate=None,
                                        weight_decay=1E-4, verbose=True)
 
+def create_densenet_22(nb_classes, input_shape):
+    return create_DenseNet(nb_classes, input_shape, depth=22, nb_dense_block=3,
+                                       growth_rate=12, nb_filter=16, dropout_rate=None,
+                                       weight_decay=1E-4, verbose=True)
