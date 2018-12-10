@@ -137,7 +137,7 @@ class CNN_Classifier(object):
     def train_model(self, samples_name, batch_size, augmentation, epochs, initial_epoch):
         train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation)
 
-        checkpoint_path = self.model_root + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.h5"
+        checkpoint_path = self.model_root + "/cp-{epoch:04d}-{val_loss:.4f}-{val_acc:.4f}.h5"
 
         cp_callback = keras.callbacks.ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=False,
