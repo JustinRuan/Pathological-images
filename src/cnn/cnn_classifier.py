@@ -56,6 +56,8 @@ class CNN_Classifier(object):
             self.num_classes = 100
             self.input_shape = (32, 32, 3)
 
+        self.model_root = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+
     def create_initial_model(self):
 
         if self.model_name == "simple_cnn":
@@ -76,7 +78,7 @@ class CNN_Classifier(object):
             model = load_model(model_file)
             return model
         else:
-            checkpoint_dir = "{}/models/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+            checkpoint_dir = self.model_root
             if (not os.path.exists(checkpoint_dir)):
                 os.makedirs(checkpoint_dir)
 
@@ -131,3 +133,149 @@ class CNN_Classifier(object):
                       # callbacks=[cp_callback, TensorBoard(log_dir=checkpoint_dir)],
                       callbacks=[cp_callback, early_stopping, reduce_lr],
                       validation_data=(x_test, y_test),initial_epoch=initial_epoch)
+
+    def train_model(self, samples_name, batch_size, augmentation, epochs, initial_epoch):
+        train_gen, test_gen = self.load_data(samples_name, batch_size, augmentation)
+
+        checkpoint_path = self.model_root + "/cp-{epoch:04d}-{val_loss:.2f}-{val_acc:.2f}.h5"
+
+        cp_callback = keras.callbacks.ModelCheckpoint(
+            checkpoint_path, verbose=1, save_best_only=True, save_weights_only=False,
+            # Save weights, every 5-epochs.
+            period=1)
+        early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
+        reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, mode='auto',
+                                          epsilon=0.0001, cooldown=0, min_lr=0)
+
+        model = self.load_model()
+        print(model.summary())
+        # optimizer = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+        optimizer = RMSprop(lr=1e-3, rho=0.9)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+
+        steps_per_epoch = 200
+        validation_steps = 100
+
+        model.fit_generator(train_gen, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=1, workers=self.NUM_WORKERS,
+                            # callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
+                            callbacks=[cp_callback, early_stopping, reduce_lr],
+                            validation_data=test_gen, validation_steps=validation_steps, initial_epoch=initial_epoch)
+        return
+
+    def load_data(self, samples_name, batch_size, augmentation = (False, False)):
+        '''
+        从图片的列表文件中加载数据，到Sequence中
+        :param samples_name: 列表文件的代号
+        :param batch_size: 图片读取时的每批的图片数量
+        :return:用于train和test的两个Sequence
+        '''
+        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+
+        Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+        train_gen = ImageSequence(Xtrain, Ytrain, batch_size, self.num_classes, augmentation[0])
+
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        test_gen = ImageSequence(Xtest, Ytest, batch_size, self.num_classes, augmentation[1])
+        return  train_gen, test_gen
+
+    def predict(self, src_img, scale, patch_size, seeds, model_file):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return:
+        '''
+        model = self.load_model(model_file)
+        optimizer = RMSprop(lr=1e-4, rho=0.9)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        print(model.summary())
+
+        result = []
+        for x, y in seeds:
+            block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
+            img = block.get_img()
+
+            x = image.img_to_array(ImageNormalization.normalize_mean(img))
+            x = np.expand_dims(x, axis=0)
+
+            predictions = model.predict(x)
+            class_id = np.argmax(predictions[0])
+            probability = predictions[0][class_id]
+            result.append((class_id, probability))
+        return result
+
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size, model_file):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return:
+        '''
+        model = self.load_model(model_file)
+        optimizer = RMSprop(lr=1e-4, rho=0.9)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        print(model.summary())
+
+        image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
+
+        predictions = model.predict_generator(image_itor, verbose=1, workers=self.NUM_WORKERS)
+        result = []
+        for pred_dict in predictions:
+            class_id = np.argmax(pred_dict)
+            probability = pred_dict[class_id]
+            result.append((class_id, probability))
+
+        return result
+
+    def predict_test_file(self, model_file, test_file_list, batch_size):
+        model = self.load_model(model_file)
+        optimizer = RMSprop(lr=1e-4, rho=0.9)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        print(model.summary())
+
+        Xtest = []
+        Ytest = []
+
+        for item in test_file_list:
+            test_list = "{}/{}".format(self._params.PATCHS_ROOT_PATH, item)
+            Xtest1, Ytest1 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+
+            Xtest.extend(Xtest1)
+            Ytest.extend(Ytest1)
+
+        image_itor = ImageSequence(Xtest, Ytest, batch_size, self.num_classes)
+
+        predictions = model.predict_generator(image_itor, verbose=1, workers=self.NUM_WORKERS)
+        predicted_tags = []
+        predicted_probability = []
+        for pred_dict in predictions:
+            class_id = np.argmax(pred_dict)
+            probability = pred_dict[class_id]
+            predicted_tags.append(class_id)
+            predicted_probability.append(probability)
+
+        print("Classification report for classifier:\n%s\n"
+              % ( metrics.classification_report(Ytest, predicted_tags)))
+        print("Confusion matrix:\n%s" % metrics.confusion_matrix(Ytest, predicted_tags))
+
+        print("average predicted probability = %s" % np.mean(predicted_probability))
+
+        Ytest = np.array(Ytest)
+        predicted_tags = np.array(predicted_tags)
+        predicted_probability = np.array(predicted_probability)
+        TP = np.logical_and(Ytest == 1, predicted_tags == 1)
+        FP = np.logical_and(Ytest == 0, predicted_tags == 1)
+        TN = np.logical_and(Ytest == 0, predicted_tags == 0)
+        FN = np.logical_and(Ytest == 1, predicted_tags == 0)
+
+        print("average TP probability = %s" % np.mean(predicted_probability[TP]))
+        print("average FP probability = %s" % np.mean(predicted_probability[FP]))
+        print("average TN probability = %s" % np.mean(predicted_probability[TN]))
+        print("average FN probability = %s" % np.mean(predicted_probability[FN]))
+        return
+
