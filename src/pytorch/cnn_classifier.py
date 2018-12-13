@@ -40,6 +40,7 @@ class CNN_Classifier(object):
         self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         # if (not os.path.exists(self.model_root)):
         #     os.makedirs(self.model_root)
+        self.use_GPU = True
 
     def create_initial_model(self):
 
@@ -85,6 +86,8 @@ class CNN_Classifier(object):
 
         model = self.load_model(model_file=None)
         print(model)
+        if self.use_GPU:
+            model.cuda()
 
         # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
         optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.9)
@@ -102,8 +105,12 @@ class CNN_Classifier(object):
             train_data_len = len(train_data.train_data) // batch_size + 1
 
             for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
-                b_x = Variable(x)  # batch x
-                b_y = Variable(y)  # batch y
+                if self.use_GPU:
+                    b_x = Variable(x).cuda()  # batch x
+                    b_y = Variable(y).cuda()  # batch y
+                else:
+                    b_x = Variable(x)  # batch x
+                    b_y = Variable(y)  # batch y
 
                 output = model(b_x)  # cnn output
                 loss = loss_func(output, b_y)  # cross entropy loss
@@ -126,8 +133,13 @@ class CNN_Classifier(object):
             running_corrects=0
             model.eval()
             for x, y in test_loader:
-                b_x = Variable(x)  # batch x
-                b_y = Variable(y)  # batch y
+                if self.use_GPU:
+                    b_x = Variable(x).cuda()  # batch x
+                    b_y = Variable(y).cuda()  # batch y
+                else:
+                    b_x = Variable(x)  # batch x
+                    b_y = Variable(y)  # batch y
+
                 output = model(b_x)
                 loss = loss_func(output, b_y)
 
@@ -139,7 +151,7 @@ class CNN_Classifier(object):
             epoch_loss=running_loss / test_data_len
             epoch_acc=running_corrects.double() / test_data_len
 
-            torch.save(model, self.model_root + "/cp_{:04d}_{:4f}_{:4f}.h5".format(epoch+1, epoch_loss, epoch_acc))
+            torch.save(model, self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.h5".format(epoch+1, epoch_loss, epoch_acc))
 
         return
 
