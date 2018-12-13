@@ -25,4 +25,15 @@ class Test_cnn_classifier(unittest.TestCase):
         sample_name = "cifar10"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
-        cnn.train_model_cifar(batch_size=32, epochs = 30)
+        cnn.train_model(samples_name=None, batch_size=32, epochs = 30)
+
+    def test_train_model_patholImg(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "simple_cnn"
+        # model_name = "densenet_40"
+        sample_name = "500_128"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+        cnn.train_model(samples_name="T_NC_{}".format(sample_name), batch_size=32, epochs = 30)

@@ -14,6 +14,8 @@ import torch.utils.data as Data
 import torchvision      # 数据库模块
 from core.util import latest_checkpoint
 from pytorch.net import Simple_CNN
+from core.util import read_csv_file
+from pytorch.image_dataset import Image_Dataset
 
 class CNN_Classifier(object):
 
@@ -53,7 +55,7 @@ class CNN_Classifier(object):
 
         if model_file is not None:
             print("loading >>> ", model_file, " ...")
-            model = None
+            model = torch.load(model_file)
             return model
         else:
             checkpoint_dir = self.model_root
@@ -68,18 +70,11 @@ class CNN_Classifier(object):
                 model = self.create_initial_model()
             return model
 
-    def train_model_cifar(self, batch_size=100, epochs=20):
-        data_root = os.path.join(os.path.expanduser('~'), '.keras/datasets/') # 共用Keras下载的数据
-
-        if self.patch_type == "cifar10":
-            train_data = torchvision.datasets.cifar.CIFAR10(
-                root=data_root,  # 保存或者提取位置
-                train=True,  # this is training data
-                transform=torchvision.transforms.ToTensor(),
-                download = False
-            )
-            test_data = torchvision.datasets.cifar.CIFAR10(root=data_root, train=False,
-                                                   transform=torchvision.transforms.ToTensor())
+    def train_model(self, samples_name = None, batch_size=100, epochs=20):
+        if self.patch_type in ["cifar10", "cifar100"]:
+            train_data, test_data = self.load_cifar_data(self.patch_type)
+        elif self.patch_type in ["500_128", "2000_256", "4000_256"]:
+            train_data, test_data = self.load_custom_data(samples_name)
 
         train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True, num_workers=self.NUM_WORKERS)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False, num_workers=self.NUM_WORKERS)
@@ -103,7 +98,7 @@ class CNN_Classifier(object):
 
             model.train()
 
-            train_data_len = len(train_data.train_data) // batch_size + 1
+            train_data_len = train_data.__len__() // batch_size + 1
             total_loss = 0
             for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
                 if self.use_GPU:
@@ -155,6 +150,36 @@ class CNN_Classifier(object):
             torch.save(model, self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.h5".format(epoch+1, epoch_loss, epoch_acc))
 
         return
+
+    def load_cifar_data(self, patch_type):
+        data_root = os.path.join(os.path.expanduser('~'), '.keras/datasets/') # 共用Keras下载的数据
+
+        if patch_type == "cifar10":
+            train_data = torchvision.datasets.cifar.CIFAR10(
+                root=data_root,  # 保存或者提取位置
+                train=True,  # this is training data
+                transform=torchvision.transforms.ToTensor(),
+                download = False
+            )
+            test_data = torchvision.datasets.cifar.CIFAR10(root=data_root, train=False,
+                                                   transform=torchvision.transforms.ToTensor())
+            return train_data, test_data
+
+    def load_custom_data(self, samples_name):
+        '''
+        从图片的列表文件中加载数据，到Sequence中
+        :param samples_name: 列表文件的代号
+        :return:用于train和test的两个Sequence
+        '''
+        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+
+        Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+        train_data = Image_Dataset(Xtrain, Ytrain)
+
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        test_data = Image_Dataset(Xtest, Ytest)
+        return  train_data, test_data
 
 
 

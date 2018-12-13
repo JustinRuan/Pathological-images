@@ -62,7 +62,7 @@ class Simple_CNN(nn.Module):
         )
         self.out = nn.Sequential(
             nn.Linear(256, num_classes),
-            nn.Softmax(num_classes)
+            nn.Softmax(dim=1)
         )
 
     def forward(self, x):
