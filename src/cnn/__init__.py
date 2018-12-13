@@ -9,4 +9,4 @@ __mtime__ = '2018-05-28'
 from cnn.detector import Detector
 from cnn.cnn_classifier import CNN_Classifier
 
-__all__ = ["Detector", "CNN_Classifier","cnn_densenet_5x128"]
+__all__ = ["Detector", "CNN_Classifier"]

@@ -10,8 +10,8 @@ import unittest
 from core import *
 from cnn.cnn_classifier import CNN_Classifier
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -32,10 +32,11 @@ class Test_cnn_classifier(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         model_name = "densenet_22"
-        sample_name = "500_128"
+        # sample_name = "500_128"
+        sample_name = "2000_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
-        cnn.train_model("T_NC_{}".format(sample_name), batch_size=100, augmentation=(False, False), epochs=500, initial_epoch=0)
+        cnn.train_model("T_NC_{}".format(sample_name), batch_size=16, augmentation=(False, False), epochs=500, initial_epoch=0)
 
     def test_predict(self):
         c = Params()
@@ -66,5 +67,5 @@ class Test_cnn_classifier(unittest.TestCase):
 
         cnn = CNN_Classifier(c, model_name, sample_name)
 
-        cnn.predict_test_file("simplenet128/cp-0031-0.26-0.89.ckpt",
-                              ["T_NC_500_128_test.txt"], 100)
+        cnn.predict_test_file(cnn.model_root + "/cp-0034-0.2121-0.9372.h5",
+                              ["T_NC_500_128_test.txt"], 16)

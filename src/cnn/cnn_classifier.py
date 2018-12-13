@@ -153,8 +153,8 @@ class CNN_Classifier(object):
         optimizer = RMSprop(lr=1e-3, rho=0.9)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
-        steps_per_epoch = 200
-        validation_steps = 100
+        steps_per_epoch = min(800, train_gen.__len__())
+        validation_steps = min(500, test_gen.__len__())
 
         model.fit_generator(train_gen, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=1, workers=self.NUM_WORKERS,
                             # callbacks = [cp_callback, TensorBoard(log_dir=checkpoint_dir)],
