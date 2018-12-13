@@ -12,7 +12,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.utils.data as Data
 import torchvision      # 数据库模块
-
+from core.util import latest_checkpoint
 from pytorch.net import Simple_CNN
 
 class CNN_Classifier(object):
@@ -38,8 +38,8 @@ class CNN_Classifier(object):
             self.image_size = 32
 
         self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
-        if (not os.path.exists(self.model_root)):
-            os.makedirs(self.model_root)
+        # if (not os.path.exists(self.model_root)):
+        #     os.makedirs(self.model_root)
 
     def create_initial_model(self):
 
@@ -55,7 +55,16 @@ class CNN_Classifier(object):
             model = None
             return model
         else:
-            model = self.create_initial_model()
+            checkpoint_dir = self.model_root
+            if (not os.path.exists(checkpoint_dir)):
+                os.makedirs(checkpoint_dir)
+
+            latest = latest_checkpoint(checkpoint_dir)
+            if latest is not None:
+                print("loading >>> ", latest, " ...")
+                model = torch.load(latest)
+            else:
+                model = self.create_initial_model()
             return model
 
     def train_model_cifar(self, batch_size=100, epochs=20):
@@ -130,7 +139,7 @@ class CNN_Classifier(object):
             epoch_loss=running_loss / test_data_len
             epoch_acc=running_corrects.double() / test_data_len
 
-            torch.save(model, self.model_root + "/cp_{}_{}_{}.h5".format(epoch, epoch_loss, epoch_acc))
+            torch.save(model, self.model_root + "/cp_{:04d}_{:4f}_{:4f}.h5".format(epoch+1, epoch_loss, epoch_acc))
 
         return
 
