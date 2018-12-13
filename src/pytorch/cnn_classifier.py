@@ -38,6 +38,8 @@ class CNN_Classifier(object):
             self.image_size = 32
 
         self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+        if (not os.path.exists(self.model_root)):
+            os.makedirs(self.model_root)
 
     def create_initial_model(self):
 
@@ -75,7 +77,8 @@ class CNN_Classifier(object):
         model = self.load_model(model_file=None)
         print(model)
 
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.9)
         loss_func = nn.CrossEntropyLoss()
 
         # training and testing
