@@ -89,8 +89,11 @@ class CNN_Classifier(object):
         if self.use_GPU:
             model.cuda()
 
-        # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-        optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.9)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) #学习率为0.01的学习器
+        # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-2, alpha=0.99)
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
+                                                               factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
         loss_func = nn.CrossEntropyLoss()
 
         # training and testing
@@ -99,11 +102,9 @@ class CNN_Classifier(object):
             print('-' * 80)
 
             model.train()
-            running_loss = 0
-            running_corrects = 0
-            total = 0
-            train_data_len = len(train_data.train_data) // batch_size + 1
 
+            train_data_len = len(train_data.train_data) // batch_size + 1
+            total_loss = 0
             for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
                 if self.use_GPU:
                     b_x = Variable(x).cuda()  # batch x
@@ -120,14 +121,14 @@ class CNN_Classifier(object):
 
                 # 数据统计
                 _, preds = torch.max(output, 1)
-                # 注意如果你想统计loss，切勿直接使用loss相加，而是使用loss.data[0]。因为loss是计算图的一部分，
-                # 如果你直接加loss，代表total loss同样属于模型一部分，那么图就越来越大
-                running_loss += loss.item() * b_x.size(0)
-                total += b_y.size(0)
-                running_corrects += torch.sum(preds == b_y.data)
-                print('%d / %d ==> Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                      % (step, train_data_len, running_loss/(step+1), (100 * running_corrects.double())/total,
-                         running_corrects, total))
+
+                running_loss = loss.item()
+                running_corrects = torch.sum(preds == b_y.data)
+                total_loss += running_loss
+                print('%d / %d ==> Loss: %.4f | Acc: %.4f '
+                      % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0)))
+
+            scheduler.step(total_loss)
 
             running_loss=0.0
             running_corrects=0

@@ -25,4 +25,4 @@ class Test_cnn_classifier(unittest.TestCase):
         sample_name = "cifar10"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
-        cnn.train_model_cifar(batch_size=32, epochs = 3)
+        cnn.train_model_cifar(batch_size=32, epochs = 30)

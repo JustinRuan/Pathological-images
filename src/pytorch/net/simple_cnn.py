@@ -40,29 +40,29 @@ class Simple_CNN(nn.Module):
                 stride=1,  # filter movement/step
                 padding=1,  # 如果想要 con2d 出来的图片长宽没有变化, padding=(kernel_size-1)/2 当 stride=1
             ),
-            nn.ReLU(),  # activation
+            nn.ReLU(32),  # activation
             nn.Conv2d(32, 32, 3, 1, 1),
-            nn.ReLU(),
+            nn.ReLU(32),
             nn.MaxPool2d(kernel_size=2),  # 在 2x2 空间里向下采样, image_size / 2
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(32, 48, 3, 1, 1),
-            nn.ReLU(),
+            nn.ReLU(48),
             nn.MaxPool2d(kernel_size=2)  # image_size / 4
         )
         self.conv3 = nn.Sequential(
             nn.Conv2d(48, 64, 3, 1, 1),
-            nn.ReLU(),
+            nn.ReLU(64),
             nn.MaxPool2d(kernel_size=2) # image_size / 8
         )
         self.gap = nn.AvgPool2d(kernel_size=image_size >> 3)
         self.dense = nn.Sequential(
             nn.Linear(64, 256),
-            nn.ReLU(),
+            nn.ReLU(256),
         )
         self.out = nn.Sequential(
             nn.Linear(256, num_classes),
-            nn.Softmax()
+            nn.Softmax(num_classes)
         )
 
     def forward(self, x):
