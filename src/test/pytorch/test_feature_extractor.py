@@ -35,3 +35,11 @@ class Test_feature_extractor(unittest.TestCase):
         fe = Feature_Extractor(c, MODEL_NAME, PATCH_TYPE)
         fe.extract_features_save_to_file(SAMPLE_FIlENAME, batch_size=32)
 
+    def test_train_top_svm(self):
+        train_file = "{}_{}_train_features.npz".format(MODEL_NAME, SAMPLE_FIlENAME)
+        test_file = "{}_{}_test_features.npz".format(MODEL_NAME, SAMPLE_FIlENAME)
+
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        cnn = Feature_Extractor(c, MODEL_NAME, PATCH_TYPE)
+        cnn.train_top_svm(train_file, test_file)

@@ -42,6 +42,8 @@ from sklearn import metrics
 from preparation.normalization import ImageNormalization
 from core.util import read_csv_file
 from core import *
+from core.image_sequence import ImageSequence
+from core.seed_sequence import SeedSequence
 from sklearn.feature_selection import SelectKBest
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV

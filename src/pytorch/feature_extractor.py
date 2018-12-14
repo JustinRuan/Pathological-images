@@ -17,6 +17,10 @@ from torch.autograd import Variable
 from core.util import read_csv_file
 from pytorch.image_dataset import Image_Dataset
 
+from sklearn.svm import LinearSVC
+from sklearn.externals import joblib
+from sklearn import metrics
+
 class Feature_Extractor(object):
     def __init__(self, params, model_name, patch_type):
 
@@ -94,3 +98,65 @@ class Feature_Extractor(object):
             np.savez(save_path + "_features", features, labels)
 
     
+    #################################################################################################
+    #              SVM
+    ##################################################################################################
+
+    def train_top_svm(self, train_filename, test_filename):
+        '''
+        训练SVM分类器，作为CNN网络的新TOP。 包含参数寻优过程
+        :param train_filename: 保存特征的训练集文件
+        :param test_filename: 测试集文件
+        :return:
+        '''
+        if (not self.model_name in train_filename) or (not self.model_name in test_filename) \
+                or (not self.patch_type in train_filename) or (not self.patch_type in test_filename):
+            return
+
+        data_path = "{}/data/pytorch/{}".format(self._params.PROJECT_ROOT, test_filename)
+        D = np.load(data_path)
+        test_features = D['arr_0']
+        test_label = D['arr_1']
+
+        data_path = "{}/data/pytorch/{}".format(self._params.PROJECT_ROOT, train_filename)
+        D = np.load(data_path)
+        train_features = D['arr_0']
+        train_label = D['arr_1']
+
+        max_iter = 500
+        # model_params = [ {'C':0.0001}, {'C':0.001 }, {'C':0.01}, {'C':0.1},
+        #                  {'C':0.5}, {'C':1.0}, {'C':1.2}, {'C':1.5},
+        #                  {'C':2.0}, {'C':10.0} ]
+        model_params = [{'C': 0.01}]
+        # K_num = [100, 200, 300, 500, 1024, 2048]
+        #
+        result = {'pred': None, 'score': 0, 'clf': None}
+        # for item in K_num:
+        #     sb = SelectKBest(k=item).fit(train_features, train_label)
+        #     train_x_new = sb.transform(train_features)
+        #     test_x_new = sb.transform(test_features)
+
+        # 进行了简单的特征选择，选择全部特征。
+        # inception_v3 ： the best score = 0.8891836734693878, k = 2048， C=0.0001
+        # densenet121: the best score = 0.9151020408163265, k=1024, C=0.01
+        # resnet50: the best score = 0.8187755102040817, C=0.5
+        feature_num = len(train_features[0])
+        for params in model_params:
+            clf = LinearSVC(**params, max_iter=max_iter, verbose=0)
+            clf.fit(train_features, train_label)
+            y_pred = clf.predict(test_features)
+            score = metrics.accuracy_score(test_label, y_pred)
+            print('feature num = {}, C={:8f} => score={:5f}'.format(feature_num, params['C'], score))
+
+            if score > result["score"]:
+                result = {'pred': y_pred, 'score': score, 'clf': clf}
+
+        print("the best score = {}".format(result["score"]))
+
+        print("Classification report for classifier %s:\n%s\n"
+              % (result["clf"], metrics.classification_report(test_label, result["pred"])))
+        print("Confusion matrix:\n%s" % metrics.confusion_matrix(test_label, result["pred"]))
+
+        model_file = self._params.PROJECT_ROOT + "/models/pytorch/svm_{}_{}.model".format(self.model_name, self.patch_type)
+        joblib.dump(result["clf"], model_file)
+        return
