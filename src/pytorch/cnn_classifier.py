@@ -45,24 +45,51 @@ class CNN_Classifier(object):
         #     os.makedirs(self.model_root)
         self.use_GPU = True
 
+    def create_densenet(self, depth):
+        # Get densenet configuration
+        if (depth - 4) % 3:
+            raise Exception('Invalid depth')
+        block_config = [(depth - 4) // 6 for _ in range(3)]
+
+        if self.patch_type in ["cifar10", "cifar100"]:  # 32x32
+            # Models
+            model = DenseNet(
+                growth_rate=12,
+                block_config=block_config,
+                num_classes=self.num_classes,
+                small_inputs=True, # 32 x 32的图片为True
+                avgpool_size=8,
+                efficient=True,
+            )
+        elif self.patch_type == "500_128": # 128 x 128
+            # Models
+            model = DenseNet(
+                growth_rate=12,
+                block_config=block_config,
+                num_classes=self.num_classes,
+                small_inputs=False, # 32 x 32的图片为True
+                avgpool_size=7,
+                efficient=True,
+            )
+        elif self.patch_type in ["2000_256", "4000_256"]: # 256 x 256
+            # Models
+            model = DenseNet(
+                growth_rate=12,
+                block_config=block_config,
+                num_classes=self.num_classes,
+                small_inputs=False, # 32 x 32的图片为True
+                avgpool_size=14,
+                efficient=True,
+            )
+        return  model
+
     def create_initial_model(self):
 
         if self.model_name == "simple_cnn":
             model = Simple_CNN(self.num_classes, self.image_size)
         elif self.model_name == "densenet_22":
             depth = 22
-            # Get densenet configuration
-            if (depth - 4) % 3:
-                raise Exception('Invalid depth')
-            block_config = [(depth - 4) // 6 for _ in range(3)]
-            # Models
-            model = DenseNet(
-                growth_rate=12,
-                block_config=block_config,
-                num_classes=10,
-                small_inputs=True,
-                efficient=True,
-            )
+            model = self.create_densenet(depth)
 
         return model
 
@@ -100,6 +127,7 @@ class CNN_Classifier(object):
             model.cuda()
 
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) #学习率为0.01的学习器
+        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
         # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-2, alpha=0.99)
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',

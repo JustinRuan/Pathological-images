@@ -89,13 +89,19 @@ class DenseNet(nn.Module):
         small_inputs (bool) - set to True if images are 32x32. Otherwise assumes images are larger.
         efficient (bool) - set to True to use checkpointing. Much more memory efficient, but slower.
     """
+    # def __init__(self, growth_rate=12, block_config=(16, 16, 16), compression=0.5,
+    #              num_init_features=24, bn_size=4, drop_rate=0,
+    #              num_classes=10, small_inputs=True, efficient=False):
     def __init__(self, growth_rate=12, block_config=(16, 16, 16), compression=0.5,
                  num_init_features=24, bn_size=4, drop_rate=0,
-                 num_classes=10, small_inputs=True, efficient=False):
+                 num_classes=10, small_inputs=True, avgpool_size = 8, efficient=False):
 
         super(DenseNet, self).__init__()
         assert 0 < compression <= 1, 'compression of densenet should be between 0 and 1'
-        self.avgpool_size = 8 if small_inputs else 7
+        # 原来的代码是用平均池化来计算的，这样显存就需要很大
+        # 我改成 全局的平均池化
+        # self.avgpool_size = 8 if small_inputs else 7
+        self.avgpool_size = avgpool_size # 对32x32的图块设为8，对128x128的图块设为7， 对128x128的图块设为14，
 
         # First convolution
         if small_inputs:
