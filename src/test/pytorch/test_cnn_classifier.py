@@ -20,8 +20,8 @@ class Test_cnn_classifier(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        model_name = "simple_cnn"
-        # model_name = "densenet_40"
+        # model_name = "simple_cnn"
+        model_name = "densenet_22"
         sample_name = "cifar10"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
@@ -32,7 +32,7 @@ class Test_cnn_classifier(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         model_name = "simple_cnn"
-        # model_name = "densenet_40"
+        # model_name = "densenet_22"
         sample_name = "500_128"
 
         cnn = CNN_Classifier(c, model_name, sample_name)

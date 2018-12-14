@@ -14,6 +14,7 @@ import torch.utils.data as Data
 import torchvision      # 数据库模块
 from core.util import latest_checkpoint
 from pytorch.net import Simple_CNN
+from pytorch.net import DenseNet
 from core.util import read_csv_file
 from pytorch.image_dataset import Image_Dataset
 
@@ -48,6 +49,20 @@ class CNN_Classifier(object):
 
         if self.model_name == "simple_cnn":
             model = Simple_CNN(self.num_classes, self.image_size)
+        elif self.model_name == "densenet_22":
+            depth = 22
+            # Get densenet configuration
+            if (depth - 4) % 3:
+                raise Exception('Invalid depth')
+            block_config = [(depth - 4) // 6 for _ in range(3)]
+            # Models
+            model = DenseNet(
+                growth_rate=12,
+                block_config=block_config,
+                num_classes=10,
+                small_inputs=True,
+                efficient=True,
+            )
 
         return model
 
