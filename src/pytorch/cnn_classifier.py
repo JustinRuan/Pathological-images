@@ -88,8 +88,7 @@ class CNN_Classifier(object):
         if self.model_name == "simple_cnn":
             model = Simple_CNN(self.num_classes, self.image_size)
         elif self.model_name == "densenet_22":
-            depth = 22
-            model = self.create_densenet(depth)
+            model = self.create_densenet(depth=22)
 
         return model
 
