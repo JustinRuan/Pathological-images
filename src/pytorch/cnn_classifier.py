@@ -143,7 +143,7 @@ class CNN_Classifier(object):
                 running_loss += loss.item() * b_x.size(0)
                 running_corrects += torch.sum(preds == b_y.data)
 
-            test_data_len = len(test_data.test_data)
+            test_data_len = test_data.__len__()
             epoch_loss=running_loss / test_data_len
             epoch_acc=running_corrects.double() / test_data_len
 
