@@ -7,7 +7,7 @@ __mtime__ = '2018-12-13'
 """
 
 import unittest
-from core import Params
+from core import Params, ImageCone, Open_Slide
 from pytorch.cnn_classifier import CNN_Classifier
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
@@ -38,3 +38,21 @@ class Test_cnn_classifier(unittest.TestCase):
 
         cnn = CNN_Classifier(c, model_name, sample_name)
         cnn.train_model(samples_name="T_NC_{}".format(sample_name), batch_size=32, epochs = 30)
+
+    def test_predict_on_batch(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "densenet_22"
+        sample_name = "2000_256"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_004.tif",
+                                 None, "Tumor_004")
+        seeds = [(34816, 48960), (35200, 48640), (12800, 56832)] # C, C, S,
+        result = cnn.predict_on_batch(imgCone, 20, 256, seeds, 1)
+        print(result)

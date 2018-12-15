@@ -7,6 +7,7 @@ __mtime__ = '2018-12-13'
 """
 
 import os
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -223,5 +224,82 @@ class CNN_Classifier(object):
         test_data = Image_Dataset(Xtest, Ytest)
         return  train_data, test_data
 
+    def load_pretrained_model_on_predict(self, patch_type):
+        net_file ={"500_128":"",
+                   "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.h5",
+                   "4000_256": "",}
 
+        model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
+        model = self.load_model(model_file=model_file)
+
+        # 关闭求导，节约大量的显存
+        for param in model.parameters():
+            param.requires_grad = False
+        return model
+
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return:
+        '''
+        seeds_itor = self.get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size)
+
+        model = self.load_pretrained_model_on_predict(self.patch_type)
+        print(model)
+
+        if self.use_GPU:
+            model.cuda()
+        model.eval()
+
+        data_len = len(seeds) // batch_size + 1
+        results = []
+
+        for step, x in enumerate(seeds_itor):
+            if self.use_GPU:
+                b_x = Variable(x).cuda()  # batch x
+            else:
+                b_x = Variable(x)  # batch x
+
+            output = model(b_x)
+            output_softmax = nn.functional.softmax(output)
+            probs, preds = torch.max(output_softmax, 1)
+            for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
+                results.append((prob, pred))
+            print('predicting => %d / %d ' % (step + 1, data_len))
+
+        return results
+
+    def get_image_blocks_itor(self, src_img, fScale, seeds, nWidth, nHeight, batch_size):
+        '''
+        获得以种子点为图块的迭代器
+        :param fScale: 倍镜数
+        :param seeds: 中心点集合
+        :param nWidth: 图块的宽
+        :param nHeight: 图块的高
+        :param batch_size: 每批的数量
+        :return: 返回图块集合的迭代器
+        '''
+        transform = torchvision.transforms.ToTensor()
+        n = 0
+        images = []
+        for x, y in seeds:
+            block = src_img.get_image_block(fScale, x, y, nWidth, nHeight)
+            img = block.get_img() / 255
+            img = transform(img).type(torch.FloatTensor)
+            images.append(img)
+            n = n + 1
+            if n >= batch_size:
+                img_tensor = torch.stack(images)
+                yield img_tensor
+
+                images = []
+                n = 0
+
+        if n > 0:
+            img_tensor = torch.stack(images)
+            yield img_tensor
 

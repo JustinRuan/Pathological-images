@@ -29,3 +29,23 @@ class Image_Dataset(Dataset):
 
     def __len__(self):
         return len(self.x)
+
+# Exception: ctypes objects containing pointers cannot be pickled
+# class Seed_Dataset(Dataset):
+#     def __init__(self, src_img, scale, patch_size, seeds):
+#         self.seeds = seeds
+#         # self.batch_size = batch_size
+#         self.src_img = src_img
+#         self.scale = scale
+#         self.patch_size = patch_size
+#         # self.output_size = output_size
+#
+#     def __getitem__(self, index):
+#         x, y = self.seeds[index]
+#         block = self.src_img.get_image_block(self.scale, x, y, self.patch_size, self.patch_size)
+#         img = block.get_img() / 255
+#         img = self.transform(img).type(torch.FloatTensor)
+#         return img
+#
+#     def __len__(self):
+#         return len(self.seeds)
