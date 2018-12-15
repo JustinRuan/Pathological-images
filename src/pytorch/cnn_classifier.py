@@ -225,9 +225,9 @@ class CNN_Classifier(object):
         return  train_data, test_data
 
     def load_pretrained_model_on_predict(self, patch_type):
-        net_file ={"500_128":"",
-                   "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.h5",
-                   "4000_256": "",}
+        net_file = {"500_128": "densenet_22_500_128-cp-0022-0.1990-0.9406.h5",
+                    "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.h5",
+                    "4000_256": "densenet_22_4000_256-cp-0006-0.1985-0.9203.h5", }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
         model = self.load_model(model_file=model_file)
@@ -268,7 +268,7 @@ class CNN_Classifier(object):
             output_softmax = nn.functional.softmax(output)
             probs, preds = torch.max(output_softmax, 1)
             for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
-                results.append((prob, pred))
+                results.append((pred, prob))
             print('predicting => %d / %d ' % (step + 1, data_len))
 
         return results
