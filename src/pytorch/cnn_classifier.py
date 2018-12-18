@@ -225,9 +225,9 @@ class CNN_Classifier(object):
         return  train_data, test_data
 
     def load_pretrained_model_on_predict(self, patch_type):
-        net_file = {"500_128": "densenet_22_500_128-cp-0022-0.1990-0.9406.h5",
+        net_file = {"500_128": "densenet_22_500_128-cp-0030-0.2010-0.9456.h5",
                     "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.h5",
-                    "4000_256": "densenet_22_4000_256-cp-0006-0.1985-0.9203.h5", }
+                    "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.h5", }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
         model = self.load_model(model_file=model_file)

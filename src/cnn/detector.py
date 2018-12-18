@@ -10,7 +10,7 @@ from sklearn import metrics
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds
 from transfer import Transfer
-from cnn import CNN_Classifier
+from cnn.cnn_classifier import CNN_Classifier
 
 
 class Detector(object):
@@ -94,10 +94,10 @@ class Detector(object):
         ########################################################################################################\
         #    DenseNet 22
         #########################################################################################################
-        cnn = CNN_Classifier(self._params, "densenet_22", "500_128")
-        model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                   "densenet121_500_128_0045-0.1972-0.9267.h5")
-        model = cnn.load_model(model_file=model_path)
+        # cnn = CNN_Classifier(self._params, "densenet_22", "500_128")
+        # model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
+        #                                            "densenet121_500_128_0045-0.1972-0.9267.h5")
+        # model = cnn.load_model(model_file=model_path)
         #########################################################################################################
         model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
         # model.compile(optimizer="RMSprop", loss='categorical_crossentropy')
@@ -126,16 +126,16 @@ class Detector(object):
         ########################################################################################################\
         #    DenseNet 22
         #########################################################################################################
-        if (new_scale == 20):
-            cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
-            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                       "densenet121_500_128_0045-0.1972-0.9267.h5")
-            model = cnn.load_model(model_file=model_path)
-        else: # (new_scale == 40):
-            cnn = CNN_Classifier(self._params, "densenet_22", "4000_256")
-            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                       "densenet121_500_128_0045-0.1972-0.9267.h5")
-            model = cnn.load_model(model_file=model_path)
+        # if (new_scale == 20):
+        #     cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
+        #     model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
+        #                                                "densenet121_500_128_0045-0.1972-0.9267.h5")
+        #     model = cnn.load_model(model_file=model_path)
+        # else: # (new_scale == 40):
+        #     cnn = CNN_Classifier(self._params, "densenet_22", "4000_256")
+        #     model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
+        #                                                "densenet121_500_128_0045-0.1972-0.9267.h5")
+        #     model = cnn.load_model(model_file=model_path)
         #########################################################################################################
         model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
         # model.compile(optimizer="RMSprop", loss='categorical_crossentropy')

@@ -10,7 +10,7 @@ __mtime__ = '2018-06-02'
 import unittest
 from core import *
 import matplotlib.pyplot as plt
-from cnn import *
+from cnn import Detector
 import numpy as np
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
