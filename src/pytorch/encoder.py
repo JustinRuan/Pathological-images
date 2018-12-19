@@ -7,14 +7,16 @@ __mtime__ = '2018-12-17'
 """
 
 import os
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 import torchvision
 from torch.autograd import Variable
-from .net.ae import Autoencoder
+from .net.ae import Autoencoder, Autoencoder2
 from core.util import latest_checkpoint
+
 
 class Encoder(object):
     def __init__(self, params, model_name, patch_type):
@@ -38,7 +40,8 @@ class Encoder(object):
     def create_initial_model(self):
         if self.model_name == "cae":
             model = Autoencoder(self.out_dim)
-
+        elif self.model_name == "cae2":
+            model = Autoencoder2(self.out_dim)
         return model
 
     def load_model(self, model_file = None):
@@ -62,11 +65,18 @@ class Encoder(object):
 
     def train_ae(self, batch_size=100, epochs=20):
         data_root = os.path.join(os.path.expanduser('~'), '.keras/datasets/')  # 共用Keras下载的数据
+
+        transform = transforms.Compose([
+                # transforms.Resize((8, 8), interpolation=0),
+                # transforms.Resize((32, 32), interpolation=0),
+                transforms.ToTensor(),
+            ])
+
         if self.patch_type == "cifar10":
             train_data = torchvision.datasets.cifar.CIFAR10(
                 root=data_root,  # 保存或者提取位置
                 train=True,  # this is training data
-                transform=torchvision.transforms.ToTensor(),
+                transform=transform,
                 download=False
             )
 
@@ -81,8 +91,8 @@ class Encoder(object):
         if self.use_GPU:
             ae.cuda()
 
-        criterion = nn.BCELoss()
-        # criterion = nn.MSELoss()
+        # criterion = nn.BCELoss()
+        criterion = nn.MSELoss()
         optimizer = torch.optim.Adam(ae.parameters(), lr=0.001) # ,weight_decay=1e-5
         # optimizer = torch.optim.Adadelta(ae.parameters())
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, verbose = True,
@@ -124,7 +134,7 @@ class Encoder(object):
                 loss.backward()
                 optimizer.step()
 
-                running_loss = loss.item()
+                running_loss = loss.item() * b_x.size(0)
                 total_loss += running_loss
                 print('%d / %d ==> Loss: %.4f '  % (i, iter_per_epoch, running_loss))
 
@@ -138,3 +148,32 @@ class Encoder(object):
             epoch_loss = total_loss / iter_per_epoch
             torch.save(ae,
                            self.model_root + "/cp-{:04d}-{:.4f}-0.h5".format(epoch + 1, epoch_loss))
+
+    def extract_feature(self, image_itor, seeds_num, batch_size):
+        ae = self.load_model()
+        for param in ae.parameters():
+            param.requires_grad = False
+
+        # base_model = list(ae.children())[:-2]
+        # encoder = nn.Sequential(*base_model)
+
+        print(ae)
+
+        if self.use_GPU:
+            ae.cuda()
+        ae.eval()
+
+        data_len = seeds_num // batch_size + 1
+        results = []
+
+        for step, x in enumerate(image_itor):
+            if self.use_GPU:
+                b_x = Variable(x).cuda()  # batch x
+            else:
+                b_x = Variable(x)  # batch x
+
+            output = ae.encode(b_x)
+            results.extend(output.cpu().numpy())
+            print('encoding => %d / %d ' % (step + 1, data_len))
+
+        return  results

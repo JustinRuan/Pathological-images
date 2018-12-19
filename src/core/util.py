@@ -86,3 +86,27 @@ def latest_checkpoint(search_dir):
 
     path = "{}/{}".format(search_dir, result.iloc[0,0])
     return path
+
+def transform_coordinate(x1, y1, coordinate_scale, seeds_scale, target_scale, seeds):
+    '''
+    将图块中心坐标变换到新的坐标系中。 新坐标系的原点为检测区域的左上角，所处的倍镜为target_scale
+    :param x1: 左上角x坐标
+    :param y1: 左上角y坐标
+    :param coordinate_scale: 以上坐标的倍镜数
+    :param seeds_scale: 图块中心点（种子点）的倍镜
+    :param target_scale: 目标坐标系所对应的倍镜
+    :param seeds: 图块中心点集
+    :return:新坐标系下的中心点
+    '''
+    xx1 = (x1 * target_scale / coordinate_scale)
+    yy1 = (y1 * target_scale / coordinate_scale)
+
+    results = []
+    for x, y in seeds:
+        xx = int(x * target_scale / seeds_scale - xx1)
+        yy = int(y * target_scale / seeds_scale - yy1)
+        # xx = max(0, xx)
+        # yy = max(0, yy)
+        results.append((xx, yy))
+    # print(results)
+    return results

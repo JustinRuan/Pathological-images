@@ -8,7 +8,7 @@ __mtime__ = '2018-10-26'
 import numpy as np
 from sklearn import metrics
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
-from core.util import get_seeds
+from core.util import get_seeds, transform_coordinate
 from transfer import Transfer
 from pytorch.cnn_classifier import CNN_Classifier
 
@@ -163,30 +163,6 @@ class Detector(object):
         print(">>> Number of patches to be detected at high magnification: ", len(result))
         return result
 
-    def transform_coordinate(self, x1, y1, coordinate_scale, seeds_scale, target_scale, seeds):
-        '''
-        将图块中心坐标变换到新的坐标系中。 新坐标系的原点为检测区域的左上角，所处的倍镜为target_scale
-        :param x1: 左上角x坐标
-        :param y1: 左上角y坐标
-        :param coordinate_scale: 以上坐标的倍镜数
-        :param seeds_scale: 图块中心点（种子点）的倍镜
-        :param target_scale: 目标坐标系所对应的倍镜
-        :param seeds: 图块中心点集
-        :return:新坐标系下的中心点
-        '''
-        xx1 = (x1 * target_scale / coordinate_scale)
-        yy1 = (y1 * target_scale / coordinate_scale)
-
-        results = []
-        for x, y in seeds:
-            xx = int(x * target_scale / seeds_scale - xx1)
-            yy = int(y * target_scale / seeds_scale - yy1)
-            # xx = max(0, xx)
-            # yy = max(0, yy)
-            results.append((xx, yy))
-        # print(results)
-        return results
-
     def create_cancer_map(self, x1, y1, coordinate_scale, seeds_scale, target_scale, seeds,
                           predictions, seeds_patch_size, pre_prob_map = None, pre_count_map = None):
         '''
@@ -204,7 +180,7 @@ class Detector(object):
         :param pre_count_map; 上次处理生成癌变的检测计数图
         :return: 癌变可能性Map
         '''
-        new_seeds = self.transform_coordinate(x1, y1, coordinate_scale, seeds_scale, target_scale, seeds)
+        new_seeds = transform_coordinate(x1, y1, coordinate_scale, seeds_scale, target_scale, seeds)
         target_patch_size = int(seeds_patch_size * target_scale / seeds_scale)
         half = int(target_patch_size>>1)
 

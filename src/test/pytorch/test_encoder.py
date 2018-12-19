@@ -21,8 +21,20 @@ class Test_encoder(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        model_name = "cae"
+        model_name = "cae2"
         sample_name = "cifar10"
 
         ae = Encoder(c, model_name, sample_name)
-        ae.train_ae(batch_size=32, epochs = 20)
+        ae.train_ae(batch_size=64, epochs = 20)
+
+    def test_extract_feature(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "cae2"
+        sample_name = "cifar10"
+
+
+
+        ae = Encoder(c, model_name, sample_name)
+        ae.extract_feature(None)

@@ -18,6 +18,7 @@ from pytorch.net import Simple_CNN
 from pytorch.net import DenseNet
 from core.util import read_csv_file
 from pytorch.image_dataset import Image_Dataset
+from pytorch.util import get_image_blocks_itor
 
 class CNN_Classifier(object):
 
@@ -246,7 +247,7 @@ class CNN_Classifier(object):
         :param seeds: 种子点的集合
         :return:
         '''
-        seeds_itor = self.get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size)
+        seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size)
 
         model = self.load_pretrained_model_on_predict(self.patch_type)
         print(model)
@@ -273,33 +274,4 @@ class CNN_Classifier(object):
 
         return results
 
-    def get_image_blocks_itor(self, src_img, fScale, seeds, nWidth, nHeight, batch_size):
-        '''
-        获得以种子点为图块的迭代器
-        :param fScale: 倍镜数
-        :param seeds: 中心点集合
-        :param nWidth: 图块的宽
-        :param nHeight: 图块的高
-        :param batch_size: 每批的数量
-        :return: 返回图块集合的迭代器
-        '''
-        transform = torchvision.transforms.ToTensor()
-        n = 0
-        images = []
-        for x, y in seeds:
-            block = src_img.get_image_block(fScale, x, y, nWidth, nHeight)
-            img = block.get_img() / 255
-            img = transform(img).type(torch.FloatTensor)
-            images.append(img)
-            n = n + 1
-            if n >= batch_size:
-                img_tensor = torch.stack(images)
-                yield img_tensor
-
-                images = []
-                n = 0
-
-        if n > 0:
-            img_tensor = torch.stack(images)
-            yield img_tensor
 
