@@ -26,7 +26,7 @@ class Encoder(object):
         self.patch_type = patch_type
         self.NUM_WORKERS = params.NUM_WORKERS
 
-        if self.patch_type == "x_32":
+        if self.patch_type == "x_256":
             self.out_dim = 20
             self.image_size = 32
         elif self.patch_type == "cifar10":

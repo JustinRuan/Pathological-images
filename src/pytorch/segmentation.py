@@ -45,12 +45,15 @@ class Segmentation(object):
 
         encoder = Encoder(self._params, "cae2", "cifar10")
         features = encoder.extract_feature(img_itor, len(global_seeds), batch_size)
+        f_size = len(features[0])
 
         w = xx2 - xx1
         h = yy2 - yy1
-        feature_map = np.zeros((h, w, 32))
+        feature_map = np.zeros((h, w, f_size))
         # feature_map的原点是全切片中检测区域的左上角（xx1，yy1），而提取特征时用的是全切片的坐标(0, 0)
         for (x, y), fe in zip(global_seeds, features):
             feature_map[y - yy1, x - xx1, :] = fe
 
         return feature_map
+
+

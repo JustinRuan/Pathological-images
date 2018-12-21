@@ -34,7 +34,5 @@ class Test_encoder(unittest.TestCase):
         model_name = "cae2"
         sample_name = "cifar10"
 
-
-
         ae = Encoder(c, model_name, sample_name)
         ae.extract_feature(None)

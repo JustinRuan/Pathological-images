@@ -15,7 +15,7 @@ JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
-class TestSegmentation(object):
+class TestSegmentation(unittest.TestCase):
 
     def test_create_feature_map(self):
         test_set = {"001": (2100, 3800, 2400, 4000),
@@ -38,8 +38,9 @@ class TestSegmentation(object):
         seg = Segmentation(c, imgCone)
         # global_seeds =  seg.get_seeds_for_seg(x1, y1, x2, y2, 1.25)
         # print(global_seeds)
-        f_map = seg.create_feature_map(x1, y1, x2, y2, 1.25, 40)
+        f_map = seg.create_feature_map(x1, y1, x2, y2, 1.25, 5)
         print(f_map.shape)
+        np.save("feature_map", f_map)
 
     def test_2(self):
         w = 3
@@ -51,3 +52,9 @@ class TestSegmentation(object):
             feature_map[x, y, :] = fe
 
         print(feature_map.shape)
+
+    def test_3(self):
+        a = np.array([1,2,3])
+        b = np.array([2,3,4])
+        d = np.sum(np.power(a - b, 2))
+        print(d)
