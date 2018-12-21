@@ -40,7 +40,7 @@ class SLICProcessor(object):
         # self.label_img = np.full((self.image_height, self.image_width), -1)
         self.dis = np.full((self.image_height, self.image_width), np.inf)  # np.inf 指的是无穷大
 
-# 初始化聚类中心
+    # 初始化聚类中心
     # 生成聚类中心类的对象
     def make_cluster(self, h, w):
         return Cluster(h, w, self.data[h][w])
@@ -55,26 +55,7 @@ class SLICProcessor(object):
             w = self.S / 2
             h += self.S
 
-# 这也属于初始化聚类中心的改进，将从一个3*3 的矩阵中找一个梯度最小的点，作为于初始化的聚类中心
-#     def move_clusters(self):
-#         for cluster in self.clusters:
-#             if cluster.h + 1 >= self.image_height or cluster.w + 1 >= self.image_width:
-#                 if cluster.w + 1 >= self.image_width:
-#                     cluster.w = self.image_width - 2
-#                 if cluster.h + 1 >= self.image_height:
-#                     cluster.h = self.image_height - 2
-#                 cluster.update(cluster.h, cluster.w, self.data[cluster.h][cluster.w])
-#
-#             cluster_gradient = self.get_gradient(cluster.h, cluster.w)
-#             for dh in range(-1, 2):
-#                 for dw in range(-1, 2):
-#                     _h = cluster.h + dh
-#                     _w = cluster.w + dw
-#                     if 1 < _w < self.image_width - 1 and 1 < _h < self.image_height - 1:
-#                         new_gradient = self.get_gradient(_h, _w)
-#                         if new_gradient < cluster_gradient:
-#                             cluster.update(_h, _w, self.data[_h][_w])
-#                             cluster_gradient = new_gradient
+    # 这也属于初始化聚类中心的改进，将从一个3*3 的矩阵中找一个梯度最小的点，作为于初始化的聚类中心
     def move_clusters(self):
         for cluster in self.clusters:
             cluster_gradient = self.get_gradient(cluster.h, cluster.w)
@@ -141,32 +122,20 @@ class SLICProcessor(object):
                             self.label[(h, w)] = cluster
                             cluster.pixels.append((h, w))
                         self.dis[h][w] = D
-                        # if(self.label[h][w]==-1):
-                        #    self.label[h][w]=cluster.no
-                        #    cluster.pixels.append((h, w))
-                        # else:
-                        #    #  从旧的聚类中心删掉改点，在新的加上该点
-                        #    for oldCluster in self.clusters:
-                        #        if self.label[h][w]==oldCluster.no:
-                        #            oldCluster.pixels.remove((h, w))
-                        #            break
-                        #    self.label[h][w]=cluster.no
-                        #    cluster.pixels.append((h, w))
-                        # self.dis[h][w] = D
-
 
 # 更新聚类中心
     def update_cluster(self):
         for cluster in self.clusters:
             sum_h = sum_w = 0.0
             sum_f = np.zeros((self.feature_dim))
+            number = len(cluster.pixels)
+            if number == 0: continue
 
             for p in cluster.pixels:
                 sum_h += p[0]
                 sum_w += p[1]
                 sum_f += self.data[p[0], p[1], :]
 
-            number = len(cluster.pixels)
             _h = sum_h / number
             _w = sum_w / number
 
@@ -186,26 +155,18 @@ class SLICProcessor(object):
             label_img[h, w] = cluster.no
 
         if enforce_connectivity:
-            segment_size = self.feature_dim * self.image_height * self.image_width / self.K
+            segment_size = self.image_height * self.image_width / self.K
             min_size = int(min_size_factor * segment_size)
             max_size = int(max_size_factor * segment_size)
-            # label_img = _enforce_label_connectivity_cython(label_img[...,np.newaxis],
-            #                                             min_size,
-            #                                             max_size)
-            label_img = self.enforce_connectivity(label_img)
+            label_int64 = label_img[np.newaxis, ...].astype(np.int64)
+            label_img = _enforce_label_connectivity_cython(label_int64,
+                                                        min_size,
+                                                        max_size)
+            label_img = label_img[0]
+            # label_img = self.enforce_connectivity(label_img)
 
         return label_img
 
-
-# # 迭代10次
-#     def iterate_10times(self):
-#         self.init_clusters()            # 初始化聚类中心
-#         self.move_clusters()            # 移动初始化的聚类中心到梯度最小点去,作用不大
-#         for i in range(10):
-#             self.assignment()           # 计算聚类中心2S范围的点距离聚类中心的距离
-#             self.update_cluster()       # 更新聚类中心
-#             print("iter_{}".format(i))
-#         return self.label
 
 #强连接，合并孤立点
     def enforce_connectivity(self, label_img):
