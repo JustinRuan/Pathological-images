@@ -58,3 +58,28 @@ class TestSegmentation(unittest.TestCase):
         b = np.array([2,3,4])
         d = np.sum(np.power(a - b, 2))
         print(d)
+
+    def test_create_superpixels(self):
+        test_set = {"001": (2100, 3800, 2400, 4000),
+                    "003": (2400, 4700, 2600, 4850)}
+        id = "003"
+        roi = test_set[id]
+        x1 = roi[0]
+        y1 = roi[1]
+        x2 = roi[2]
+        y2 = roi[3]
+
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % id,
+                                 'Tumor/tumor_%s.xml' % id, "Tumor_%s" % id)
+
+        seg = Segmentation(c, imgCone)
+        f_map = seg.create_feature_map(x1, y1, x2, y2, 1.25, 5)
+        label_map = seg.create_superpixels(f_map, 0.4, iter_num = 3)
+
+        print(label_map.shape)
+        np.save("label_map", label_map)

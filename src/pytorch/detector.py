@@ -11,7 +11,7 @@ from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds, transform_coordinate
 from transfer import Transfer
 from pytorch.cnn_classifier import CNN_Classifier
-
+from pytorch.segmentation import Segmentation
 
 class Detector(object):
 
@@ -271,3 +271,29 @@ class Detector(object):
         print("\n auc: %s" % roc_auc)
         print("############################################################")
         return false_positive_rate, true_positive_rate, roc_auc
+
+    def create_superpixels(self, x1, y1, x2, y2, coordinate_scale, feature_extract_scale):
+        seg = Segmentation(self._params, self._imgCone)
+        f_map = seg.create_feature_map(x1, y1, x2, y2, coordinate_scale, feature_extract_scale)
+        label_map = seg.create_superpixels(f_map, 0.4, iter_num = 3)
+
+        return label_map
+
+    def create_cancer_map_superpixels(self, cancer_map, label_map):
+        label_set = set(label_map.flatten())
+
+        result_cancer = np.zeros(cancer_map.shape, dtype=np.float)
+        for label_id in label_set:
+            roi = (label_map == label_id)
+            cancer_roi = cancer_map[roi]
+            mean = np.mean(cancer_roi, axis=None)
+            std = np.std(cancer_roi, axis=None)
+
+            result_cancer[roi] = mean
+
+        return result_cancer
+
+
+
+
+

@@ -152,6 +152,10 @@ class Test_detector(unittest.TestCase):
 
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
+        label_map = np.load("label_map.npy")
+        cancer_map4 = detector.create_cancer_map_superpixels(cancer_map3, label_map)
+
+
         print("\n x5 低倍镜下的结果：")
         t1 = 0.8
         false_positive_rate_x5, true_positive_rate_x5, roc_auc_x5 = detector.evaluate(t1, cancer_map, mask_img)
@@ -164,7 +168,10 @@ class Test_detector(unittest.TestCase):
         t3 = 0.5
         false_positive_rate_x40, true_positive_rate_x40, roc_auc_x40 = detector.evaluate(t3, cancer_map3, mask_img)
 
-        fig, axes = plt.subplots(2, 5, figsize=(100, 40), dpi=100)
+        t4 = 0.5
+        false_positive_rate_f, true_positive_rate_f, roc_auc_f = detector.evaluate(t4, cancer_map4, mask_img)
+
+        fig, axes = plt.subplots(2, 4, figsize=(60, 40), dpi=100)
         ax = axes.ravel()
 
         ax[1].imshow(src_img)
@@ -176,11 +183,13 @@ class Test_detector(unittest.TestCase):
 
         ax[0].set_title('Receiver Operating Characteristic')
         ax[0].plot(false_positive_rate_x5, true_positive_rate_x5, 'g',
-                 label='x5  AUC = %0.2f' % roc_auc_x5)
+                 label='x5  AUC = %0.4f' % roc_auc_x5)
         ax[0].plot(false_positive_rate_x20, true_positive_rate_x20, 'b',
-                 label='x20 AUC = %0.2f' % roc_auc_x20)
+                 label='x20 AUC = %0.4f' % roc_auc_x20)
         ax[0].plot(false_positive_rate_x40, true_positive_rate_x40, 'c',
-                 label='x40 AUC = %0.2f' % roc_auc_x40)
+                 label='x40 AUC = %0.4f' % roc_auc_x40)
+        ax[0].plot(false_positive_rate_f, true_positive_rate_f, 'r',
+                 label='final AUC = %0.4f' % roc_auc_f)
 
         ax[0].legend(loc='lower right')
         ax[0].plot([0, 1], [0, 1], 'r--')
@@ -191,27 +200,23 @@ class Test_detector(unittest.TestCase):
 
         ax[2].imshow(src_img)
         ax[2].imshow(cancer_map, alpha=0.6)
-        ax[2].set_title("cancer_map")
-
-        ax[7].imshow(src_img)
-        ax[7].imshow(cancer_map >= t1, alpha=0.6)
-        ax[7].set_title("cancer_map, t = %s" % t1)
+        ax[2].contour(cancer_map >= t1)
+        ax[2].set_title("cancer_map, t = %s" % t1)
 
         ax[3].imshow(src_img)
         ax[3].imshow(cancer_map2, alpha=0.6)
-        ax[3].set_title("cancer_map2")
+        ax[3].contour(cancer_map >= t2)
+        ax[3].set_title("cancer_map2, t = %s" % t2)
 
-        ax[8].imshow(src_img)
-        ax[8].imshow(cancer_map2 >= t2, alpha=0.6)
-        ax[8].set_title("cancer_map2, t = %s" % t2)
+        ax[7].imshow(src_img)
+        ax[7].imshow(cancer_map3, alpha=0.6)
+        ax[7].contour(cancer_map3 >= t3)
+        ax[7].set_title("cancer_map3, t = %s" % t3)
 
-        ax[4].imshow(src_img)
-        ax[4].imshow(cancer_map3, alpha=0.6)
-        ax[4].set_title("cancer_map3")
-
-        ax[9].imshow(src_img)
-        ax[9].imshow(cancer_map3 >= t3, alpha=0.6)
-        ax[9].set_title("cancer_map3, t = %s" % t3)
+        ax[5].imshow(src_img)
+        ax[5].imshow(cancer_map4, alpha=0.6)
+        ax[5].contour(cancer_map4>t4)
+        ax[5].set_title("final cancer_map, t = %s" % t4)
 
         for a in ax.ravel():
             a.axis('off')

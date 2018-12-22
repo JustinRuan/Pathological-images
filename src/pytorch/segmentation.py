@@ -10,6 +10,7 @@ import numpy as np
 from pytorch.util import get_image_blocks_itor
 from core.util import transform_coordinate
 from pytorch.encoder import Encoder
+from core.slic import SLICProcessor
 
 class Segmentation(object):
     def __init__(self, params, src_image):
@@ -55,5 +56,15 @@ class Segmentation(object):
             feature_map[y - yy1, x - xx1, :] = fe
 
         return feature_map
+
+    def create_superpixels(self, feature_map, M, iter_num = 10):
+        h, w, _ = feature_map.shape
+        K = h * w // 32
+
+        slic = SLICProcessor(feature_map, K, M)
+        label_map = slic.clusting(iter_num = iter_num, enforce_connectivity = True,
+                                  min_size_factor=0.1, max_size_factor=3.0)
+
+        return label_map
 
 

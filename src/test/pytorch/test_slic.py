@@ -27,8 +27,8 @@ class TestSLIC(unittest.TestCase):
         f_map = np.load("feature_map.npy")
         print(f_map.shape)
 
-        slic = SLICProcessor(f_map, 100, 0.4)
-        label_map = slic.clusting(3, False)
+        slic = SLICProcessor(f_map, 1000, 0.4)
+        label_map = slic.clusting(3, True, min_size_factor = 0.1, max_size_factor = 3.0)
         np.save("label_map", label_map)
 
     def test_show(self):
@@ -62,7 +62,7 @@ class TestSLIC(unittest.TestCase):
         cancer_mask = all_mask['C']
         gt_img = cancer_mask[yy1:yy2, xx1:xx2]
 
-        slic_map = slic(src_img, 100, 20, enforce_connectivity=True,)
+        slic_map = slic(src_img, 1000, 20, enforce_connectivity=True,)
         slic_img = label2rgb(slic_map, alpha=0.3, image=gt_img)
 
         label_map = np.load("label_map.npy")
