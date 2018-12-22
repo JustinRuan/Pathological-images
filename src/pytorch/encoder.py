@@ -163,7 +163,7 @@ class Encoder(object):
 
             epoch_loss = total_loss / iter_per_epoch
             torch.save(ae,
-                           self.model_root + "/cp-{:04d}-{:.4f}-0.h5".format(epoch + 1, epoch_loss))
+                           self.model_root + "/cp-{:04d}-{:.4f}-0.pth".format(epoch + 1, epoch_loss))
 
     def extract_feature(self, image_itor, seeds_num, batch_size):
         '''

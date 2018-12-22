@@ -216,7 +216,7 @@ class CNN_Classifier(object):
             epoch_loss=running_loss / test_data_len
             epoch_acc=running_corrects.double() / test_data_len
 
-            torch.save(model, self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.h5".format(epoch+1, epoch_loss, epoch_acc))
+            torch.save(model, self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch+1, epoch_loss, epoch_acc))
 
         return
 
@@ -261,9 +261,9 @@ class CNN_Classifier(object):
         :param patch_type: 分类器处理图块的类型
         :return: 网络模型
         '''
-        net_file = {"500_128": "densenet_22_500_128-cp-0030-0.2010-0.9456.h5",
-                    "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.h5",
-                    "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.h5", }
+        net_file = {"500_128": "densenet_22_500_128-cp-0030-0.2010-0.9456.pth",
+                    "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
+                    "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth", }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
         model = self.load_model(model_file=model_file)
