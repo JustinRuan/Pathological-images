@@ -14,22 +14,24 @@ import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 import torchvision
 from torch.autograd import Variable
-from .net.ae import Autoencoder, Autoencoder2
+from .net.ae import Autoencoder
 from core.util import latest_checkpoint
 
 
 class Encoder(object):
     def __init__(self, params, model_name, patch_type):
-
+        '''
+        初始化
+        :param params: 系统参数
+        :param model_name: 调用的编码器算法代号
+        :param patch_type: 训练编码器所用数据集的代号
+        '''
         self._params = params
         self.model_name = model_name
         self.patch_type = patch_type
         self.NUM_WORKERS = params.NUM_WORKERS
 
-        if self.patch_type == "x_256":
-            self.out_dim = 20
-            self.image_size = 32
-        elif self.patch_type == "cifar10":
+        if self.patch_type == "cifar10":
             self.out_dim = 32
             self.image_size = 32
 
@@ -38,14 +40,22 @@ class Encoder(object):
         self.use_GPU = True
 
     def create_initial_model(self):
+        '''
+        构造编码器
+        :return:
+        '''
         if self.model_name == "cae":
             model = Autoencoder(self.out_dim)
-        elif self.model_name == "cae2":
-            model = Autoencoder2(self.out_dim)
+        # elif self.model_name == "cae2":
+            # model = Autoencoder2(self.out_dim)
         return model
 
     def load_model(self, model_file = None):
-
+        '''
+        加载模型
+        :param model_file: 指定模型的存盘文件
+        :return:
+        '''
         if model_file is not None:
             print("loading >>> ", model_file, " ...")
             model = torch.load(model_file)
@@ -64,6 +74,12 @@ class Encoder(object):
             return model
 
     def train_ae(self, batch_size=100, epochs=20):
+        '''
+        训练编码器
+        :param batch_size: 每批的图片数量
+        :param epochs: epoch数
+        :return:
+        '''
         data_root = os.path.join(os.path.expanduser('~'), '.keras/datasets/')  # 共用Keras下载的数据
 
         transform = transforms.Compose([
@@ -150,12 +166,16 @@ class Encoder(object):
                            self.model_root + "/cp-{:04d}-{:.4f}-0.h5".format(epoch + 1, epoch_loss))
 
     def extract_feature(self, image_itor, seeds_num, batch_size):
+        '''
+        使用编码器，提取图块的特征向量
+        :param image_itor: 图块迭代器
+        :param seeds_num: 图块的总数
+        :param batch_size: 每批的图块数量
+        :return: 特征向量集
+        '''
         ae = self.load_model()
         for param in ae.parameters():
             param.requires_grad = False
-
-        # base_model = list(ae.children())[:-2]
-        # encoder = nn.Sequential(*base_model)
 
         print(ae)
 

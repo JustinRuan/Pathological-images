@@ -249,6 +249,16 @@ class Detector(object):
         return block.get_img()
 
     def get_true_mask_in_detect_area(self, x1, y1, x2, y2, coordinate_scale, img_scale):
+        '''
+        生成选定区域内的人工标记的Mask
+        :param x1: 左上角x
+        :param y1: 左上角y
+        :param x2: 右下角x
+        :param y2: 右下角y
+        :param coordinate_scale 以上坐标的倍镜数:
+        :param img_scale: 生成Mask图像的倍镜数
+        :return: mask图像
+        '''
         xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * img_scale / coordinate_scale).astype(np.int)
         w = xx2 - xx1
         h = yy2 - yy1
@@ -258,6 +268,13 @@ class Detector(object):
         return cancer_mask[yy1:yy2, xx1:xx2]
 
     def evaluate(self, threshold, cancer_map, true_mask):
+        '''
+        癌变概率矩阵进行阈值分割后，与人工标记真值进行 评估
+        :param threshold: 分割的阈值
+        :param cancer_map: 癌变概率矩阵
+        :param true_mask: 人工标记真值
+        :return: ROC曲线
+        '''
         cancer_tag = np.array(cancer_map).ravel()
         mask_tag = np.array(true_mask).ravel()
         predicted_tags = cancer_tag >= threshold
@@ -273,6 +290,16 @@ class Detector(object):
         return false_positive_rate, true_positive_rate, roc_auc
 
     def create_superpixels(self, x1, y1, x2, y2, coordinate_scale, feature_extract_scale):
+        '''
+        在指定区域内，提取特征，并进行超像素分割
+        :param x1: 左上角x
+        :param y1: 左上角y
+        :param x2: 右下角x
+        :param y2: 右下角y
+        :param coordinate_scale: 以上坐标的倍镜数
+        :param feature_extract_scale: 提取特征所用的倍镜数
+        :return: 超像素分割后的标记矩阵
+        '''
         seg = Segmentation(self._params, self._imgCone)
         f_map = seg.create_feature_map(x1, y1, x2, y2, coordinate_scale, feature_extract_scale)
         label_map = seg.create_superpixels(f_map, 0.4, iter_num = 3)
@@ -280,6 +307,12 @@ class Detector(object):
         return label_map
 
     def create_cancer_map_superpixels(self, cancer_map, label_map):
+        '''
+        根据超像素分割，生成癌变概率图
+        :param cancer_map: 输入的癌变概率图
+        :param label_map:超像素分割的结果
+        :return: 融合后生成的癌变概率图
+        '''
         label_set = set(label_map.flatten())
 
         result_cancer = np.zeros(cancer_map.shape, dtype=np.float)

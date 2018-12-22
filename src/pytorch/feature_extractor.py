@@ -23,7 +23,12 @@ from sklearn import metrics
 
 class Feature_Extractor(object):
     def __init__(self, params, model_name, patch_type):
-
+        '''
+        初始化
+        :param params: 系统参数
+        :param model_name: 提取特征所用的网络模型
+        :param patch_type: 所处理的图块的类型
+        '''
         self._params = params
         self.model_name = model_name
         self.patch_type = patch_type
@@ -32,6 +37,10 @@ class Feature_Extractor(object):
         self.use_GPU = True
 
     def load_pretrained_model(self):
+        '''
+        加载imagenet训练好的模型
+        :return:
+        '''
         if self.model_name == "inception_v3":
             net = models.inception_v3(pretrained=True)
         elif self.model_name == "densenet121":
@@ -41,11 +50,18 @@ class Feature_Extractor(object):
         for param in net.parameters():
             param.requires_grad = False
 
+        # 去掉Top层
         base_model = list(net.children())[:-1]
         extractor = nn.Sequential(*base_model)
         return extractor
 
     def extract_features_save_to_file(self, samples_name, batch_size):
+        '''
+        提取图样本集的特征向量，并存盘
+        :param samples_name: 样本集的文件列表文件
+        :param batch_size: 每批的图片数量
+        :return: 特征向量的存盘文件
+        '''
 
         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)

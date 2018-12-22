@@ -14,10 +14,23 @@ from core.slic import SLICProcessor
 
 class Segmentation(object):
     def __init__(self, params, src_image):
+        '''
+        构造分割器
+        :param params:系统参数
+        :param src_image:切片文件
+        '''
         self._params = params
         self._imgCone = src_image
 
-    def get_seeds_for_seg(self, x1, y1, x2, y2, scale):
+    def get_seeds_for_seg(self, x1, y1, x2, y2):
+        '''
+        得到（x1, y1）到（x2, y2）矩形内的各个点的坐标
+        :param x1: 左上角x
+        :param y1: 左上角y
+        :param x2: 右下角x
+        :param y2: 右下角y
+        :return: 矩形内的整数坐标（种子点）集合
+        '''
         x_set = np.arange(x1, x2)
         y_set = np.arange(y1, y2)
         xx, yy = np.meshgrid(x_set, y_set)
@@ -27,12 +40,31 @@ class Segmentation(object):
         return results
 
     def get_seeds_itor(self, seeds, seed_scale, extract_scale, patch_size, batch_size):
+        '''
+        根据Seeds集合变换到指定倍镜下，生成以种子点为中点的图块迭代器
+        :param seeds: 种子点集合（x，y）
+        :param seed_scale: 种子点坐标所在倍镜数
+        :param extract_scale: 提取图块所用的倍镜数
+        :param patch_size: 图块的大小
+        :param batch_size: 批量数
+        :return: 返回图块的Pytorch的Tensor的迭代器
+        '''
         extract_seeds = transform_coordinate(0,0, seed_scale, seed_scale, extract_scale, seeds)
 
         itor = get_image_blocks_itor(self._imgCone, extract_scale, extract_seeds, patch_size, patch_size, batch_size)
         return itor
 
     def create_feature_map(self, x1, y1, x2, y2, scale, extract_scale):
+        '''
+        生成（x1,y1）到（x2,y2)矩形范围内的特征 矩阵
+        :param x1: 左上角x
+        :param y1: 左上角y
+        :param x2: 右下角x
+        :param y2: 右下角y
+        :param scale: 以上四个坐标所在倍镜数
+        :param extract_scale: 提取图块的特征所用的倍镜数
+        :return:特征 矩阵
+        '''
         patch_size = 32
         batch_size = 64
 
@@ -58,6 +90,13 @@ class Segmentation(object):
         return feature_map
 
     def create_superpixels(self, feature_map, M, iter_num = 10):
+        '''
+        根据特征矩阵进行超像素分割
+        :param feature_map: 特征矩阵
+        :param M: 分割算法的权重系数
+        :param iter_num: 分割算法所运行的迭代次数
+        :return: label标记矩阵
+        '''
         h, w, _ = feature_map.shape
         K = h * w // 32
 

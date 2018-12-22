@@ -23,7 +23,12 @@ from pytorch.util import get_image_blocks_itor
 class CNN_Classifier(object):
 
     def __init__(self, params, model_name, patch_type):
-
+        '''
+        初始化
+        :param params: 系统参数
+        :param model_name: 分类器算法的代号
+        :param patch_type: 分类器处理的图块类型的代号
+        '''
         self._params = params
         self.model_name = model_name
         self.patch_type = patch_type
@@ -48,6 +53,11 @@ class CNN_Classifier(object):
         self.use_GPU = True
 
     def create_densenet(self, depth):
+        '''
+        生成指定深度的Densenet
+        :param depth: 深度
+        :return: 网络模型
+        '''
         # Get densenet configuration
         if (depth - 4) % 3:
             raise Exception('Invalid depth')
@@ -86,7 +96,10 @@ class CNN_Classifier(object):
         return  model
 
     def create_initial_model(self):
-
+        '''
+        生成初始化的模型
+        :return:网络模型
+        '''
         if self.model_name == "simple_cnn":
             model = Simple_CNN(self.num_classes, self.image_size)
         elif self.model_name == "densenet_22":
@@ -95,7 +108,11 @@ class CNN_Classifier(object):
         return model
 
     def load_model(self, model_file = None):
-
+        '''
+        加载模型
+        :param model_file: 模型文件
+        :return: 网络模型
+        '''
         if model_file is not None:
             print("loading >>> ", model_file, " ...")
             model = torch.load(model_file)
@@ -114,6 +131,13 @@ class CNN_Classifier(object):
             return model
 
     def train_model(self, samples_name = None, batch_size=100, epochs=20):
+        '''
+        训练模型
+        :param samples_name: 自制训练集的代号
+        :param batch_size: 每批的图片数量
+        :param epochs:epoch数量
+        :return:
+        '''
         if self.patch_type in ["cifar10", "cifar100"]:
             train_data, test_data = self.load_cifar_data(self.patch_type)
         elif self.patch_type in ["500_128", "2000_256", "4000_256"]:
@@ -141,7 +165,7 @@ class CNN_Classifier(object):
             print('-' * 80)
 
             model.train()
-
+            # 开始训练
             train_data_len = train_data.__len__() // batch_size + 1
             total_loss = 0
             for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
@@ -172,6 +196,7 @@ class CNN_Classifier(object):
             running_loss=0.0
             running_corrects=0
             model.eval()
+            # 开始评估
             for x, y in test_loader:
                 if self.use_GPU:
                     b_x = Variable(x).cuda()  # batch x
@@ -196,6 +221,11 @@ class CNN_Classifier(object):
         return
 
     def load_cifar_data(self, patch_type):
+        '''
+        加载cifar数量
+        :param patch_type: cifar 数据的代号
+        :return:
+        '''
         data_root = os.path.join(os.path.expanduser('~'), '.keras/datasets/') # 共用Keras下载的数据
 
         if patch_type == "cifar10":
@@ -226,6 +256,11 @@ class CNN_Classifier(object):
         return  train_data, test_data
 
     def load_pretrained_model_on_predict(self, patch_type):
+        '''
+        加载已经训练好的存盘网络文件
+        :param patch_type: 分类器处理图块的类型
+        :return: 网络模型
+        '''
         net_file = {"500_128": "densenet_22_500_128-cp-0030-0.2010-0.9456.h5",
                     "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.h5",
                     "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.h5", }
@@ -245,7 +280,7 @@ class CNN_Classifier(object):
         :param scale: 提取图块的倍镜数
         :param patch_size: 图块大小
         :param seeds: 种子点的集合
-        :return:
+        :return: 预测结果与概率
         '''
         seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size)
 
