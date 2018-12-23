@@ -307,8 +307,8 @@ class Transfer(object):
         :return: 网络模型
         '''
         net_file = {"500_128": "densenet121_500_128_top_cp-0011-0.3848-0.9266.pth",
-                    "2000_256": "densenet121_2000_256_top_cp-0026-0.3399-0.9729.pth",
-                    "4000_256": "densenet121_4000_256_top_cp-0030-0.3988-0.9112.pth", }
+                    "2000_256": "densenet121_2000_256_top_cp-0028-0.3375-0.9753.pth",
+                    "4000_256": "densenet121_4000_256_top_cp-0030-0.3913-0.9188.pth", }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
         model = self.load_model(model_file=model_file)
@@ -350,8 +350,8 @@ class Transfer(object):
                 b_x = Variable(x)  # batch x
 
             output = model(b_x)
-            output_softmax = nn.functional.softmax(output)
-            probs, preds = torch.max(output_softmax, 1)
+            # output_softmax = nn.functional.softmax(output)
+            probs, preds = torch.max(output, 1)
             for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
                 results.append((pred, prob))
             print('predicting => %d / %d ' % (step + 1, data_len))

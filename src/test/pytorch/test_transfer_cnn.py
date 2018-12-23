@@ -116,5 +116,5 @@ class Test_transfer_cnn(unittest.TestCase):
 
         cnn = Transfer(c, model_name, PATCH_TYPE)
         # result = fe.extract_feature(imgCone, 20, 256, seeds, 2)
-        result = cnn.predict_on_batch(imgCone, 20, 256, seeds, 100)
+        result = cnn.predict_on_batch(imgCone, 20, 256, seeds, 2)
         print(result)
