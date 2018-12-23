@@ -225,9 +225,6 @@ class Transfer(object):
         train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True, num_workers=self.NUM_WORKERS)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False, num_workers=self.NUM_WORKERS)
 
-        # if (not os.path.exists(self.model_root)):
-        #     os.makedirs(self.model_root)
-
         model = self.load_model()
         print(model)
 
@@ -303,7 +300,63 @@ class Transfer(object):
 
         return
 
+    def load_pretrained_model_on_predict(self, patch_type):
+        '''
+        加载已经训练好的存盘网络文件
+        :param patch_type: 分类器处理图块的类型
+        :return: 网络模型
+        '''
+        net_file = {"500_128": "densenet121_500_128_top_cp-0011-0.3848-0.9266.pth",
+                    "2000_256": "densenet121_2000_256_top_cp-0026-0.3399-0.9729.pth",
+                    "4000_256": "densenet121_4000_256_top_cp-0030-0.3988-0.9112.pth", }
 
+        model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
+        model = self.load_model(model_file=model_file)
+
+        # 关闭求导，节约大量的显存
+        for param in model.parameters():
+            param.requires_grad = False
+        return model
+
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return: 预测结果与概率
+        '''
+        features = self.extract_feature(src_img, scale, patch_size, seeds, batch_size)
+        # 这里增加一个无用的 标注torch.zeros(len(features))，以为了下面的批量数据提取。
+        # 没有这列，DataLoader返回的b_x是List，而不是Tensor。
+        f_data = torch.utils.data.TensorDataset(torch.FloatTensor(features), torch.zeros(len(features)))
+        f_loader = Data.DataLoader(dataset=f_data, batch_size=batch_size, shuffle=False, num_workers=self.NUM_WORKERS)
+
+        model = self.load_pretrained_model_on_predict(self.patch_type)
+        print(model)
+
+        if self.use_GPU:
+            model.cuda()
+        model.eval()
+
+        data_len = len(seeds) // batch_size + 1
+        results = []
+
+        for step, (x, _) in enumerate(f_loader):
+            if self.use_GPU:
+                b_x = Variable(x).cuda()  # batch x
+            else:
+                b_x = Variable(x)  # batch x
+
+            output = model(b_x)
+            output_softmax = nn.functional.softmax(output)
+            probs, preds = torch.max(output_softmax, 1)
+            for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
+                results.append((pred, prob))
+            print('predicting => %d / %d ' % (step + 1, data_len))
+
+        return results
 
     #################################################################################################
     #              SVM
