@@ -72,11 +72,11 @@ class Segmentation(object):
         xx1, yy1, xx2, yy2 = \
             np.rint(np.array([x1, y1, x2, y2]) * GLOBAL_SCALE / scale).astype(np.int)
 
-        global_seeds = self.get_seeds_for_seg(xx1, yy1, xx2, yy2, GLOBAL_SCALE)
+        global_seeds = self.get_seeds_for_seg(xx1, yy1, xx2, yy2)
 
         img_itor = self.get_seeds_itor(global_seeds, GLOBAL_SCALE, extract_scale, patch_size, batch_size)
 
-        encoder = Encoder(self._params, "cae2", "cifar10")
+        encoder = Encoder(self._params, "cae", "cifar10")
         features = encoder.extract_feature(img_itor, len(global_seeds), batch_size)
         f_size = len(features[0])
 

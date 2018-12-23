@@ -261,7 +261,7 @@ class CNN_Classifier(object):
         :param patch_type: 分类器处理图块的类型
         :return: 网络模型
         '''
-        net_file = {"500_128": "densenet_22_500_128-cp-0030-0.2010-0.9456.pth",
+        net_file = {"500_128": "densenet_22_500_128_cp-0012-0.1771-0.9362.pth",
                     "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
                     "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth", }
 
@@ -285,7 +285,7 @@ class CNN_Classifier(object):
         seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size)
 
         model = self.load_pretrained_model_on_predict(self.patch_type)
-        print(model)
+        # print(model)
 
         if self.use_GPU:
             model.cuda()

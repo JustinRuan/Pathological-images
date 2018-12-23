@@ -29,6 +29,29 @@ MODEL_NAME = "densenet121"
 
 class Test_transfer_cnn(unittest.TestCase):
 
+    def test_compare_save_file(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        import numpy as np
+        filename = "densenet121_T_NC_2000_256_test_features.npz"
+        data_path = "{}/data/pytorch/{}".format(c.PROJECT_ROOT, filename)
+        D = np.load(data_path)
+        test_features = D['arr_0']
+        test_label = D['arr_1']
+        data_path = "{}/data/keras/{}".format(c.PROJECT_ROOT, filename)
+        D = np.load(data_path)
+        test_features2 = D['arr_0']
+        test_label2 = D['arr_1']
+
+        d = (test_features - test_features2)
+        mean = np.mean(d)
+        std = np.std(d)
+        print(mean, std)
+
+        mean = np.mean(test_features)
+        std = np.std(test_features)
+        print(mean, std)
+
     def test_extract_features_save_to_file(self):
         c = Params()
         c.load_config_file(JSON_PATH)
@@ -118,3 +141,4 @@ class Test_transfer_cnn(unittest.TestCase):
         # result = fe.extract_feature(imgCone, 20, 256, seeds, 2)
         result = cnn.predict_on_batch(imgCone, 20, 256, seeds, 2)
         print(result)
+

@@ -9,7 +9,7 @@ import numpy as np
 from sklearn import metrics
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds, transform_coordinate
-from transfer import Transfer
+from pytorch.transfer_cnn import Transfer
 from pytorch.cnn_classifier import CNN_Classifier
 from pytorch.segmentation import Segmentation
 
@@ -28,7 +28,7 @@ class Detector(object):
         self.ImageWidth = w
         self.ImageHeight = h
         self.valid_map = np.zeros((h, w), dtype=np.bool)
-
+        self.enable_transfer = False
         return
 
     def setting_detected_area(self, x1, y1, x2, y2, scale):
@@ -82,19 +82,17 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         seeds = self.get_points_detected_area(extract_scale, patch_size, interval)
 
+        if self.enable_transfer:
         #####################################################################################################
         #    Transfer Learning
         #####################################################################################################
-        # cnn = Transfer(self._params, "densenet121", "500_128")
-        # model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-        #                                            "densenet121_500_128_0045-0.1972-0.9267.h5")
-        # model = cnn.load_model(mode = 999, model_file=model_path)
+            cnn = Transfer(self._params, "densenet121", "500_128")
         #########################################################################################################
-
+        else:
         ########################################################################################################\
         #    DenseNet 22
         #########################################################################################################
-        cnn = CNN_Classifier(self._params, "densenet_22", "500_128")
+            cnn = CNN_Classifier(self._params, "densenet_22", "500_128")
         #########################################################################################################
         predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, seeds, 32)
 
@@ -103,30 +101,26 @@ class Detector(object):
     def detect_region_detailed(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):
         new_seeds = self.get_seeds_under_high_magnification(seeds, predictions, seeds_scale, original_patch_size,
                                                             new_scale, new_patch_size)
+
+        if self.enable_transfer:
         #####################################################################################################
         #    Transfer Learning
         #####################################################################################################
-        # if (new_scale == 20):
-        #     cnn = Transfer(self._params, "densenet121", "2000_256")
-        #     model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-        #                                                "densenet121_2000_256_0052-0.0752-0.9745.h5")
-        #     model = cnn.load_model(mode = 999, model_file=model_path)
-        # else: # (new_scale == 40):
-        #     cnn = Transfer(self._params, "densenet121", "4000_256")
-        #     model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-        #                                                "densenet121_4000_256_0042-0.2115-0.9157.h5")
-        #     model = cnn.load_model(mode=999, model_file=model_path)
+            if (new_scale == 20):
+                cnn = Transfer(self._params, "densenet121", "2000_256")
+            else: # (new_scale == 40):
+                cnn = Transfer(self._params, "densenet121", "4000_256")
         #########################################################################################################
-
+        else:
         ########################################################################################################\
         #    DenseNet 22
         #########################################################################################################
-        if (new_scale == 20):
-            cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
-        else: # (new_scale == 40):
-            cnn = CNN_Classifier(self._params, "densenet_22", "4000_256")
+            if (new_scale == 20):
+                cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
+            else: # (new_scale == 40):
+                cnn = CNN_Classifier(self._params, "densenet_22", "4000_256")
         #########################################################################################################
-        predictions = cnn.predict_on_batch(self._imgCone, new_scale, new_patch_size, new_seeds, 100)
+        predictions = cnn.predict_on_batch(self._imgCone, new_scale, new_patch_size, new_seeds, 32)
         return new_seeds, predictions
 
     def get_seeds_under_high_magnification(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):

@@ -42,7 +42,7 @@ class Transfer(object):
 
         self.model_root = "{}/models/pytorch/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
 
-        self.use_GPU = True
+        self.use_GPU = False
 
     def load_pretrained_model(self):
         '''

@@ -33,8 +33,8 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # model_name = "simple_cnn"
         model_name = "densenet_22"
-        # sample_name = "500_128"
-        sample_name = "2000_256"
+        sample_name = "500_128"
+        # sample_name = "2000_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
         cnn.train_model(samples_name="T_NC_{}".format(sample_name), batch_size=32, epochs = 30)

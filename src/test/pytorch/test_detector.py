@@ -60,22 +60,23 @@ class Test_detector(unittest.TestCase):
 
     def test_detect2(self):
 
-        test_set = {"001" : (2100, 3800, 2400, 4000),
-                    "003": (2400, 4700, 2600, 4850)}
-        id = "003"
+        test_set = [("001", 2100, 3800, 2400, 4000),
+                    ("003", 2400, 4700, 2600, 4850)]
+        id = 1
         roi = test_set[id]
-        x1 = roi[0]
-        y1 = roi[1]
-        x2 = roi[2]
-        y2 = roi[3]
+        slice_id = roi[0]
+        x1 = roi[1]
+        y1 = roi[2]
+        x2 = roi[3]
+        y2 = roi[4]
 
         c = Params()
         c.load_config_file(JSON_PATH)
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % id,
-                                 'Tumor/tumor_%s.xml' % id, "Tumor_%s" % id)
+        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
+                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
 
         detector = Detector(c, imgCone)
         print(detector.ImageHeight, detector.ImageWidth)
@@ -113,19 +114,20 @@ class Test_detector(unittest.TestCase):
 
 
     def test_show_result(self):
-        test_set = {"001" : (2100, 3800, 2400, 4000),
-                    "003": (2400, 4700, 2600, 4850)}
-        id = "003"
+        test_set = [("001", 2100, 3800, 2400, 4000),
+                    ("003", 2400, 4700, 2600, 4850)]
+        id = 1
         roi = test_set[id]
-        x1 = roi[0]
-        y1 = roi[1]
-        x2 = roi[2]
-        y2 = roi[3]
+        slice_id = roi[0]
+        x1 = roi[1]
+        y1 = roi[2]
+        x2 = roi[3]
+        y2 = roi[4]
 
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        D = np.load("{}/data/cancer_predictions_{}.npz".format(c.PROJECT_ROOT, id))
+        D = np.load("{}/data/cancer_predictions_{}.npz".format(c.PROJECT_ROOT, slice_id))
         src_img = D['arr_0']
         seeds = D['arr_1']
         predictions = D['arr_2']
@@ -137,8 +139,8 @@ class Test_detector(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % id,
-                                 'Tumor/tumor_%s.xml' % id, "Tumor_%s" % id)
+        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
+                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
 
         detector = Detector(c, imgCone)
         print(detector.ImageHeight, detector.ImageWidth)

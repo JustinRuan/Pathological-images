@@ -56,10 +56,11 @@ class Encoder(object):
         :param model_file: 指定模型的存盘文件
         :return:
         '''
+        model = self.create_initial_model()
+
         if model_file is not None:
             print("loading >>> ", model_file, " ...")
-            model = torch.load(model_file)
-            return model
+            model.load_state_dict(torch.load(model_file))
         else:
             checkpoint_dir = self.model_root
             if (not os.path.exists(checkpoint_dir)):
@@ -68,10 +69,9 @@ class Encoder(object):
             latest = latest_checkpoint(checkpoint_dir)
             if latest is not None:
                 print("loading >>> ", latest, " ...")
-                model = torch.load(latest)
-            else:
-                model = self.create_initial_model()
-            return model
+                model.load_state_dict(torch.load(latest))
+
+        return model
 
     def train_ae(self, batch_size=100, epochs=20):
         '''
@@ -107,8 +107,9 @@ class Encoder(object):
         if self.use_GPU:
             ae.cuda()
 
-        # criterion = nn.BCELoss()
-        criterion = nn.MSELoss()
+        criterion = nn.BCELoss()
+        display_criterion = nn.MSELoss() # 附加信息显示用,不计入BP过程
+
         optimizer = torch.optim.Adam(ae.parameters(), lr=0.001) # ,weight_decay=1e-5
         # optimizer = torch.optim.Adadelta(ae.parameters())
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, verbose = True,
@@ -137,6 +138,7 @@ class Encoder(object):
 
             ae.train()
             total_loss = 0
+            total_loss2 = 0
             for i, (x, _) in enumerate(data_loader):
                 if self.use_GPU:
                     b_x = Variable(x).cuda()  # batch x
@@ -145,6 +147,7 @@ class Encoder(object):
 
                 out = ae(b_x)
                 loss = criterion(out, b_x)
+                loss2 = display_criterion(out, b_x)
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -152,7 +155,10 @@ class Encoder(object):
 
                 running_loss = loss.item() * b_x.size(0)
                 total_loss += running_loss
-                print('%d / %d ==> Loss: %.4f '  % (i, iter_per_epoch, running_loss))
+
+                running_loss2 = loss2.item() * b_x.size(0)
+                total_loss2 += running_loss2
+                print('%d / %d ==> Loss: %.4f |  Loss: %.4f'  % (i, iter_per_epoch, running_loss, running_loss2))
 
                 if (i+1) % save_step == 0:
                     reconst_images = ae(fixed_x)
@@ -162,8 +168,9 @@ class Encoder(object):
             scheduler.step(total_loss)
 
             epoch_loss = total_loss / iter_per_epoch
-            torch.save(ae,
-                           self.model_root + "/cp-{:04d}-{:.4f}-0.pth".format(epoch + 1, epoch_loss))
+            epoch_loss2 = total_loss2 / iter_per_epoch
+            torch.save(ae.state_dict(),
+                           self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss, epoch_loss2))
 
     def extract_feature(self, image_itor, seeds_num, batch_size):
         '''
