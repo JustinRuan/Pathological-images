@@ -261,7 +261,7 @@ class CNN_Classifier(object):
         :param patch_type: 分类器处理图块的类型
         :return: 网络模型
         '''
-        net_file = {"500_128": "densenet_22_500_128_cp-0012-0.1771-0.9362.pth",
+        net_file = {"500_128":  "densenet_22_500_128_cp-0017-0.2167-0.9388.pth",
                     "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
                     "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth", }
 
