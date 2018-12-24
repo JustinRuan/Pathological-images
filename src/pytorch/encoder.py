@@ -10,13 +10,26 @@ import os
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
 import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 import torchvision
 from torch.autograd import Variable
-from .net.ae import Autoencoder
+from .net.ae import Autoencoder, VAE
 from core.util import latest_checkpoint
 
+# Reconstruction + KL divergence losses summed over all elements and batch
+def loss_function(recon_x, x, mu, logvar):
+    BCE = F.binary_cross_entropy(recon_x.view(-1, 32 * 32 * 3),
+                                 x.view(-1, 32 * 32 * 3), size_average=False)
+
+    # see Appendix B from VAE paper:
+    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+    # https://arxiv.org/abs/1312.6114
+    # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+    return BCE + KLD
 
 class Encoder(object):
     def __init__(self, params, model_name, patch_type):
@@ -46,8 +59,9 @@ class Encoder(object):
         '''
         if self.model_name == "cae":
             model = Autoencoder(self.out_dim)
-        # elif self.model_name == "cae2":
-            # model = Autoencoder2(self.out_dim)
+        elif self.model_name == "vae":
+            model = VAE(self.out_dim)
+
         return model
 
     def load_model(self, model_file = None):
@@ -107,7 +121,12 @@ class Encoder(object):
         if self.use_GPU:
             ae.cuda()
 
-        criterion = nn.BCELoss()
+        # criterion = nn.BCELoss()
+        if self.model_name == "cae":
+            criterion = nn.BCELoss()
+        elif self.model_name == "vae":
+            criterion = None
+
         display_criterion = nn.MSELoss() # 附加信息显示用,不计入BP过程
 
         optimizer = torch.optim.Adam(ae.parameters(), lr=0.001) # ,weight_decay=1e-5
@@ -145,15 +164,23 @@ class Encoder(object):
                 else:
                     b_x = Variable(x)  # batch x
 
-                out = ae(b_x)
-                loss = criterion(out, b_x)
-                loss2 = display_criterion(out, b_x)
+                if self.model_name == "cae":
+                    out = ae(b_x)
+                    loss = criterion(out, b_x)
+                    loss2 = display_criterion(out, b_x)
+                elif self.model_name == "vae":
+                    recon_batch, mu, logvar = ae(b_x)
+                    loss = loss_function(recon_batch, b_x, mu, logvar)
+                    loss2 = display_criterion(recon_batch, b_x)
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                running_loss = loss.item() * b_x.size(0)
+                if self.model_name == "cae":
+                    running_loss = loss.item() * b_x.size(0)
+                elif self.model_name == "vae":
+                    running_loss = loss.item()
                 total_loss += running_loss
 
                 running_loss2 = loss2.item() * b_x.size(0)
@@ -161,7 +188,10 @@ class Encoder(object):
                 print('%d / %d ==> Loss: %.4f |  Loss: %.4f'  % (i, iter_per_epoch, running_loss, running_loss2))
 
                 if (i+1) % save_step == 0:
-                    reconst_images = ae(fixed_x)
+                    if self.model_name == "cae":
+                        reconst_images = ae(fixed_x)
+                    elif self.model_name == "vae":
+                        reconst_images, _, _ = ae(fixed_x)
                     torchvision.utils.save_image(reconst_images.data.cpu(),
                                                  pic_path + '/reconst_images_{:04d}_{:06d}.png'.format(epoch + 1, i + 1))
 

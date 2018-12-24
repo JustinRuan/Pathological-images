@@ -15,9 +15,12 @@ from skimage.io import imread
 from preparation.normalization import ImageNormalization
 
 class Image_Dataset(Dataset):
-    def __init__(self, x_set, y_set):
+    def __init__(self, x_set, y_set, transform = None):
         self.x, self.y = x_set, y_set
-        self.transform = torchvision.transforms.ToTensor()
+        if transform is None:
+            self.transform = torchvision.transforms.ToTensor()
+        else:
+            self.transform = transform
 
     def __getitem__(self, index):
         file_name = self.x[index]
