@@ -12,27 +12,18 @@ import os
 import numpy as np
 import tensorflow as tf
 import keras
-from keras import regularizers
 from keras.applications.vgg16 import VGG16
-from keras.applications.vgg19 import VGG19
 from keras.applications.resnet50 import ResNet50
 from keras.applications.inception_v3 import InceptionV3
 from keras.applications.inception_resnet_v2 import InceptionResNetV2
-from keras.applications.xception import Xception
-from keras.applications.mobilenet import MobileNet
 from keras.applications.mobilenet_v2 import MobileNetV2
 from keras.applications.densenet import DenseNet121, DenseNet169, DenseNet201
-from keras.applications.nasnet import NASNetMobile, NASNetLarge
 
-from keras import backend as K
-from keras.losses import categorical_crossentropy
-
-from keras.callbacks import TensorBoard
-from keras.layers import Dense, GlobalAveragePooling2D, Input, BatchNormalization, Dropout, Activation
-from keras.models import Model, Sequential, load_model
-from keras.optimizers import SGD, RMSprop, Adagrad, Adam, Adamax, Nadam, Adadelta
+from keras.layers import Dense, GlobalAveragePooling2D, Input
+from keras.models import Model, load_model
+from keras.optimizers import SGD, RMSprop
 from keras.preprocessing import image
-from keras.utils import to_categorical, plot_model
+from keras.utils import to_categorical
 from skimage.transform import resize
 
 from sklearn.svm import LinearSVC
@@ -42,9 +33,8 @@ from sklearn import metrics
 from preparation.normalization import ImageNormalization
 from core.util import read_csv_file
 from core import *
-from core.image_sequence import ImageSequence
-from core.seed_sequence import SeedSequence
-from sklearn.feature_selection import SelectKBest
+from cnn.image_sequence import ImageSequence
+from cnn.seed_sequence import SeedSequence
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from statistics import mode

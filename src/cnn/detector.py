@@ -9,7 +9,7 @@ import numpy as np
 from sklearn import metrics
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds
-from transfer import Transfer
+from cnn.transfer_cnn import Transfer
 from cnn.cnn_classifier import CNN_Classifier
 
 

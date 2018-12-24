@@ -1,7 +1,7 @@
 import math
 from skimage import io, color, img_as_float
 import numpy as np
-from connectivity import enforce_connectivity
+# from connectivity import enforce_connectivity
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from skimage.segmentation._slic import _enforce_label_connectivity_cython
 
@@ -168,29 +168,29 @@ class SLICProcessor(object):
         return label_img
 
 
-#强连接，合并孤立点
-    def enforce_connectivity(self, label_img):
-        label = label_img[np.newaxis, :, :]
-        label = label.astype(np.int64)
-        # 调用cython来合并孤立点
-        label = enforce_connectivity(label, int(self.S * self.S * 0.2), int(self.S * self.S * 3))
-        label = np.squeeze(label, axis=(0,))
-        print("合并孤立点后的label数量{}".format(len(np.unique(label))))
-
-        # 遍历self.label 改变 self.cluster.pixels
-        self.clusters=[]
-        Cluster.cluster_index=0
-        for i in range(len(np.unique(label))):
-            self.clusters.append(Cluster())
-        for x in range(label.shape[0]):
-            for y in range(label.shape[1]):
-                for cluster in self.clusters:
-                    if cluster.no == label[x][y]:
-                        cluster.pixels.append((x, y))
-                        break
-        self.update_cluster()
-
-        return label
+# #强连接，合并孤立点
+#     def enforce_connectivity(self, label_img):
+#         label = label_img[np.newaxis, :, :]
+#         label = label.astype(np.int64)
+#         # 调用cython来合并孤立点
+#         label = enforce_connectivity(label, int(self.S * self.S * 0.2), int(self.S * self.S * 3))
+#         label = np.squeeze(label, axis=(0,))
+#         print("合并孤立点后的label数量{}".format(len(np.unique(label))))
+#
+#         # 遍历self.label 改变 self.cluster.pixels
+#         self.clusters=[]
+#         Cluster.cluster_index=0
+#         for i in range(len(np.unique(label))):
+#             self.clusters.append(Cluster())
+#         for x in range(label.shape[0]):
+#             for y in range(label.shape[1]):
+#                 for cluster in self.clusters:
+#                     if cluster.no == label[x][y]:
+#                         cluster.pixels.append((x, y))
+#                         break
+#         self.update_cluster()
+#
+#         return label
 
 
 

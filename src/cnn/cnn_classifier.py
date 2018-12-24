@@ -10,22 +10,17 @@ import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0" #GPU
 # os.environ['CUDA_VISIBLE_DEVICES'] = "-1" #CPU
 
-import math
 import numpy as np
-import tensorflow as tf
 import keras
-from keras import regularizers
-from keras.callbacks import TensorBoard
-from keras.layers import Dense, GlobalAveragePooling2D, Flatten, Conv2D, MaxPooling2D, Dropout
-from keras.models import Model, Sequential, load_model
-from keras.optimizers import SGD, RMSprop
+from keras.models import load_model
+from keras.optimizers import RMSprop
 from keras.preprocessing import image
 from keras.utils import to_categorical
 from sklearn import metrics
-from skimage import io, util
+from skimage import util
 from core import *
-from core.seed_sequence import SeedSequence
-from core.image_sequence import ImageSequence
+from cnn.seed_sequence import SeedSequence
+from cnn.image_sequence import ImageSequence
 from core.util import read_csv_file
 from preparation.normalization import ImageNormalization
 

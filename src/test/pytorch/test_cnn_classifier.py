@@ -9,9 +9,10 @@ __mtime__ = '2018-12-13'
 import unittest
 from core import Params, ImageCone, Open_Slide
 from pytorch.cnn_classifier import CNN_Classifier
+import torch
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -56,3 +57,23 @@ class Test_cnn_classifier(unittest.TestCase):
         seeds = [(34816, 48960), (35200, 48640), (12800, 56832)] # C, C, S,
         result = cnn.predict_on_batch(imgCone, 20, 256, seeds, 1)
         print(result)
+
+    def test_Image_Dataset(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        # model_name = "simple_cnn"
+        model_name = "densenet_22"
+        sample_name = "500_128"
+        # sample_name = "2000_256"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+
+        train_data, test_data = cnn.load_custom_data("T_NC_{}".format(sample_name))
+        print(train_data.__len__())
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, num_workers=2)
+        print(train_loader)
+
+        for index, (x, y) in enumerate(train_loader):
+            print(x.shape, y)
+            if index > 10: break
