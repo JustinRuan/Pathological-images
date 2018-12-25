@@ -11,7 +11,7 @@ from core import Params, ImageCone, Open_Slide
 from pytorch.encoder import Encoder
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 
@@ -31,7 +31,17 @@ class Test_encoder(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        model_name = "vae"
+        model_name = "vcae"
+        sample_name = "cifar10"
+
+        ae = Encoder(c, model_name, sample_name)
+        ae.train_ae(batch_size=64, epochs = 50)
+
+    def test_train_model3(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "ccae"
         sample_name = "cifar10"
 
         ae = Encoder(c, model_name, sample_name)
