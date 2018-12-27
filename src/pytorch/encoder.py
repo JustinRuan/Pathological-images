@@ -17,6 +17,7 @@ import torchvision
 from torch.autograd import Variable
 from .net.ae import Autoencoder, VAE, CAE
 from core.util import latest_checkpoint
+from torchsummary import summary
 
 ##################################################################################################################
 # Reconstruction + KL divergence losses summed over all elements and batch
@@ -74,7 +75,7 @@ def contractive_loss_function(W, x, recons_x, h, lam):
 ###################################################################################################################
 
 class Encoder(object):
-    def __init__(self, params, model_name, patch_type):
+    def __init__(self, params, model_name, patch_type, out_dim = 32):
         '''
         初始化
         :param params: 系统参数
@@ -87,10 +88,11 @@ class Encoder(object):
         self.NUM_WORKERS = params.NUM_WORKERS
 
         if self.patch_type == "cifar10":
-            self.out_dim = 32
+            self.out_dim = out_dim
             self.image_size = 32
 
-        self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+        self.model_root = "{}/models/pytorch/{}_{}_{}".format(self._params.PROJECT_ROOT, self.model_name,
+                                                                 self.patch_type, self.out_dim)
 
         self.use_GPU = True
 
@@ -163,7 +165,7 @@ class Encoder(object):
                                                   shuffle=True)
 
         model = self.load_model()
-        print(model)
+        summary(model, input_size=(3, self.image_size, self.image_size), device="cpu")
 
         if self.use_GPU:
             model.cuda()
@@ -233,9 +235,9 @@ class Encoder(object):
                 if self.model_name == "cae":
                     running_loss = loss.item() * b_x.size(0)
                 elif self.model_name == "vcae":
-                    running_loss = loss.item()
+                    running_loss = loss.item() / b_x.size(0)
                 elif self.model_name == "ccae":
-                    running_loss = loss.item()
+                    running_loss = loss.item() / b_x.size(0)
 
                 total_loss += running_loss
 
@@ -273,7 +275,7 @@ class Encoder(object):
         for param in ae.parameters():
             param.requires_grad = False
 
-        print(ae)
+        summary(ae, input_size=(3, self.image_size, self.image_size), device="cpu")
 
         if self.use_GPU:
             ae.cuda()

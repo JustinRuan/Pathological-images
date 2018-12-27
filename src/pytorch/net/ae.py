@@ -105,7 +105,7 @@ class Autoencoder(nn.Module):
             nn.Linear(4 * 4 * 128, intermediate_size),
             nn.ReLU(),
             nn.Linear(intermediate_size, out_dim),
-            # nn.BatchNorm1d(out_dim, affine=False),
+            nn.BatchNorm1d(out_dim, affine=False),
         )
 
         # Decoder
@@ -326,6 +326,7 @@ class CAE(nn.Module):
                 ("fc1", nn.Linear(4 * 4 * 128, intermediate_size)),
                 ("relu1", nn.ReLU()),
                 ("fc2",nn.Linear(intermediate_size, out_dim)),
+                ("bn_fc", nn.BatchNorm1d(out_dim, affine=False)),
             ])
         )
 

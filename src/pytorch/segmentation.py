@@ -76,7 +76,7 @@ class Segmentation(object):
 
         img_itor = self.get_seeds_itor(global_seeds, GLOBAL_SCALE, extract_scale, patch_size, batch_size)
 
-        encoder = Encoder(self._params, "cae", "cifar10")
+        encoder = Encoder(self._params, "cae", "cifar10", 64)
         features = encoder.extract_feature(img_itor, len(global_seeds), batch_size)
         f_size = len(features[0])
 

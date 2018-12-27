@@ -24,7 +24,7 @@ class Test_encoder(unittest.TestCase):
         model_name = "cae"
         sample_name = "cifar10"
 
-        ae = Encoder(c, model_name, sample_name)
+        ae = Encoder(c, model_name, sample_name, 32)
         ae.train_ae(batch_size=64, epochs = 50)
 
     def test_train_model2(self):

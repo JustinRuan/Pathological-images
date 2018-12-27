@@ -2,8 +2,9 @@ import math
 from skimage import io, color, img_as_float
 import numpy as np
 # from connectivity import enforce_connectivity
-from sklearn.cluster import KMeans, AgglomerativeClustering
+from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN, MiniBatchKMeans
 from skimage.segmentation._slic import _enforce_label_connectivity_cython
+from sklearn.decomposition import PCA
 
 # 聚类中心类
 class Cluster(object):
@@ -142,7 +143,7 @@ class SLICProcessor(object):
             data = sum_f / number
             cluster.update(_h, _w, data)
 
-    def clusting(self, iter_num = 10, enforce_connectivity = True, min_size_factor = 0.5, max_size_factor = 3.0):
+    def  clusting(self, iter_num = 10, enforce_connectivity = True, min_size_factor = 0.5, max_size_factor = 3.0):
         self.init_clusters()            # 初始化聚类中心
         self.move_clusters()            # 移动初始化的聚类中心到梯度最小点去,作用不大
         for i in range(iter_num):
@@ -150,6 +151,7 @@ class SLICProcessor(object):
             self.update_cluster()       # 更新聚类中心
             print("iter_{}".format(i))
 
+        # label_img = self.post_rocessing(post_K)
         label_img = np.full((self.image_height, self.image_width), -1)
         for (h, w), cluster in self.label.items():
             label_img[h, w] = cluster.no
@@ -164,6 +166,7 @@ class SLICProcessor(object):
                                                         max_size)
             label_img = label_img[0]
             # label_img = self.enforce_connectivity(label_img)
+            print("合并孤立点后的label数量{}".format(len(np.unique(label_img))))
 
         return label_img
 
@@ -192,25 +195,22 @@ class SLICProcessor(object):
 #
 #         return label
 
+    # 对聚类中心进行kmeans聚类
+    def post_rocessing(self, K):
+        cluster_data = []
+        for cluster in self.clusters:
+            cluster_data.append(cluster.data)
+        kmeans = KMeans(n_clusters=K).fit(cluster_data)
 
+        label = np.full((self.image_height, self.image_width), -1)
+        for i,cluster in enumerate(self.clusters):
+            for pixel in cluster.pixels:
+                label[pixel[0], pixel[1]] = kmeans.labels_[i]
+            #####这里没有更新维护聚类中心类以及聚类中心类包含的点#
 
-    # # 对聚类中心进行kmeans聚类
-    # def cluster_kmeans(self,K):
-    #     cluster_data = []
-    #     for cluster in self.clusters:
-    #         cluster_data.append(cluster.data)
-    #     kmeans = KMeans(n_clusters=K, random_state=0).fit(cluster_data)
-    #     i=0
-    #     label = np.full((self.image_height, self.image_width), -1)
-    #     for cluster in self.clusters:
-    #         # cluster.no=kmeans.labels_[i]
-    #         for pixel in cluster.pixels:
-    #             label[pixel[0],pixel[1]]=kmeans.labels_[i]
-    #         #####这里没有更新维护聚类中心类以及聚类中心类包含的点#
-    #         i = i + 1
-    #     self.label = label
-    #
-    #     return self.label
+        print("后处理后的label数量{}".format(len(np.unique(label))))
+        return label
+
     #
     # # 对聚类中心进行Hierarchical聚类，层次聚类
     # def cluster_Hierarchical(self, K):
@@ -228,7 +228,23 @@ class SLICProcessor(object):
     #     self.label = label
     #     return self.label
 
-# if __name__ == '__main__':
-#
-#     p = SLICProcessor("133145.jpg", 2, 10)     #实例化一个SLICPro 对象，传入图像，k，m
-#     p.iterate_10times()
+    # def pre_processing(self, ):
+    #     N = 1000
+    #     train_data = self.data.reshape((-1, self.feature_dim))
+    #     # clustering = MiniBatchKMeans(n_clusters=N,  max_iter=5,  batch_size=100,init_size = 3*N).fit(train_data)
+    #     clustering = DBSCAN(eps=0.01, min_samples=5, metric='cosine').fit(train_data)
+    #     label = clustering.labels_.reshape((self.image_height, self.image_width))
+    #
+    #     pca = PCA(n_components=0.98)
+    #     new_center = pca.fit_transform(train_data)
+    #     feature_dim = np.size(new_center,1)
+    #     print("压缩特征维度至：", feature_dim)
+    # #
+    # #     # label = clustering.labels_.reshape((self.image_height, self.image_width))
+    # #     #
+    # #     # feature_map = np.zeros((self.image_height, self.image_width, feature_dim))
+    # #     # for index in range(N):
+    # #     #     xy = label == index
+    # #     #     feature_map[xy,:] = new_center[index]
+    # #     #
+    # #     # return feature_dim, feature_map

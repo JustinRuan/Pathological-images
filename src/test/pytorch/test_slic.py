@@ -24,12 +24,24 @@ JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 class TestSLIC(unittest.TestCase):
 
     def test_slic(self):
-        f_map = np.load("feature_map.npy")
+        f_map = np.load("feature_map32.npy")
         print(f_map.shape)
 
-        slic = SLICProcessor(f_map, 1000, 0.4)
-        label_map = slic.clusting(3, True, min_size_factor = 0.1, max_size_factor = 3.0)
+        slic = SLICProcessor(f_map, 1000, 0.3)
+        label_map = slic.clusting(5, True, min_size_factor =0.2, max_size_factor = 500.0)
         np.save("label_map", label_map)
+
+    # def test_pre_processing(self):
+    #     f_map = np.load("feature_map64.npy")
+    #     print(f_map.shape)
+    #
+    #     slic = SLICProcessor(f_map, 1000, 0.4)
+    #     f_dim , f_map = slic.pre_processing()
+    #     print(f_map.shape)
+    #
+    # #     slic = SLICProcessor(f_map, 1000, 0.4)
+    # #     label_map = slic.clusting(5, False, min_size_factor=1, max_size_factor=500.0, post_K=None)
+    # #     np.save("label_map", label_map)
 
     def test_show(self):
 
@@ -62,14 +74,16 @@ class TestSLIC(unittest.TestCase):
         cancer_mask = all_mask['C']
         gt_img = cancer_mask[yy1:yy2, xx1:xx2]
 
-        slic_map = slic(src_img, 1000, 20, enforce_connectivity=True,)
-        slic_img = label2rgb(slic_map, alpha=0.3, image=gt_img)
-
         label_map = np.load("label_map.npy")
         print(label_map.shape)
+        f_count = len(np.unique(label_map))
+        print("feature slic label数量{}".format(f_count))
         label_img = label2rgb(label_map, alpha=0.3, image=gt_img)
         label_img2 = label2rgb(label_map, alpha=0.3, image=None)
 
+        slic_map = slic(src_img, f_count, 20, enforce_connectivity=True,)
+        print("slic label数量{}".format(len(np.unique(slic_map))))
+        slic_img = label2rgb(slic_map, alpha=0.3, image=gt_img)
 
         asa, error_list = computeASA(label_map.flatten().tolist(), gt_img.flatten().tolist(), 1)
         br = computeBR(label_map.flatten().tolist(), gt_img.flatten().tolist(), h, w, 1)
@@ -101,4 +115,11 @@ class TestSLIC(unittest.TestCase):
             a.axis('off')
         plt.show()
 
+    def test_2(self):
 
+        a = np.arange(1,13)
+        print(a)
+        b = a.reshape((3,4))
+        c = b.reshape((-1,))
+        print(b)
+        print(c)
