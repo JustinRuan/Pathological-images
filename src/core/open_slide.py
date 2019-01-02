@@ -5,9 +5,8 @@ __author__ = 'Justin'
 __mtime__ = '2018-11-13'
 
 """
-# import os
-# os.environ['PATH'] = r"C:\openslide\bin" + ";" + os.environ['PATH'] # 一定要路径加到前面去
-
+import os
+os.environ['PATH'] = r"D:\code\python\openslide\bin" + ";" + os.environ['PATH']  # 一定要路径加到前面去
 import numpy as np
 import math
 import openslide
@@ -17,6 +16,7 @@ import xml.dom.minidom
 from skimage import draw
 from skimage import color, morphology
 from skimage.morphology import square
+
 
 class Open_Slide(object):
     def __init__(self):
@@ -33,18 +33,18 @@ class Open_Slide(object):
             return True
 
     def get_id(self):
-        '''
+        """
         得取切片的编号
         :return: 返回切片编号
-        '''
+        """
         return self._id
 
     def get_image_width_height_byScale(self, scale):
-        '''
+        """
         得到指定倍镜下，整个切片图像的大小
         :param scale: 提取图像所在的倍镜数, 归一化到倍镜数
         :return: 图像的大小，宽（x）高（y）
-        '''
+        """
         w, h = self.img.dimensions # A (width, height) tuple for level 0 of the slide.
         ImageWidth = np.rint(w / self.Normalization_coefficient * scale).astype(np.int)
         ImageHeight = np.rint(h / self.Normalization_coefficient * scale).astype(np.int)
@@ -54,7 +54,7 @@ class Open_Slide(object):
         return int(math.log(self.Normalization_coefficient / scale, 2))
 
     def get_image_block(self, c_scale, c_x, c_y, nWidth, nHeight):
-        '''
+        """
         提取图块
         :param c_scale: 提取用的倍镜数
         :param c_x: 该倍镜下的x坐标
@@ -62,7 +62,7 @@ class Open_Slide(object):
         :param nWidth: 该倍镜下的宽度
         :param nHeight: 该倍镜下的高度
         :return: 图块
-        '''
+        """
         # 从中心坐标移动到左上角坐标, sp_x,sp_y是40倍镜下的坐标
         amp = self.Normalization_coefficient / c_scale
         sp_x = int((c_x - (nWidth >> 1)) * amp)
@@ -86,11 +86,11 @@ class Open_Slide(object):
     the original annotations in the first two group.
     '''
     def read_annotation(self, filename):
-        '''
+        """
         读取标注文件
         :param filename: 切片标注文件名
         :return:
-        '''
+        """
         self.ano = {"TUMOR": [], "NORMAL": []}
 
         # 使用minidom解析器打开 XML 文档
@@ -126,12 +126,12 @@ class Open_Slide(object):
         return
 
     def create_mask_image(self, scale, edge_width):
-        '''
+        """
         在设定的倍镜下，生成四种标注区的mask图像（NECL）
         :param scale: 指定的倍镜数
         :param edge_width: 边缘区单边宽度
         :return: 对应的Mask图像
-        '''
+        """
         w, h = self.get_image_width_height_byScale(scale)
         '''
         癌变区代号 C， ano_TUMOR，将对应的标记区域，再腐蚀width宽。

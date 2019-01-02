@@ -11,17 +11,17 @@ import numpy as np
 from core import *
 from transfer import Transfer
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "D:\code\python\Pathological-images\config\myConfig.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
-SAMPLE_FIlENAME = "T_NC_500_128"
+SAMPLE_FIlENAME = "T_NC_2000_256"
 # SAMPLE_FIlENAME = "T_NC_2000_256"
 # SAMPLE_FIlENAME = "T_NC_4000_256"
 
 # PATCH_TYPE = "4000_256"
 # PATCH_TYPE = "2000_256"
-PATCH_TYPE = "500_128"
+PATCH_TYPE = "S20"
 
 
 # MODEL_NAME = "inception_v3"
@@ -34,6 +34,7 @@ MODEL_NAME = "densenet121"
 # MODEL_NAME = "mobilenet_v2"
 # MODEL_NAME = "nasnet"
 # MODEL_NAME = ""
+
 
 class Test_transfer(unittest.TestCase):
 
@@ -124,19 +125,19 @@ class Test_transfer(unittest.TestCase):
         cnn.fine_tuning_top_cnn_model_saved_file(train_file, test_file,
                                                  batch_size=None, epochs=500, initial_epoch=0)
 
-
     def test_merge_save_model(self):
         c = Params()
         c.load_config_file(JSON_PATH)
-        cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-        cnn.merge_save_model()
+        for i in ['S20', 'S40']:
+            cnn = Transfer(c, MODEL_NAME, i)
+            cnn.merge_save_model()
 
     def test_evaluate_entire_cnn_model(self):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
 
-        model_file = "{}/models/trained/{}".format(c.PROJECT_ROOT, "densenet121_500_128_0045-0.1972-0.9267.h5")
+        model_file = "{}/models/{}".format(c.PROJECT_ROOT, "densenet121_S20_merge_cnn.h5")
         cnn.evaluate_entire_cnn_model(SAMPLE_FIlENAME, 100, model_file)
 
     def test_evaluate_cnn_svm_rf_model(self):
@@ -150,14 +151,14 @@ class Test_transfer(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         cnn = Transfer(c, MODEL_NAME, PATCH_TYPE)
-        model = cnn.load_model(mode = 0)
-        model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
+        model = cnn.load_model(mode = 999, model_file='D:/code/python/Pathological-images/models/densenet121_S20_merge_cnn.h5')
+        # model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
 
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_004.tif",
-                                 None, "Tumor_004")
+        tag = imgCone.open_slide("D:/code/dataset/camelyon16/Tumor_003.tif",
+                                 None, "Tumor_003")
         seeds = [(34880, 48960), (36224, 49920), (13312, 57856)]  # C, C, S
         result = cnn.predict(model, imgCone, 20, 256, seeds)
         print(result)

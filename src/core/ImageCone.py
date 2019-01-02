@@ -28,14 +28,12 @@ class ImageCone(object):
         :param id_string: 切片编号
         :return: 是否成功打开切片
         '''
-        path = "{}/{}".format(self._params.SLICES_ROOT_PATH, filename)
         self.slice_id = id_string
-        tag = self._slide.open_slide(path, id_string)
+        tag = self._slide.open_slide(filename, id_string)
 
         if tag:
             if not ano_filename is None:
-                path = "{}/{}".format(self._params.SLICES_ROOT_PATH, ano_filename)
-                self._slide.read_annotation(path)
+                self._slide.read_annotation(ano_filename)
 
             return True
 

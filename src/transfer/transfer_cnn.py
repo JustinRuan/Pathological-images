@@ -381,7 +381,7 @@ class Transfer(object):
         checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         checkpoint_path = checkpoint_dir + "/cp-{epoch:04d}-{val_loss:.4f}-{val_acc:.4f}.h5"
 
-        cp_callback = tf.keras.callbacks.ModelCheckpoint(
+        cp_callback = keras.callbacks.ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=False,
             period=1)
         early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
@@ -405,11 +405,11 @@ class Transfer(object):
         当训练好的Top部分与前端的网络进行融合，并存盘
         :return:
         '''
-        checkpoint_dir = "{}/models/{}_{}_top".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
-        latest_top = util.latest_checkpoint(checkpoint_dir)
+        checkpoint_dir = "{}/{}_cnn_{}.h5".format(self._params.PROJECT_ROOT, self.patch_type, self.model_name)
+        # latest_top = util.latest_checkpoint(checkpoint_dir)
 
         full_model = self.create_initial_model()
-        full_model.load_weights(latest_top, by_name=True)
+        full_model.load_weights(checkpoint_dir, by_name=True)
 
         best_model_path = "{}/models/{}_{}_merge_cnn.h5".format(self._params.PROJECT_ROOT, self.model_name,
                                                            self.patch_type)
@@ -506,7 +506,7 @@ class Transfer(object):
             block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
             img = block.get_img()
 
-            x = image.img_to_array(resize(ImageNormalization.normalize_mean(img)),
+            x = image.img_to_array(resize(ImageNormalization.normalize_mean(img), (224, 224, 3)),
                                    (self.input_image_size, self.input_image_size))
             x = np.expand_dims(x, axis=0)
             # x = preprocess_input(x) //训练时没有使用预处理，这里也不能调用
@@ -530,7 +530,7 @@ class Transfer(object):
         '''
         image_itor = SeedSequence(src_img, scale, patch_size, self.input_image_size, seeds, batch_size)
 
-        predictions = model.predict_generator(image_itor, verbose=1, workers=self.NUM_WORKERS)
+        predictions = model.predict_generator(image_itor, verbose=1)
         result = []
         for pred_dict in predictions:
             class_id = np.argmax(pred_dict)

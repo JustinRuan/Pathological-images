@@ -5,12 +5,12 @@ __author__ = 'Justin'
 __mtime__ = '2018-10-26'
 
 """
+from cnn.cnn_classifier import CNN_Classifier
 import numpy as np
 from sklearn import metrics
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds
 from transfer import Transfer
-from cnn import CNN_Classifier
 
 
 class Detector(object):
@@ -80,29 +80,30 @@ class Detector(object):
         :return: 图块中心点集，预测的结果
         '''
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
+        import cv2
+        # img = cv2.Sobel(self._imgCone)
         seeds = self.get_points_detected_area(extract_scale, patch_size, interval)
 
         #####################################################################################################
         #    Transfer Learning
         #####################################################################################################
         cnn = Transfer(self._params, "densenet121", "500_128")
-        model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                   "densenet121_500_128_0045-0.1972-0.9267.h5")
+        model_path = "{}/models/{}".format(self._params.PROJECT_ROOT,
+                                                   "densenet121_S{}_merge_cnn.h5".format(extract_scale))
         model = cnn.load_model(mode = 999, model_file=model_path)
         #########################################################################################################
 
         ########################################################################################################\
         #    DenseNet 22
         #########################################################################################################
-        cnn = CNN_Classifier(self._params, "densenet_22", "500_128")
-        model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                   "densenet121_500_128_0045-0.1972-0.9267.h5")
-        model = cnn.load_model(model_file=model_path)
+        # cnn = CNN_Classifier(self._params, "densenet_22", "500_128")
+        # model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
+        #                                            "densenet121_500_128_0045-0.1972-0.9267.h5")
+        # model = cnn.load_model(model_file=model_path)
         #########################################################################################################
         model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
         # model.compile(optimizer="RMSprop", loss='categorical_crossentropy')
         predictions = cnn.predict_on_batch(model, self._imgCone, extract_scale, patch_size, seeds, 100)
-
         return seeds, predictions
 
     def detect_region_detailed(self, seeds, predictions, seeds_scale, original_patch_size, new_scale, new_patch_size):
@@ -113,29 +114,29 @@ class Detector(object):
         #####################################################################################################
         if (new_scale == 20):
             cnn = Transfer(self._params, "densenet121", "2000_256")
-            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                       "densenet121_2000_256_0052-0.0752-0.9745.h5")
+            model_path = "{}/models/{}".format(self._params.PROJECT_ROOT,
+                                                       "densenet121_S20_merge_cnn.h5")
             model = cnn.load_model(mode = 999, model_file=model_path)
         else: # (new_scale == 40):
             cnn = Transfer(self._params, "densenet121", "4000_256")
-            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                       "densenet121_4000_256_0042-0.2115-0.9157.h5")
+            model_path = "{}/models/{}".format(self._params.PROJECT_ROOT,
+                                                       "densenet121_S40_merge_cnn.h5")
             model = cnn.load_model(mode=999, model_file=model_path)
         #########################################################################################################
 
         ########################################################################################################\
         #    DenseNet 22
         #########################################################################################################
-        if (new_scale == 20):
-            cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
-            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                       "densenet121_500_128_0045-0.1972-0.9267.h5")
-            model = cnn.load_model(model_file=model_path)
-        else: # (new_scale == 40):
-            cnn = CNN_Classifier(self._params, "densenet_22", "4000_256")
-            model_path = "{}/models/trained/{}".format(self._params.PROJECT_ROOT,
-                                                       "densenet121_500_128_0045-0.1972-0.9267.h5")
-            model = cnn.load_model(model_file=model_path)
+        # if (new_scale == 20):
+        #     cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
+        #     model_path = "{}/models/{}".format(self._params.PROJECT_ROOT,
+        #                                                "densenet121_S20_merge_cnn.h5")
+        #     model = cnn.load_model(model_file=model_path)
+        # else: # (new_scale == 40):
+        #     cnn = CNN_Classifier(self._params, "densenet_22", "4000_256")
+        #     model_path = "{}/models/{}".format(self._params.PROJECT_ROOT,
+        #                                                "densenet121_S40_merge_cnn.h5")
+        #     model = cnn.load_model(model_file=model_path)
         #########################################################################################################
         model.compile(optimizer="RMSprop", loss='categorical_crossentropy', metrics=['accuracy'])
         # model.compile(optimizer="RMSprop", loss='categorical_crossentropy')

@@ -10,19 +10,14 @@ import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0" #GPU
 # os.environ['CUDA_VISIBLE_DEVICES'] = "-1" #CPU
 
-import math
 import numpy as np
-import tensorflow as tf
 import keras
-from keras import regularizers
-from keras.callbacks import TensorBoard
-from keras.layers import Dense, GlobalAveragePooling2D, Flatten, Conv2D, MaxPooling2D, Dropout
-from keras.models import Model, Sequential, load_model
-from keras.optimizers import SGD, RMSprop
+from keras.models import load_model
+from keras.optimizers import RMSprop
 from keras.preprocessing import image
 from keras.utils import to_categorical
 from sklearn import metrics
-from skimage import io, util
+from skimage import util
 from core import *
 from core.seed_sequence import SeedSequence
 from core.image_sequence import ImageSequence
@@ -32,8 +27,8 @@ from preparation.normalization import ImageNormalization
 from keras.datasets import cifar10
 from keras.datasets import cifar100
 
-from .net.simple_cnn import create_simple_cnn
-from .net.densenet import create_densenet_40, create_densenet_22
+from cnn.net.simple_cnn import create_simple_cnn
+from cnn.net.densenet import create_densenet_40, create_densenet_22
 
 
 class CNN_Classifier(object):
@@ -43,7 +38,7 @@ class CNN_Classifier(object):
         self._params = params
         self.model_name = model_name
         self.patch_type = patch_type
-        self.NUM_WORKERS = params.NUM_WORKERS
+        # self.NUM_WORKERS = params.NUM_WORKERS
 
         if self.patch_type == "500_128":
             self.num_classes = 2
@@ -223,9 +218,9 @@ class CNN_Classifier(object):
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         print(model.summary())
 
-        image_itor = SeedSequence(src_img, scale, patch_size, seeds, batch_size)
+        image_itor = SeedSequence(src_img, scale, patch_size, 224, seeds, batch_size)
 
-        predictions = model.predict_generator(image_itor, verbose=1, workers=self.NUM_WORKERS)
+        predictions = model.predict_generator(image_itor, verbose=1)
         result = []
         for pred_dict in predictions:
             class_id = np.argmax(pred_dict)

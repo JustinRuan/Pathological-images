@@ -38,5 +38,5 @@ class SeedSequence(Sequence):
             img_list.append(img)
 
         return np.array([
-                resize(ImageNormalization.normalize_mean(img),(self.output_size, self.output_size))
+                resize(img, (self.output_size, self.output_size, 3))
                 for img in img_list])
