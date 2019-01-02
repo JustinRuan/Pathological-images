@@ -15,26 +15,22 @@ from skimage.io import imread
 from preparation.normalization import ImageNormalization
 from skimage.transform import resize
 
-class Image_Dataset(Dataset):
-    def __init__(self, x_set, y_set, transform = None):
-        self.x, self.y = x_set, y_set
-        if transform is None:
-            self.transform = torchvision.transforms.ToTensor()
-        else:
-            self.transform = transform
+
+class Image_Dataset2(Dataset):
+    def __init__(self, x_set, y_set, y2_set):
+        self.x, self.y ,self.y2 = x_set, y_set,y2_set
+        self.transform = torchvision.transforms.ToTensor()
 
     def __getitem__(self, index):
         file_name = self.x[index]
-        label = self.y[index]
+        label1 = self.y[index]
+        label2 = self.y2[index]
         # img = ImageNormalization.normalize_mean(imread(file_name)) / 255
         img = imread(file_name) / 255
-        # transform = torchvision.transforms.Resize((256, 256)),
-
         if img.shape==(128,128,3):
             img=resize(img, (256,256,3))
-            # print(img.shape)
         img = self.transform(img).type(torch.FloatTensor)
-        return img, label
+        return img, [label1, label2]
 
     def __len__(self):
         return len(self.x)

@@ -58,6 +58,8 @@ class ImageSequence(Sequence):
         #         for file_name in batch_x]), to_categorical(batch_y, self.num_classes)
 
         # resize 太费时间，暂时先不用，提高程序调试的效率
-        return np.array([
-                ImageNormalization.normalize_mean(imread(file_name))
-                for file_name in batch_x]), to_categorical(batch_y, self.num_classes)
+        # return np.array([
+        #         ImageNormalization.normalize_mean(imread(file_name))
+        #         for file_name in batch_x]), to_categorical(batch_y, self.num_classes)
+
+        return np.array([imread(file_name) for file_name in batch_x]), to_categorical(batch_y, self.num_classes)

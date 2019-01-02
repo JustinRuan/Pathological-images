@@ -38,7 +38,7 @@ class CNN_Classifier(object):
         self._params = params
         self.model_name = model_name
         self.patch_type = patch_type
-        self.NUM_WORKERS = params.NUM_WORKERS
+        # self.NUM_WORKERS = params.NUM_WORKERS
 
         if self.patch_type == "500_128":
             self.num_classes = 2

@@ -56,7 +56,7 @@ class SLICProcessor(object):
             w = self.S / 2
             h += self.S
 
-    # 这也属于初始化聚类中心的改进，将从一个3*3 的矩阵中找一个梯度最小的点，作为于初始化的聚类中心
+    # 这也属于初始化聚类中心的改进，将从一个3*3 的矩阵中个梯找一度最小的点，作为于初始化的聚类中心
     def move_clusters(self):
         for cluster in self.clusters:
             cluster_gradient = self.get_gradient(cluster.h, cluster.w)

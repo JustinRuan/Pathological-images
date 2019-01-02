@@ -7,5 +7,6 @@ __mtime__ = '2018-12-13'
 """
 from . import cnn_classifier
 from . import image_dataset
+from . import image_dataset2
 from . import detector
 from . import util

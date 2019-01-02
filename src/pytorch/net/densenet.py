@@ -94,7 +94,7 @@ class DenseNet(nn.Module):
     #              num_classes=10, small_inputs=True, efficient=False):
     def __init__(self, growth_rate=12, block_config=(16, 16, 16), compression=0.5,
                  num_init_features=24, bn_size=4, drop_rate=0,
-                 num_classes=10, small_inputs=True, avgpool_size = 8, efficient=False):
+                 num_classes=2, small_inputs=True, avgpool_size = 8, efficient=False,MultiTask = False):
 
         super(DenseNet, self).__init__()
         assert 0 < compression <= 1, 'compression of densenet should be between 0 and 1'
@@ -102,7 +102,7 @@ class DenseNet(nn.Module):
         # 我改成 全局的平均池化
         # self.avgpool_size = 8 if small_inputs else 7
         self.avgpool_size = avgpool_size # 对32x32的图块设为8，对128x128的图块设为7， 对128x128的图块设为14，
-
+        self.MultiTask =MultiTask
         # First convolution
         if small_inputs:
             self.features = nn.Sequential(OrderedDict([
@@ -140,7 +140,16 @@ class DenseNet(nn.Module):
         self.features.add_module('norm_final', nn.BatchNorm2d(num_features))
 
         # Linear layer
-        self.classifier = nn.Linear(num_features, num_classes)
+
+
+        if self.MultiTask:
+            self.out = nn.ModuleList()
+            self.classifier = nn.Linear(num_features, num_classes)
+            self.classifier2 = nn.Linear(num_features, 3)
+            self.out.append(self.classifier)
+            self.out.append(self.classifier2)
+        else:
+            self.classifier = nn.Linear(num_features, num_classes)
 
         # Initialization
         for name, param in self.named_parameters():
@@ -155,8 +164,17 @@ class DenseNet(nn.Module):
                 param.data.fill_(0)
 
     def forward(self, x):
+
         features = self.features(x)
-        out = F.relu(features, inplace=True)
-        out = F.avg_pool2d(out, kernel_size=self.avgpool_size).view(features.size(0), -1)
-        out = self.classifier(out)
+
+        if self.MultiTask:
+            output = F.relu(features, inplace=True)
+            output = F.avg_pool2d(output, kernel_size=self.avgpool_size).view(features.size(0), -1)
+            out1 = self.out[0](output)
+            out2 = self.out[1](output)
+            out = [out1, out2]
+        else:
+            out = F.relu(features, inplace=True)
+            out = F.avg_pool2d(out, kernel_size=self.avgpool_size).view(features.size(0), -1)
+            out = self.classifier(out)
         return out

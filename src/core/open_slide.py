@@ -7,6 +7,8 @@ __mtime__ = '2018-11-13'
 """
 # import os
 # os.environ['PATH'] = r"C:\openslide\bin" + ";" + os.environ['PATH'] # 一定要路径加到前面去
+import os
+os.environ['PATH'] = "C:/openslide/bin" + ";" + os.environ['PATH'] # 一定要路径加到前面去
 
 import numpy as np
 import math
