@@ -16,8 +16,10 @@ import torchvision.transforms as transforms
 import torchvision
 from torch.autograd import Variable
 from .net.ae import Autoencoder, VAE, CAE
-from core.util import latest_checkpoint
+from core.util import latest_checkpoint, read_csv_file
 from torchsummary import summary
+from pytorch.image_dataset import Image_Dataset
+from skimage.io import imread
 
 ##################################################################################################################
 # Reconstruction + KL divergence losses summed over all elements and batch
@@ -35,7 +37,7 @@ def variational_loss_function(recon_x, x, mu, logvar):
 
 ################################################################################################################
 lam = 1e-4
-mse_loss = nn.BCELoss(size_average = False)
+mse_loss = nn.BCELoss(reduction = "sum")
 # contractive autoencoder, CAE
 def contractive_loss_function(W, x, recons_x, h, lam):
     """Compute the Contractive AutoEncoder Loss
@@ -73,6 +75,23 @@ def contractive_loss_function(W, x, recons_x, h, lam):
     return mse + contractive_loss.mul_(lam)
 
 ###################################################################################################################
+RHO = 0.01
+# Sparse Autoencoder
+def sparse_loss_function(z):
+    p = torch.FloatTensor([RHO for _ in range(len(z[0]))]).unsqueeze(0)
+    p = p.to(z.device)
+    q = torch.sum(z, dim=0, keepdim=True)
+
+    p = F.softmax(p)
+    q = F.softmax(q)
+
+    s1 = torch.sum(p * torch.log(p / q))
+    s2 = torch.sum((1 - p) * torch.log((1 - p) / (1 - q)))
+    sparsity_penalty = s1 + s2
+
+    return sparsity_penalty
+
+###################################################################################################################
 
 class Encoder(object):
     def __init__(self, params, model_name, patch_type, out_dim = 32):
@@ -90,11 +109,16 @@ class Encoder(object):
         if self.patch_type == "cifar10":
             self.out_dim = out_dim
             self.image_size = 32
+        elif self.patch_type == "AE_500_32":
+            self.out_dim = out_dim
+            self.image_size = 32
 
         self.model_root = "{}/models/pytorch/{}_{}_{}".format(self._params.PROJECT_ROOT, self.model_name,
                                                                  self.patch_type, self.out_dim)
 
         self.use_GPU = True
+        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
 
     def create_initial_model(self):
         '''
@@ -109,6 +133,9 @@ class Encoder(object):
             model = VAE(self.out_dim)
         # contractive convolutional Auto-Encoder
         elif self.model_name == "ccae":
+            model = CAE(self.out_dim)
+        # Sparse convolutional Autoencoder
+        elif self.model_name == "scae":
             model = CAE(self.out_dim)
 
         return model
@@ -158,6 +185,11 @@ class Encoder(object):
                 transform=transform,
                 download=False
             )
+        elif self.patch_type == "AE_500_32":
+            # data_list = "{}/{}.txt".format(self._params.PATCHS_ROOT_PATH, "AE_500_32")
+            # Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, data_list)
+            # train_data = Image_Dataset(Xtrain, Ytrain)
+            train_data = self.load_custom_data_to_memory(self.patch_type)
 
         # Data loader
         data_loader = torch.utils.data.DataLoader(dataset=train_data,
@@ -167,14 +199,17 @@ class Encoder(object):
         model = self.load_model()
         summary(model, input_size=(3, self.image_size, self.image_size), device="cpu")
 
-        if self.use_GPU:
-            model.cuda()
+        # if self.use_GPU:
+        #     model.cuda()
+        model.to(self.device)
 
         # criterion = nn.BCELoss()
-        if self.model_name == "cae":
+        if self.model_name in ["cae"]:
             criterion = nn.BCELoss(reduction='mean')
         elif self.model_name in ["vcae", "ccae"]:
             criterion = None
+        elif self.model_name in ["scae"]:
+            criterion = nn.MSELoss(reduction='mean')
 
         display_criterion = nn.MSELoss() # 附加信息显示用,不计入BP过程
 
@@ -195,10 +230,11 @@ class Encoder(object):
 
         save_step = iter_per_epoch - 1
 
-        if self.use_GPU:
-            fixed_x = Variable(fixed_x).cuda()
-        else:
-            fixed_x = Variable(fixed_x)
+        # if self.use_GPU:
+        #     fixed_x = Variable(fixed_x).cuda()
+        # else:
+        #     fixed_x = Variable(fixed_x)
+        fixed_x = Variable(fixed_x.to(self.device))
 
         for epoch in range(epochs):
             print('Epoch {}/{}'.format(epoch + 1, epochs))
@@ -208,10 +244,11 @@ class Encoder(object):
             total_loss = 0
             total_loss2 = 0
             for i, (x, _) in enumerate(data_loader):
-                if self.use_GPU:
-                    b_x = Variable(x).cuda()  # batch x
-                else:
-                    b_x = Variable(x)  # batch x
+                # if self.use_GPU:
+                #     b_x = Variable(x).cuda()  # batch x
+                # else:
+                #     b_x = Variable(x)  # batch x
+                b_x = Variable(x.to(self.device))
 
                 if self.model_name == "cae":
                     out = model(b_x)
@@ -227,6 +264,10 @@ class Encoder(object):
                     loss = contractive_loss_function(W, b_x.view(-1, self.image_size*self.image_size), recons_x,
                                          hidden_representation, lam)
                     loss2 = display_criterion(recons_x, b_x)
+                elif self.model_name == "scae":
+                    hidden_representation, recons_x = model(b_x)
+                    loss = criterion(recons_x, b_x) + 3 * sparse_loss_function(hidden_representation)
+                    loss2 = display_criterion(recons_x, b_x)
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -235,9 +276,11 @@ class Encoder(object):
                 if self.model_name == "cae":
                     running_loss = loss.item() * b_x.size(0)
                 elif self.model_name == "vcae":
-                    running_loss = loss.item() / b_x.size(0)
+                    running_loss = loss.item()
                 elif self.model_name == "ccae":
-                    running_loss = loss.item() / b_x.size(0)
+                    running_loss = loss.item()
+                elif self.model_name == "scae":
+                    running_loss = loss.item() * b_x.size(0)
 
                 total_loss += running_loss
 
@@ -252,6 +295,8 @@ class Encoder(object):
                         reconst_images, _, _ = model(fixed_x)
                     elif self.model_name == "ccae":
                         _, reconst_images = model(b_x)
+                    elif self.model_name == "scae":
+                        _, reconst_images = model(b_x)
 
                     torchvision.utils.save_image(reconst_images.data.cpu(),
                                                  pic_path + '/reconst_images_{:04d}_{:06d}.png'.format(epoch + 1, i + 1))
@@ -262,6 +307,21 @@ class Encoder(object):
             epoch_loss2 = total_loss2 / iter_per_epoch
             torch.save(model.state_dict(),
                            self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss, epoch_loss2))
+
+    def load_custom_data_to_memory(self, samples_name):
+        data_list = "{}/{}.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, data_list)
+        # train_data = Image_Dataset(Xtrain, Ytrain)
+        img_data = []
+        for file_name in Xtrain:
+            img = imread(file_name) / 255
+            img_data.append(img)
+
+        img_numpy = np.array(img_data).transpose((0, 3, 1, 2))
+        label_numpy = np.array(Ytrain)
+        train_data = torch.utils.data.TensorDataset(torch.from_numpy(img_numpy).float(),
+                                                    torch.from_numpy(label_numpy).long())
+        return train_data
 
     def extract_feature(self, image_itor, seeds_num, batch_size):
         '''

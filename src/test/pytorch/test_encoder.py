@@ -47,6 +47,16 @@ class Test_encoder(unittest.TestCase):
         ae = Encoder(c, model_name, sample_name)
         ae.train_ae(batch_size=64, epochs = 50)
 
+    def test_train_model4(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "scae"
+        sample_name = "AE_500_32"
+
+        ae = Encoder(c, model_name, sample_name, out_dim = 300)
+        ae.train_ae(batch_size=64, epochs = 50)
+
     def test_extract_feature(self):
         c = Params()
         c.load_config_file(JSON_PATH)

@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 from skimage.io import imread
 from core.util import read_csv_file
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
+# JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class TestPatchPack(unittest.TestCase):
 
@@ -82,6 +82,17 @@ class TestPatchPack(unittest.TestCase):
         data_tag = pack.initialize_sample_tags({"S500_128_cancer":1,"S500_128_normal":0})
         pack.create_train_test_data(data_tag, 0.8, 0.2, "T_NC_500_128")
         pack.create_data_txt(data_tag, "T_NC_500_128")
+
+    #################################################################################################################
+    ####################  5 x 32  ############################
+    ##################################################################################################################
+    def test_pack_sample_32(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        pack = PatchPack(c)
+        data_tag = pack.initialize_sample_tags({"S500_32_cancer":1,"S500_32_normal":0})
+        pack.create_data_txt(data_tag, "AE_500_32")
 
     def test_extract_features_save_file(self):
         c = Params()

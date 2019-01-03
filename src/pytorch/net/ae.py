@@ -78,7 +78,7 @@ from torch.autograd import Variable
 class Autoencoder(nn.Module):
     def __init__(self, out_dim):
         super(Autoencoder, self).__init__()
-        intermediate_size = 128
+        intermediate_size = 512
 
         # Encoder
         # output_size = 1 + (input_size + 2*padding - kernel_size)/stride
