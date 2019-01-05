@@ -218,6 +218,7 @@ class Encoder(object):
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, verbose = True,
                                                                factor=0.1)  # mode为min，则loss不下降学习率乘以factor，max则反之
         iter_per_epoch = len(data_loader)
+        data_size = len(train_data)
 
         data_iter = iter(data_loader)
         # save fixed inputs for debugging
@@ -294,17 +295,17 @@ class Encoder(object):
                     elif self.model_name == "vcae":
                         reconst_images, _, _ = model(fixed_x)
                     elif self.model_name == "ccae":
-                        _, reconst_images = model(b_x)
+                        _, reconst_images = model(fixed_x)
                     elif self.model_name == "scae":
-                        _, reconst_images = model(b_x)
+                        _, reconst_images = model(fixed_x)
 
                     torchvision.utils.save_image(reconst_images.data.cpu(),
                                                  pic_path + '/reconst_images_{:04d}_{:06d}.png'.format(epoch + 1, i + 1))
 
             scheduler.step(total_loss)
 
-            epoch_loss = total_loss / iter_per_epoch
-            epoch_loss2 = total_loss2 / iter_per_epoch
+            epoch_loss = total_loss / data_size
+            epoch_loss2 = total_loss2 / data_size
             torch.save(model.state_dict(),
                            self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss, epoch_loss2))
 
