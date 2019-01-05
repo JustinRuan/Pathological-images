@@ -87,6 +87,38 @@ def latest_checkpoint(search_dir):
     path = "{}/{}".format(search_dir, result.iloc[0,0])
     return path
 
+def clean_checkpoint(search_dir, best_number = 10):
+    filename = []
+    epoch = []
+    loss = []
+    accuracy = []
+
+    for ckpt_name in os.listdir(search_dir):
+        file_name = os.path.splitext(ckpt_name)[0]
+        value = file_name.split("-")
+        if len(value) == 4:
+            filename.append(ckpt_name)
+            epoch.append(int(value[1]))
+            loss.append(float(value[2]))
+            accuracy.append(float(value[3]))
+
+    if len(filename) <=  best_number: return None
+
+    data = {'filename':filename, 'epoch':epoch, 'loss':loss, 'accuracy':accuracy}
+    df = pd.DataFrame(data, columns=['filename','epoch','loss','accuracy'])
+    result = df.sort_values(['loss', 'accuracy', 'epoch'], ascending=[True, False, False])
+
+    for ckpt_name in result.iloc[best_number:, 0]:
+        path = "{}/{}".format(search_dir, ckpt_name)
+        print("deleted", path)
+        os.remove(path)
+    #     print(path)
+    #
+    # for ckpt_name in result.iloc[:best_number, 0]:
+    #     path = "{}/{}".format(search_dir, ckpt_name)
+    #     # os.remove(path
+    #     print("best -> ",path)
+
 def transform_coordinate(x1, y1, coordinate_scale, seeds_scale, target_scale, seeds):
     '''
     将图块中心坐标变换到新的坐标系中。 新坐标系的原点为检测区域的左上角，所处的倍镜为target_scale

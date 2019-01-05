@@ -16,7 +16,7 @@ import torchvision.transforms as transforms
 import torchvision
 from torch.autograd import Variable
 from pytorch.net import Autoencoder, VAE, CAE
-from core.util import latest_checkpoint, read_csv_file
+from core.util import latest_checkpoint, read_csv_file, clean_checkpoint
 from torchsummary import summary
 from pytorch.image_dataset import Image_Dataset
 from skimage.io import imread
@@ -518,3 +518,5 @@ class EncoderFactory(object):
             # epoch_loss2 = total_loss2 / data_size
 
             self.save_adversarial_model(Q_encoder, P_decoder, D_guess, epoch, epoch_loss, epoch_loss)
+
+        clean_checkpoint(self.model_root, best_number=10)

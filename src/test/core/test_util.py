@@ -16,3 +16,7 @@ class TestUtil(unittest.TestCase):
         result = util.latest_checkpoint("D:/CloudSpace/WorkSpace/PatholImage/models/simplenet128_W1")
         print(result)
 
+
+
+    def test_clean_checkpoint(self):
+        util.clean_checkpoint("D:/CloudSpace/WorkSpace/PatholImage/models/pytorch/scae_AE_500_32_300", best_number=10)
