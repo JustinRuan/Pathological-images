@@ -15,11 +15,12 @@ import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 import torchvision
 from torch.autograd import Variable
-from .net.ae import Autoencoder, VAE, CAE
+from pytorch.net import Autoencoder, VAE, CAE
 from core.util import latest_checkpoint, read_csv_file
 from torchsummary import summary
 from pytorch.image_dataset import Image_Dataset
 from skimage.io import imread
+from pytorch.net import Encoder, Decoder, Discriminator
 
 ##################################################################################################################
 # Reconstruction + KL divergence losses summed over all elements and batch
@@ -93,7 +94,7 @@ def sparse_loss_function(z):
 
 ###################################################################################################################
 
-class Encoder(object):
+class EncoderFactory(object):
     def __init__(self, params, model_name, patch_type, out_dim = 32):
         '''
         初始化
@@ -107,14 +108,14 @@ class Encoder(object):
         self.NUM_WORKERS = params.NUM_WORKERS
 
         if self.patch_type == "cifar10":
-            self.out_dim = out_dim
+            self.latent_vector_dim = out_dim
             self.image_size = 32
         elif self.patch_type == "AE_500_32":
-            self.out_dim = out_dim
+            self.latent_vector_dim = out_dim
             self.image_size = 32
 
         self.model_root = "{}/models/pytorch/{}_{}_{}".format(self._params.PROJECT_ROOT, self.model_name,
-                                                                 self.patch_type, self.out_dim)
+                                                              self.patch_type, self.latent_vector_dim)
 
         self.use_GPU = True
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -127,16 +128,16 @@ class Encoder(object):
         '''
         # convolutional Auto-Encoder
         if self.model_name == "cae":
-            model = Autoencoder(self.out_dim)
+            model = Autoencoder(self.latent_vector_dim)
         # Variational convolutional Auto-Encoder
         elif self.model_name == "vcae":
-            model = VAE(self.out_dim)
+            model = VAE(self.latent_vector_dim)
         # contractive convolutional Auto-Encoder
         elif self.model_name == "ccae":
-            model = CAE(self.out_dim)
+            model = CAE(self.latent_vector_dim)
         # Sparse convolutional Autoencoder
         elif self.model_name == "scae":
-            model = CAE(self.out_dim)
+            model = CAE(self.latent_vector_dim)
 
         return model
 
@@ -163,13 +164,7 @@ class Encoder(object):
 
         return model
 
-    def train_ae(self, batch_size=100, epochs=20):
-        '''
-        训练编码器
-        :param batch_size: 每批的图片数量
-        :param epochs: epoch数
-        :return:
-        '''
+    def load_train_data(self):
         data_root = os.path.join(os.path.expanduser('~'), '.keras/datasets/')  # 共用Keras下载的数据
 
         transform = transforms.Compose([
@@ -190,6 +185,17 @@ class Encoder(object):
             # Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, data_list)
             # train_data = Image_Dataset(Xtrain, Ytrain)
             train_data = self.load_custom_data_to_memory(self.patch_type)
+
+        return train_data
+
+    def train_ae(self, batch_size=64, epochs=20):
+        '''
+        训练编码器
+        :param batch_size: 每批的图片数量
+        :param epochs: epoch数
+        :return:
+        '''
+        train_data = self.load_train_data()
 
         # Data loader
         data_loader = torch.utils.data.DataLoader(dataset=train_data,
@@ -287,7 +293,7 @@ class Encoder(object):
 
                 running_loss2 = loss2.item() * b_x.size(0)
                 total_loss2 += running_loss2
-                print('%d / %d ==> Loss: %.4f |  Loss: %.4f'  % (i, iter_per_epoch, running_loss, running_loss2))
+                print('%d / %d ==> Loss: %.4f | MSE Loss: %.4f'  % (i, iter_per_epoch, running_loss, running_loss2))
 
                 if (i+1) % save_step == 0:
                     if self.model_name == "cae":
@@ -356,3 +362,159 @@ class Encoder(object):
             print('encoding => %d / %d ' % (step + 1, data_len))
 
         return  results
+
+##################################################################################################################
+#######################  Adversarial Autoencoder #################################################################
+##################################################################################################################
+    def load_adversarial_model(self, model_file=None):
+        Q_encoder = Encoder(self.latent_vector_dim)
+        P_decoder = Decoder(self.latent_vector_dim)
+        D_guess = Discriminator(self.latent_vector_dim)
+
+        if model_file is not None:
+            print("loading >>> ", model_file, " ...")
+            save_model = torch.load(model_file)
+            Q_encoder.load_state_dict(save_model["encoder"])
+            P_decoder.load_state_dict(save_model["decoder"])
+            D_guess.load_state_dict(save_model["guess"])
+        else:
+            checkpoint_dir = self.model_root
+            if (not os.path.exists(checkpoint_dir)):
+                os.makedirs(checkpoint_dir)
+
+            latest = latest_checkpoint(checkpoint_dir)
+            if latest is not None:
+                print("loading >>> ", latest, " ...")
+                save_model = torch.load(latest)
+                Q_encoder.load_state_dict(save_model["encoder"])
+                P_decoder.load_state_dict(save_model["decoder"])
+                D_guess.load_state_dict(save_model["guess"])
+
+        return Q_encoder, P_decoder, D_guess
+
+    def save_adversarial_model(self, encoder, decoder, guess, epoch, loss1, loss2):
+        save_filename = self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch + 1, loss1, loss2)
+        save_object = {"encoder":encoder.state_dict(),
+                       "decoder":decoder.state_dict(),
+                       "guess":guess.state_dict()}
+        torch.save(save_object, save_filename)
+
+
+    def train_adversarial_ae(self, batch_size=64, epochs=20):
+
+        train_data = self.load_train_data()
+
+        # Data loader
+        data_loader = torch.utils.data.DataLoader(dataset=train_data,
+                                                  batch_size=batch_size,
+                                                  shuffle=True)
+
+        Q_encoder, P_decoder, D_guess = self.load_adversarial_model()
+        summary(Q_encoder, input_size=(3, self.image_size, self.image_size), device="cpu")
+        summary(P_decoder, input_size=(self.latent_vector_dim,), device="cpu")
+        summary(D_guess, input_size=(self.latent_vector_dim,), device="cpu")
+
+        Q_encoder.to(self.device)
+        P_decoder.to(self.device)
+        D_guess.to(self.device)
+
+        Q_solver = torch.optim.Adam(Q_encoder.parameters(), lr=1e-3)
+        P_solver = torch.optim.Adam(P_decoder.parameters(), lr=1e-3)
+        D_solver = torch.optim.Adam(D_guess.parameters(), lr=1e-4)
+
+        iter_per_epoch = len(data_loader)
+        data_size = len(train_data)
+
+        data_iter = iter(data_loader)
+        # save fixed inputs for debugging
+        fixed_x, _ = next(data_iter)
+
+        pic_path = self.model_root + '/data'
+        if (not os.path.exists(pic_path)):
+            os.makedirs(pic_path)
+        torchvision.utils.save_image(Variable(fixed_x).data.cpu(), pic_path + '/real_images.png')
+
+        save_step = iter_per_epoch - 1
+        fixed_x = Variable(fixed_x.to(self.device))
+
+        for epoch in range(epochs):
+            print('Epoch {}/{}'.format(epoch + 1, epochs))
+            print('-' * 80)
+
+            total_loss = 0
+            # total_loss2 = 0
+            for i, (x, _) in enumerate(data_loader):
+                """ Reconstruction phase """
+                Q_encoder.train()
+                P_decoder.train()
+
+                b_x = Variable(x.to(self.device))
+
+                z_sample = Q_encoder(b_x)
+
+                X_sample = P_decoder(z_sample)
+                recon_loss = F.mse_loss(X_sample, b_x, reduction='mean')
+
+                recon_loss.backward()
+                P_solver.step()
+                Q_solver.step()
+                Q_encoder.zero_grad()
+                P_decoder.zero_grad()
+
+                # save
+                running_loss = recon_loss.item() * b_x.size(0)
+                total_loss += running_loss
+                print('%d / %d ==> Loss: %.4f | MSE  Loss: %.4f' % (i, iter_per_epoch, running_loss, running_loss))
+
+                """ Regularization phase """
+                # Discriminator
+                Q_encoder.eval()
+                D_guess.train()
+                for _ in range(5):
+                    z_real = Variable(torch.randn(batch_size, self.latent_vector_dim))
+                    z_real = z_real.to(self.device)
+
+                    z_fake = Q_encoder(b_x)
+
+                    D_real = D_guess(z_real)
+                    D_fake = D_guess(z_fake)
+
+                    # D_loss = -torch.mean(torch.log(D_real) + torch.log(1 - D_fake))
+                    D_loss = -(torch.mean(D_real) - torch.mean(D_fake))
+
+                    D_loss.backward()
+                    D_solver.step()
+
+                    # Weight clipping
+                    for p in D_guess.parameters():
+                        p.data.clamp_(-0.01, 0.01)
+
+                    Q_encoder.zero_grad()
+                    D_guess.zero_grad()
+
+                """ Generator """
+                Q_encoder.train()
+                D_guess.eval()
+
+                z_fake = Q_encoder(b_x)
+                D_fake = D_guess(z_fake)
+
+                # G_loss = -torch.mean(torch.log(D_fake))
+                G_loss = -torch.mean(D_fake)
+
+                G_loss.backward()
+                Q_solver.step()
+                Q_encoder.zero_grad()
+                D_guess.zero_grad()
+
+                # output image
+                if (i+1) % save_step == 0:
+                    reconst_images = P_decoder(Q_encoder(fixed_x))
+                    torchvision.utils.save_image(reconst_images.data.cpu(),
+                                                 pic_path + '/reconst_images_{:04d}_{:06d}.png'.format(epoch + 1, i + 1))
+
+            # save model
+            epoch_loss = total_loss / data_size
+            # epoch_loss2 = total_loss2 / data_size
+
+            self.save_adversarial_model(Q_encoder, P_decoder, D_guess, epoch, epoch_loss, epoch_loss)

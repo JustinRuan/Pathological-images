@@ -8,7 +8,7 @@ __mtime__ = '2018-12-17'
 
 import unittest
 from core import Params, ImageCone, Open_Slide
-from pytorch.encoder import Encoder
+from pytorch.encoder_factory import EncoderFactory
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
@@ -24,7 +24,7 @@ class Test_encoder(unittest.TestCase):
         model_name = "cae"
         sample_name = "cifar10"
 
-        ae = Encoder(c, model_name, sample_name, 32)
+        ae = EncoderFactory(c, model_name, sample_name, 32)
         ae.train_ae(batch_size=64, epochs = 50)
 
     def test_train_model2(self):
@@ -34,7 +34,7 @@ class Test_encoder(unittest.TestCase):
         model_name = "vcae"
         sample_name = "cifar10"
 
-        ae = Encoder(c, model_name, sample_name)
+        ae = EncoderFactory(c, model_name, sample_name)
         ae.train_ae(batch_size=64, epochs = 50)
 
     def test_train_model3(self):
@@ -44,7 +44,7 @@ class Test_encoder(unittest.TestCase):
         model_name = "ccae"
         sample_name = "cifar10"
 
-        ae = Encoder(c, model_name, sample_name)
+        ae = EncoderFactory(c, model_name, sample_name)
         ae.train_ae(batch_size=64, epochs = 50)
 
     def test_train_model4(self):
@@ -54,8 +54,18 @@ class Test_encoder(unittest.TestCase):
         model_name = "scae"
         sample_name = "AE_500_32"
 
-        ae = Encoder(c, model_name, sample_name, out_dim = 300)
+        ae = EncoderFactory(c, model_name, sample_name, out_dim = 300)
         ae.train_ae(batch_size=64, epochs = 50)
+
+    def test_train_model5(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "aae"
+        sample_name = "AE_500_32"
+
+        ae = EncoderFactory(c, model_name, sample_name, out_dim = 64)
+        ae.train_adversarial_ae(batch_size=64, epochs = 50)
 
     def test_extract_feature(self):
         c = Params()
@@ -64,5 +74,5 @@ class Test_encoder(unittest.TestCase):
         model_name = "cae"
         sample_name = "cifar10"
 
-        ae = Encoder(c, model_name, sample_name)
+        ae = EncoderFactory(c, model_name, sample_name)
         ae.extract_feature(None)

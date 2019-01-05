@@ -9,7 +9,7 @@ __mtime__ = '2018-12-19'
 import numpy as np
 from pytorch.util import get_image_blocks_itor
 from core.util import transform_coordinate
-from pytorch.encoder import Encoder
+from pytorch.encoder_factory import EncoderFactory
 from core.slic import SLICProcessor
 
 class Segmentation(object):
@@ -76,7 +76,7 @@ class Segmentation(object):
 
         img_itor = self.get_seeds_itor(global_seeds, GLOBAL_SCALE, extract_scale, patch_size, batch_size)
 
-        encoder = Encoder(self._params, "cae", "cifar10", 32)
+        encoder = EncoderFactory(self._params, "cae", "cifar10", 32)
         features = encoder.extract_feature(img_itor, len(global_seeds), batch_size)
         f_size = len(features[0])
 
