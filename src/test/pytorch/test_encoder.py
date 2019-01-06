@@ -7,6 +7,7 @@ __mtime__ = '2018-12-17'
 """
 
 import unittest
+import numpy as np
 from core import Params, ImageCone, Open_Slide
 from pytorch.encoder_factory import EncoderFactory
 
@@ -76,3 +77,37 @@ class Test_encoder(unittest.TestCase):
 
         ae = EncoderFactory(c, model_name, sample_name)
         ae.extract_feature(None)
+
+    def test_eval_latent_weight(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "cae"
+        sample_name = "AE_500_32"
+
+        ae = EncoderFactory(c, model_name, sample_name, 64)
+        result = ae.eval_latent_vector_loss(batch_size=64)
+        np.save("latent_vector_loss_{}".format(model_name), result)
+
+    def test_calc_latent_vector_weight(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "cae"
+        sample_name = "AE_500_32"
+
+        ae = EncoderFactory(c, model_name, sample_name, 64)
+        loss = np.load("latent_vector_loss_{}.npy".format(model_name))
+
+        print(loss)
+
+    def test_01(self):
+        import torch
+        x = torch.zeros(4, 5)
+
+        rnd = torch.randn(4).unsqueeze(1)
+        print("rnd, ", rnd)
+        index = np.full((4,1), 1)
+        # x.scatter_(1, torch.tensor([[1], [1], [1], [1]]), rnd)
+        x.scatter_(1, torch.from_numpy(index).long(), rnd)
+        print(x)

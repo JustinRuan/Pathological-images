@@ -147,20 +147,23 @@ class EncoderFactory(object):
         :param model_file: 指定模型的存盘文件
         :return:
         '''
-        model = self.create_initial_model()
-
-        if model_file is not None:
-            print("loading >>> ", model_file, " ...")
-            model.load_state_dict(torch.load(model_file))
+        if self.model_name == "aae":
+            model, _, _ = self.load_adversarial_model(model_file)
         else:
-            checkpoint_dir = self.model_root
-            if (not os.path.exists(checkpoint_dir)):
-                os.makedirs(checkpoint_dir)
+            model = self.create_initial_model()
 
-            latest = latest_checkpoint(checkpoint_dir)
-            if latest is not None:
-                print("loading >>> ", latest, " ...")
-                model.load_state_dict(torch.load(latest))
+            if model_file is not None:
+                print("loading >>> ", model_file, " ...")
+                model.load_state_dict(torch.load(model_file))
+            else:
+                checkpoint_dir = self.model_root
+                if (not os.path.exists(checkpoint_dir)):
+                    os.makedirs(checkpoint_dir)
+
+                latest = latest_checkpoint(checkpoint_dir)
+                if latest is not None:
+                    print("loading >>> ", latest, " ...")
+                    model.load_state_dict(torch.load(latest))
 
         return model
 
@@ -344,24 +347,75 @@ class EncoderFactory(object):
 
         summary(ae, input_size=(3, self.image_size, self.image_size), device="cpu")
 
-        if self.use_GPU:
-            ae.cuda()
+        # if self.use_GPU:
+        #     ae.cuda()
+        ae.to(self.device)
         ae.eval()
 
         data_len = seeds_num // batch_size + 1
         results = []
 
         for step, x in enumerate(image_itor):
-            if self.use_GPU:
-                b_x = Variable(x).cuda()  # batch x
-            else:
-                b_x = Variable(x)  # batch x
+            # if self.use_GPU:
+            #     b_x = Variable(x).cuda()  # batch x
+            # else:
+            #     b_x = Variable(x)  # batch x
+            b_x = Variable(x.to(self.device))
 
             output = ae.encode(b_x)
             results.extend(output.cpu().numpy())
             print('encoding => %d / %d ' % (step + 1, data_len))
 
         return  results
+
+    def eval_latent_vector_loss(self, batch_size):
+        train_data = self.load_train_data()
+
+        # Data loader
+        data_loader = torch.utils.data.DataLoader(dataset=train_data,
+                                                  batch_size=batch_size,
+                                                  shuffle=False,  drop_last=True)
+        data_size = len(data_loader) * batch_size
+
+        model = self.load_model()
+        model.to(self.device)
+        model.eval()
+
+        criterion = nn.MSELoss(reduction='mean')
+        results = []
+
+        for dim_index in range(self.latent_vector_dim):
+            # index = torch.tensor([dim_index]).to(self.device)
+            index_numpy = np.full((batch_size, 1), dim_index)
+            index = torch.from_numpy(index_numpy).long()
+            index = index.to(self.device)
+
+            total_loss = 0
+            for i, (x, _) in enumerate(data_loader):
+                b_x = Variable(x.to(self.device))
+
+                if self.model_name == "cae":
+                    h = model.encode(b_x)
+
+                    # h.index_fill_(1, index, 0)
+                    rnd = torch.randn(batch_size).unsqueeze(1).to(self.device)
+                    h.scatter_(1, index, rnd)
+
+                    out = model.decode(h)
+                    loss = criterion(out, b_x)
+
+                if self.model_name == "cae":
+                    running_loss = loss.item() * b_x.size(0)
+
+                total_loss += running_loss
+
+            avg_loss =  total_loss / data_size
+            results.append(avg_loss)
+            print('suppressing dim %d ==> MSE Loss: %.6f' % (dim_index, avg_loss))
+
+            # max_loss = np.max(results)
+            # min_loss = np.min(results)
+        return results
 
 ##################################################################################################################
 #######################  Adversarial Autoencoder #################################################################

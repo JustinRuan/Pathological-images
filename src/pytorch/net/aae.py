@@ -60,6 +60,9 @@ class Encoder(nn.Module):
         out = out.view(out.size(0), -1)
         return self.encoder_fc(out)
 
+    def encode(self, x):
+        return self.forward(x)
+
 
 class Decoder(nn.Module):
     def __init__(self, out_dim):

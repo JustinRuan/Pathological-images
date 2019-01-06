@@ -84,3 +84,36 @@ class TestSegmentation(unittest.TestCase):
 
         print(label_map.shape)
         np.save("label_map", label_map)
+
+
+    def test_4(self):
+        a = np.random.rand(8,8)
+        print(a)
+
+        b = a[::2, ::2]
+        print(b)
+
+    def test_create_superpixels_slic(self):
+        test_set = [("001", 2100, 3800, 2400, 4000),
+                    ("003", 2400, 4700, 2600, 4850)]
+        id = 1
+        roi = test_set[id]
+        slice_id = roi[0]
+        x1 = roi[1]
+        y1 = roi[2]
+        x2 = roi[3]
+        y2 = roi[4]
+
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
+                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+
+        seg = Segmentation(c, imgCone)
+        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, 1.25, 1.25, 1000, 20)
+
+        print(label_map.shape)
+        np.save("label_map_slic", label_map)

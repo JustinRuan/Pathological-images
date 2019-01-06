@@ -11,6 +11,7 @@ from pytorch.util import get_image_blocks_itor
 from core.util import transform_coordinate
 from pytorch.encoder_factory import EncoderFactory
 from core.slic import SLICProcessor
+from skimage.segmentation.slic_superpixels import slic
 
 class Segmentation(object):
     def __init__(self, params, src_image):
@@ -76,7 +77,7 @@ class Segmentation(object):
 
         img_itor = self.get_seeds_itor(global_seeds, GLOBAL_SCALE, extract_scale, patch_size, batch_size)
 
-        encoder = EncoderFactory(self._params, "cae", "cifar10", 32)
+        encoder = EncoderFactory(self._params, "aae", "AE_500_32", 64)
         features = encoder.extract_feature(img_itor, len(global_seeds), batch_size)
         f_size = len(features[0])
 
@@ -104,6 +105,25 @@ class Segmentation(object):
         label_map = slic.clusting(iter_num = iter_num, enforce_connectivity = True,
                                   min_size_factor=0.1, max_size_factor=3.0)
 
+        return label_map
+
+    def create_superpixels_slic(self, x1, y1, x2, y2, scale, extract_scale, K, M, iter_num = 10):
+
+        GLOBAL_SCALE = self._params.GLOBAL_SCALE
+
+        xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * extract_scale / scale).astype(np.int)
+        w = xx2 - xx1
+        h = yy2 - yy1
+        block = self._imgCone.get_image_block(extract_scale, int(xx1 + (w >> 1)), int(yy1 + (h >> 1)), w, h)
+        roi_img = block.get_img()
+
+        slic_map = np.array(slic(roi_img, K, M, enforce_connectivity=True, min_size_factor=0.1, max_size_factor=3))
+
+        r = int(extract_scale / GLOBAL_SCALE)
+        if r>1:
+            label_map = slic_map[::r, ::r]
+        else:
+            label_map = slic_map
         return label_map
 
 
