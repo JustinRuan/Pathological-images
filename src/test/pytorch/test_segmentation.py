@@ -113,7 +113,7 @@ class TestSegmentation(unittest.TestCase):
                                  'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
 
         seg = Segmentation(c, imgCone)
-        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, 1.25, 1.25, 1000, 20)
+        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, 1.25, 1.25, 400, 20)
 
         print(label_map.shape)
         np.save("label_map_slic", label_map)

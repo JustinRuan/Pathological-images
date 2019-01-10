@@ -15,7 +15,7 @@ import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 import torchvision
 from torch.autograd import Variable
-from pytorch.net import Autoencoder, VAE, CAE
+from pytorch.net import Autoencoder, VAE
 from core.util import latest_checkpoint, read_csv_file, clean_checkpoint
 from torchsummary import summary
 from pytorch.image_dataset import Image_Dataset
@@ -128,16 +128,16 @@ class EncoderFactory(object):
         '''
         # convolutional Auto-Encoder
         if self.model_name == "cae":
-            model = Autoencoder(self.latent_vector_dim)
+            model = Autoencoder(self.latent_vector_dim, output_z=False)
         # Variational convolutional Auto-Encoder
         elif self.model_name == "vcae":
             model = VAE(self.latent_vector_dim)
         # contractive convolutional Auto-Encoder
         elif self.model_name == "ccae":
-            model = CAE(self.latent_vector_dim)
+            model = Autoencoder(self.latent_vector_dim, output_z=True)
         # Sparse convolutional Autoencoder
         elif self.model_name == "scae":
-            model = CAE(self.latent_vector_dim)
+            model = Autoencoder(self.latent_vector_dim, output_z=True)
 
         return model
 

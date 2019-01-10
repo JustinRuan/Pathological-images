@@ -12,13 +12,6 @@ from collections import OrderedDict
 from torch.autograd import Variable
 
 
-# nc = 3 # number of channels
-# nz = 64 # size of latent vector
-# ngf = 64 # decoder (generator) filter factor
-# ndf = 64 # encoder filter factor
-# h_dim = 128 # discriminator hidden size
-# lam = 1 # regulization coefficient
-
 #  Adversarial Autoencoder
 
 class Encoder(nn.Module):
