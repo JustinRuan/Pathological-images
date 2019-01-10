@@ -154,7 +154,7 @@ class Autoencoder(nn.Module):
         z = self.encode(x)
         out = self.decode(z)
         if self.output_z:
-            return out, z
+            return z, out
         else:
             return out
 
