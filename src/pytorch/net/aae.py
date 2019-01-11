@@ -15,7 +15,7 @@ from torch.autograd import Variable
 #  Adversarial Autoencoder
 
 class Encoder(nn.Module):
-    def __init__(self, out_dim):
+    def __init__(self, z_dim):
         super(Encoder, self).__init__()
 
         intermediate_size = 128
@@ -44,8 +44,8 @@ class Encoder(nn.Module):
         self.encoder_fc = nn.Sequential(
             nn.Linear(4 * 4 * 128, intermediate_size),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(intermediate_size, out_dim),
-            nn.BatchNorm1d(out_dim, affine=False),
+            nn.Linear(intermediate_size, z_dim),
+            nn.BatchNorm1d(z_dim, affine=False),
         )
 
     def forward(self, x):
@@ -58,7 +58,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, out_dim):
+    def __init__(self, z_dim):
         super(Decoder, self).__init__()
 
         intermediate_size = 128
@@ -66,7 +66,7 @@ class Decoder(nn.Module):
         # Decoder
         # output = (input - 1) * stride + outputpadding - 2 * padding + kernelsize
         self.decoder_fc = nn.Sequential(
-            nn.Linear(out_dim, intermediate_size),
+            nn.Linear(z_dim, intermediate_size),
             nn.ReLU(True),
             nn.Linear(intermediate_size, 2048),
             nn.ReLU(True),
@@ -100,13 +100,13 @@ class Decoder(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, out_dim):
+    def __init__(self, z_dim):
         super(Discriminator, self).__init__()
 
         intermediate_size = 128
 
         self.fc = nn.Sequential(
-            nn.Linear(out_dim, intermediate_size),
+            nn.Linear(z_dim, intermediate_size),
             nn.ReLU(),
             nn.Linear(intermediate_size, 1),
             nn.Sigmoid(),

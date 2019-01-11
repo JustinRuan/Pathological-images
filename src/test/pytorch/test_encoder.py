@@ -55,7 +55,7 @@ class Test_encoder(unittest.TestCase):
         model_name = "scae"
         sample_name = "AE_500_32"
 
-        ae = EncoderFactory(c, model_name, sample_name, out_dim = 300)
+        ae = EncoderFactory(c, model_name, sample_name, z_dim= 300)
         ae.train_ae(batch_size=64, epochs = 50)
 
     def test_train_model5(self):
@@ -65,7 +65,7 @@ class Test_encoder(unittest.TestCase):
         model_name = "aae"
         sample_name = "AE_500_32"
 
-        ae = EncoderFactory(c, model_name, sample_name, out_dim = 64)
+        ae = EncoderFactory(c, model_name, sample_name, z_dim= 64)
         ae.train_adversarial_ae(batch_size=64, epochs = 50)
 
     def test_extract_feature(self):
@@ -111,3 +111,14 @@ class Test_encoder(unittest.TestCase):
         # x.scatter_(1, torch.tensor([[1], [1], [1], [1]]), rnd)
         x.scatter_(1, torch.from_numpy(index).long(), rnd)
         print(x)
+
+    def test_train_idec(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "idec"
+        sample_name = "AE_500_32"
+
+        idec = EncoderFactory(c, model_name, sample_name, 64)
+        idec.train_idec(batch_size=64, epochs=100)
+

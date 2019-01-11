@@ -20,7 +20,10 @@ from core.util import latest_checkpoint, read_csv_file, clean_checkpoint
 from torchsummary import summary
 from pytorch.image_dataset import Image_Dataset
 from skimage.io import imread
-from pytorch.net import Encoder, Decoder, Discriminator
+from pytorch.net import Encoder, Decoder, Discriminator, IDEC
+from sklearn.cluster import KMeans
+from sklearn.metrics.cluster import normalized_mutual_info_score as nmi_score
+from sklearn.metrics import adjusted_rand_score as ari_score
 
 ##################################################################################################################
 # Reconstruction + KL divergence losses summed over all elements and batch
@@ -95,7 +98,7 @@ def sparse_loss_function(z):
 ###################################################################################################################
 
 class EncoderFactory(object):
-    def __init__(self, params, model_name, patch_type, out_dim = 32):
+    def __init__(self, params, model_name, patch_type, z_dim = 32):
         '''
         初始化
         :param params: 系统参数
@@ -108,10 +111,10 @@ class EncoderFactory(object):
         self.NUM_WORKERS = params.NUM_WORKERS
 
         if self.patch_type == "cifar10":
-            self.latent_vector_dim = out_dim
+            self.latent_vector_dim = z_dim
             self.image_size = 32
         elif self.patch_type == "AE_500_32":
-            self.latent_vector_dim = out_dim
+            self.latent_vector_dim = z_dim
             self.image_size = 32
 
         self.model_root = "{}/models/pytorch/{}_{}_{}".format(self._params.PROJECT_ROOT, self.model_name,
@@ -137,6 +140,8 @@ class EncoderFactory(object):
             model = Autoencoder(self.latent_vector_dim, output_z=True)
         # Sparse convolutional Autoencoder
         elif self.model_name == "scae":
+            model = Autoencoder(self.latent_vector_dim, output_z=True)
+        elif self.model_name == "idec":
             model = Autoencoder(self.latent_vector_dim, output_z=True)
 
         return model
@@ -574,3 +579,110 @@ class EncoderFactory(object):
             self.save_adversarial_model(Q_encoder, P_decoder, D_guess, epoch, epoch_loss, epoch_loss)
 
         clean_checkpoint(self.model_root, best_number=10)
+
+##################################################################################################################
+#######################  Improved Deep Embedded Clustering #######################################################
+##################################################################################################################
+
+    def train_idec(self, batch_size=64, epochs=20):
+        train_data = self.load_train_data()
+        n_clusters = 6
+        update_interval = 1
+        gamma = 0.1
+        tol = 0.001
+
+        # Data loader
+        data_loader = torch.utils.data.DataLoader(dataset=train_data,
+                                                  batch_size=batch_size,
+                                                  shuffle=False, drop_last =True)
+
+        ae_model = self.load_model()
+        model = IDEC(ae_model, self.latent_vector_dim, n_clusters)
+        summary(ae_model, input_size=(3, self.image_size, self.image_size), device="cpu")
+
+        model.to(self.device)
+
+        model.eval()
+
+        hidden = []
+        x_bar = []
+        iter_per_epoch = len(data_loader)
+        for i, (x, _) in enumerate(data_loader):
+            b_x = Variable(x.to(self.device))
+            b_hidden, b_x_bar = model.ae(b_x)
+            hidden.extend(b_hidden.data.cpu().numpy())
+            x_bar.extend(b_x_bar.data.cpu().numpy())
+            print("encoding {}/{} ...".format(i+1, iter_per_epoch))
+
+        kmeans = KMeans(n_clusters=n_clusters, n_init=20)
+        y_pred = kmeans.fit_predict(hidden)
+
+        y_pred_last = y_pred
+        model.cluster_layer.data = torch.FloatTensor(kmeans.cluster_centers_).to(self.device)
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        model.train()
+        for epoch in range(epochs):
+            if epoch % update_interval == 0:
+                tmp_q = []
+                print("prepare to update target distribution p: ")
+                for i, (x, _) in enumerate(data_loader):
+                    b_x = Variable(x.to(self.device))
+                    _, b_temp_q = model(b_x)
+                    tmp_q.extend(b_temp_q.data.cpu())
+                    print("Epoch = {}, update target distribution p {}/{} ...".format(epoch, i + 1, iter_per_epoch))
+
+                temp_q_tensor = torch.stack(tmp_q)
+                # update target distribution p
+                p = model.target_distribution(temp_q_tensor)
+
+                # evaluate clustering performance
+                y_pred = temp_q_tensor.cpu().numpy().argmax(1)
+                delta_label = np.sum(y_pred != y_pred_last).astype(
+                    np.float32) / y_pred.shape[0]
+                y_pred_last = y_pred
+
+                # nmi = nmi_score(y, y_pred)
+                # ari = ari_score(y, y_pred)
+                # print('Iter {}'.format(epoch), ':Acc {:.4f}'.format(acc),
+                #       ', nmi {:.4f}'.format(nmi), ', ari {:.4f}'.format(ari))
+
+                if epoch > 0 and delta_label < tol:
+                    print('delta_label {:.4f}'.format(delta_label), '< tol',
+                          tol)
+                    print('Reached tolerance threshold. Stopping training.')
+                    break
+
+            total_loss = 0
+            total_kl_loss = 0
+            for i, (x, _) in enumerate(data_loader):
+                b_x = Variable(x.to(self.device))
+
+                b_p = p[i * batch_size:(i + 1) * batch_size]
+                b_p = b_p.to(self.device)
+
+                x_bar, q = model(b_x)
+                reconstr_loss = F.mse_loss(x_bar, b_x)
+
+                kl_loss = F.kl_div(q.log(), b_p)
+                loss = gamma * kl_loss + reconstr_loss
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                print("Epoch = {}, training {}/{}, "
+                      "reconstr loss = {:.4f},  KL loss = {:.4f}, Loss = {:.4f}".format(epoch, i + 1,
+                                                                                        iter_per_epoch,
+                                                                                        reconstr_loss.item(),
+                                                                                        kl_loss.item(),
+                                                                                        loss.item()))
+                total_loss += loss.item()
+                total_kl_loss += kl_loss.item()
+
+            epoch_loss = total_loss / iter_per_epoch
+            epoch_kl_loss2 = total_kl_loss / iter_per_epoch
+            torch.save(model.ae.state_dict(),
+                       self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss, epoch_kl_loss2))
+
+        # clean_checkpoint(self.model_root, best_number=20)

@@ -88,11 +88,11 @@ class SLICProcessor(object):
 
     def features_similarity(self, f1, f2):
         # 欧氏距离
-        # result = math.sqrt(np.sum(np.power(f1 - f2, 2)))
+        result = math.sqrt(np.sum(np.power(f1 - f2, 2)))
 
         #Cosine
-        d = np.dot(f1, f2)/(np.linalg.norm(f1) * np.linalg.norm(f2))
-        result = math.exp(1 - d)
+        # d = np.dot(f1, f2)/(np.linalg.norm(f1) * np.linalg.norm(f2))
+        # result = math.exp(1 - d)
 
         return result
 

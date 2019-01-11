@@ -77,7 +77,7 @@ class Segmentation(object):
 
         img_itor = self.get_seeds_itor(global_seeds, GLOBAL_SCALE, extract_scale, patch_size, batch_size)
 
-        encoder = EncoderFactory(self._params, "aae", "AE_500_32", 64)
+        encoder = EncoderFactory(self._params, "idec", "AE_500_32", 16)
         features = encoder.extract_feature(img_itor, len(global_seeds), batch_size)
         f_size = len(features[0])
 

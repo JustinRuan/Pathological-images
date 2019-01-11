@@ -28,8 +28,8 @@ class TestSLIC(unittest.TestCase):
         f_map = np.load("feature_map.npy")
         print(f_map.shape)
 
-        slic = SLICProcessor(f_map, 400, 2)
-        label_map = slic.clusting(5, True, min_size_factor =0.1, max_size_factor = 3.0)
+        slic = SLICProcessor(f_map, 20, 0.5)
+        label_map = slic.clusting(5, True, min_size_factor =0.2, max_size_factor = 3.0)
         np.save("label_map", label_map)
 
     # def test_pre_processing(self):
