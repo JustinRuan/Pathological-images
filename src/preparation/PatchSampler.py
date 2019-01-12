@@ -48,7 +48,7 @@ class PatchSampler(object):
 
         pathPatch = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size, seeds_name)
 
-        if (not os.path.exists(pathPatch)):
+        if not os.path.exists(pathPatch):
             os.makedirs(pathPatch)
 
         for (x, y) in seeds:

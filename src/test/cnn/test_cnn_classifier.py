@@ -11,7 +11,7 @@ from core import *
 from cnn.cnn_classifier import CNN_Classifier
 
 # JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:\code\python\Pathological-images\config\myConfig.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):

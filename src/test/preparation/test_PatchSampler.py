@@ -128,13 +128,13 @@ class TestPatchSampler(unittest.TestCase):
     '''
     def test_patch_5x_128_openslide(self):
         c = Params()
-        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+        c.load_config_file("D:/code/python/Pathological-images/config/myConfig.json")
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
         code = "011"
-        tag = imgCone.open_slide("Tumor/Tumor_{}.tif".format(code),
-                                 'Tumor/tumor_{}.xml'.format(code), "Tumor_{}".format(code))
+        tag = imgCone.open_slide("D:/code/dataset/camelyon16/Tumor_{}.tif".format(code),
+                                 'D:/code/dataset/camelyon16/tumor_{}.xml'.format(code), "Tumor_{}".format(code))
         self.assertTrue(tag)
 
         if tag:
@@ -160,12 +160,10 @@ class TestPatchSampler(unittest.TestCase):
             print("c_seeds = ",len(c_seeds),", n_seeds = ", len(s_seeds),", e_seeds = ", len(e_seeds))
 
             print("是否提取图块？Y/N")
-            tag_c = input()
 
-            if tag_c == "Y":
-                ps.extract_patches(imgCone, extract_scale, patch_size, c_seeds, seeds_name="cancer")
-                ps.extract_patches(imgCone, extract_scale, patch_size, s_seeds, seeds_name="normal")
-                ps.extract_patches(imgCone, extract_scale, patch_size, e_seeds, seeds_name="edge")
+            ps.extract_patches(imgCone, extract_scale, patch_size, c_seeds, seeds_name="cancer")
+            ps.extract_patches(imgCone, extract_scale, patch_size, s_seeds, seeds_name="normal")
+            ps.extract_patches(imgCone, extract_scale, patch_size, e_seeds, seeds_name="edge")
 
 
     '''

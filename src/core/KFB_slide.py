@@ -262,7 +262,7 @@ class KFB_Slide(object):
                                        byref(DataLength), True)
         data = np.ctypeslib.as_array(
             (ctypes.c_ubyte * DataLength.value).from_address(ctypes.addressof(pBuffer.contents)))
-        return Image.open(io.BytesIO(data))
+        return np.array(Image.open(io.BytesIO(data)))
 
     def get_thumbnail(self, scale):
         ImageWidth, ImageHeight = self.get_image_width_height_byScale(scale)
@@ -345,9 +345,14 @@ class KFB_Slide(object):
             rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
             img[rr, cc] = 0
 
-        C_img = morphology.binary_erosion(img, selem=square(width))
-        SL_img = ~ morphology.binary_dilation(img, selem=square(width)) #淋巴区域包括在内
-        E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, SL_img))
+        if width == 0:
+            C_img = img
+            SL_img = ~img #淋巴区域包括在内
+            E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, SL_img))
+        else:
+            C_img = morphology.binary_erosion(img, selem=square(width))
+            SL_img = ~ morphology.binary_dilation(img, selem=square(width)) #淋巴区域包括在内
+            E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, SL_img))
 
         img = np.zeros((h, w), dtype=np.bool)
         for contour in self.ano["LYMPH"]:
