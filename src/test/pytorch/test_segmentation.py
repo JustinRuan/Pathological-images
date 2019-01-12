@@ -10,6 +10,7 @@ import unittest
 import numpy as np
 from core import Params, ImageCone, Open_Slide
 from pytorch.segmentation import Segmentation
+from pytorch.encoder_factory import EncoderFactory
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin_m.json"
@@ -35,7 +36,9 @@ class TestSegmentation(unittest.TestCase):
         tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % id,
                                  'Tumor/tumor_%s.xml' % id, "Tumor_%s" % id)
 
-        seg = Segmentation(c, imgCone)
+        # encoder = EncoderFactory(self._params, "idec", "AE_500_32", 16)
+        encoder = EncoderFactory(c, "cae", "AE_500_32", 16)
+        seg = Segmentation(c, imgCone, encoder)
         # global_seeds =  seg.get_seeds_for_seg(x1, y1, x2, y2, 1.25)
         # print(global_seeds)
         f_map = seg.create_feature_map(x1, y1, x2, y2, 1.25, 5)
@@ -113,7 +116,7 @@ class TestSegmentation(unittest.TestCase):
                                  'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
 
         seg = Segmentation(c, imgCone)
-        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, 1.25, 1.25, 20, 20)
+        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, 1.25, 1.25, 10, 20)
 
         print(label_map.shape)
         np.save("label_map_slic", label_map)

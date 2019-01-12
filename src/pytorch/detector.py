@@ -279,9 +279,20 @@ class Detector(object):
 
         false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, cancer_tag)
         roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
-        print("\n auc: %s" % roc_auc)
+        print("\n ROC auc: %s" % roc_auc)
+
+        dice = self.calculate_dice_coef(mask_tag, cancer_tag)
+        print("dice coef = {}".format(dice))
         print("############################################################")
         return false_positive_rate, true_positive_rate, roc_auc
+
+    def calculate_dice_coef(self, y_true, y_pred):
+        smooth = 1.
+        y_true_f = y_true.flatten()
+        y_pred_f = y_pred.flatten()
+        intersection = np.sum(y_true_f * y_pred_f)
+        dice = (2. * intersection + smooth) / (np.sum(y_true_f * y_true_f) + np.sum(y_pred_f * y_pred_f) + smooth)
+        return dice
 
     def create_superpixels(self, x1, y1, x2, y2, coordinate_scale, feature_extract_scale):
         '''

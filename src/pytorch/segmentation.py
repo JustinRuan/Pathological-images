@@ -14,7 +14,7 @@ from core.slic import SLICProcessor
 from skimage.segmentation.slic_superpixels import slic
 
 class Segmentation(object):
-    def __init__(self, params, src_image):
+    def __init__(self, params, src_image, encoder = None):
         '''
         构造分割器
         :param params:系统参数
@@ -22,6 +22,7 @@ class Segmentation(object):
         '''
         self._params = params
         self._imgCone = src_image
+        self.encoder = encoder
 
     def get_seeds_for_seg(self, x1, y1, x2, y2):
         '''
@@ -77,8 +78,8 @@ class Segmentation(object):
 
         img_itor = self.get_seeds_itor(global_seeds, GLOBAL_SCALE, extract_scale, patch_size, batch_size)
 
-        encoder = EncoderFactory(self._params, "idec", "AE_500_32", 16)
-        features = encoder.extract_feature(img_itor, len(global_seeds), batch_size)
+        # encoder = EncoderFactory(self._params, "idec", "AE_500_32", 16)
+        features = self.encoder.extract_feature(img_itor, len(global_seeds), batch_size)
         f_size = len(features[0])
 
         w = xx2 - xx1
