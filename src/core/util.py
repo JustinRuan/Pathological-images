@@ -54,10 +54,12 @@ def read_csv_file(root_path, csv_path):
     lines = f.readlines()
     for line in lines:
         items = line.split(" ")
+        if len(items) == 2: # 单标签
+            tag = int(items[1])
+        else:              # 多标签
+            tag = tuple(int(sub_tag) for sub_tag in items[1:])
 
-        tag = int(items[1])
         labels_list.append(tag)
-
         patch_file = "{}/{}".format(root_path, items[0])
         filenames_list.append(patch_file)
     return filenames_list, labels_list

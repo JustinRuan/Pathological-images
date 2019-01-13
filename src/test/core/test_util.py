@@ -20,3 +20,7 @@ class TestUtil(unittest.TestCase):
 
     def test_clean_checkpoint(self):
         util.clean_checkpoint("D:/CloudSpace/WorkSpace/PatholImage/models/pytorch/scae_AE_500_32_300", best_number=10)
+
+    def test_read_csv_file(self):
+        filenames_list, labels_list = util.read_csv_file("D:/Data/Patches/P1113/", "D:/Data/Patches/P1113/T_NC_256_test.txt")
+        print(len(filenames_list), len(labels_list[0]))

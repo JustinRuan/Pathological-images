@@ -90,19 +90,27 @@ class PatchPack(object):
         train_data = data_tag[:train_count]
         test_data = data_tag[train_count : train_count + test_count]
 
-        full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"train")
+        for file_type, data in zip(["train", "test"], [train_data, test_data]):
+            full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag, file_type)
 
-        f = open(full_filename, "w")
-        for item, tag in train_data:
-            f.write("{} {}\n".format(item, tag))
-        f.close()
+            f = open(full_filename, "w")
+            for item, tag in data:
+                if isinstance(tag, tuple):
+                    str_tag = ""
+                    for sub_tag in tag:
+                        str_tag += " {}".format(sub_tag)
 
-        full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"test")
+                    f.write("{}{}\n".format(item, str_tag))
+                else:
+                    f.write("{}{}\n".format(item, tag))
+            f.close()
 
-        f = open(full_filename, "w")
-        for item, tag in test_data:
-            f.write("{} {}\n".format(item, tag))
-        f.close()
+        # full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"test")
+        #
+        # f = open(full_filename, "w")
+        # for item, tag in test_data:
+        #     f.write("{} {}\n".format(item, tag))
+        # f.close()
 
         return
 

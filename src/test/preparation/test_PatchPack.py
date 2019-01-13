@@ -61,7 +61,7 @@ class TestPatchPack(unittest.TestCase):
     #################################################################################################################
     ####################  20 x 256  ############################
     ##################################################################################################################
-    def test_pack_samples_256(self):
+    def test_pack_samples_2000_256(self):
         c = Params()
         c.load_config_file(JSON_PATH)
 
@@ -93,6 +93,24 @@ class TestPatchPack(unittest.TestCase):
         pack = PatchPack(c)
         data_tag = pack.initialize_sample_tags({"S500_32_cancer":1,"S500_32_normal":0})
         pack.create_data_txt(data_tag, "AE_500_32")
+
+    #################################################################################################################
+    ####################  10 x 256  ############################
+    ##################################################################################################################
+    def test_pack_samples_256(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        pack = PatchPack(c)
+        data_tag = pack.initialize_sample_tags({"S1000_256_cancer": (1, 10),
+                                                "S1000_256_normal": (0, 10),
+                                                "S2000_256_cancer": (1, 20),
+                                                "S2000_256_normal": (0, 20),
+                                                "S4000_256_cancer": (1, 40),
+                                                "S4000_256_normal": (0, 40),
+                                                })
+        pack.create_train_test_data(data_tag, 0.9, 0.1, "T_NC_256")
+
 
     def test_extract_features_save_file(self):
         c = Params()

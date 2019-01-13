@@ -74,6 +74,9 @@ class _DenseBlock(nn.Module):
             features.append(new_features)
         return torch.cat(features, 1)
 
+#######################################################################################################
+########   DenseNet  #########
+#######################################################################################################
 
 class DenseNet(nn.Module):
     r"""Densenet-BC model class, based on
@@ -160,3 +163,8 @@ class DenseNet(nn.Module):
         out = F.avg_pool2d(out, kernel_size=self.avgpool_size).view(features.size(0), -1)
         out = self.classifier(out)
         return out
+
+
+#######################################################################################################
+########   DenseNet  #########
+#######################################################################################################
