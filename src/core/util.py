@@ -74,7 +74,7 @@ def latest_checkpoint(search_dir):
     for ckpt_name in os.listdir(search_dir):
         file_name = os.path.splitext(ckpt_name)[0]
         value = file_name.split("-")
-        if len(value) == 4:
+        if len(value) >= 4:
             filename.append(ckpt_name)
             epoch.append(int(value[1]))
             loss.append(float(value[2]))

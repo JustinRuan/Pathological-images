@@ -13,7 +13,7 @@ from core import util
 class TestUtil(unittest.TestCase):
 
     def test_latest_checkpoint(self):
-        result = util.latest_checkpoint("D:/CloudSpace/WorkSpace/PatholImage/models/simplenet128_W1")
+        result = util.latest_checkpoint("D:/CloudSpace/WorkSpace/PatholImage/models/pytorch/se_densenet_22_x_256")
         print(result)
 
 

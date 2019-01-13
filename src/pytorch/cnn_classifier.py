@@ -51,7 +51,7 @@ class CNN_Classifier(object):
 
         self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
 
-        self.use_GPU = True
+        self.use_GPU = False
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
 
@@ -270,9 +270,11 @@ class CNN_Classifier(object):
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
 
         Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+        # Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
         train_data = Image_Dataset(Xtrain, Ytrain)
 
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
         test_data = Image_Dataset(Xtest, Ytest)
         return  train_data, test_data
 
@@ -333,8 +335,10 @@ class CNN_Classifier(object):
     def train_model_multi_task(self, samples_name=None, batch_size=100, epochs=20):
 
         train_data, test_data = self.load_custom_data(samples_name)
-        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
-        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False)
+        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size,
+                                       shuffle=True, num_workers = self.NUM_WORKERS)
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+                                      shuffle=False, num_workers = self.NUM_WORKERS)
 
         model = self.load_model(model_file=None)
         summary(model, input_size=(3, self.image_size, self.image_size), device="cpu")
@@ -382,8 +386,8 @@ class CNN_Classifier(object):
 
                 total_loss += running_loss
                 print('%d / %d ==> Total Loss: %.4f | Cancer Acc: %.4f | Magnifi Acc: %.4f '
-                      % (step, train_data_len, running_loss, running_corrects1.double() / batch_size,
-                         running_corrects2.double() / batch_size))
+                      % (step, train_data_len, running_loss, running_corrects1.double() / b_x.size(0),
+                         running_corrects2.double() / b_x.size(0)))
 
             scheduler.step(total_loss)
 
@@ -391,7 +395,7 @@ class CNN_Classifier(object):
             running_corrects1 = 0
             running_corrects2 = 0
             model.eval()
-            for x, y in test_loader:
+            for x, (y0, y1) in test_loader:
 
                 b_x = Variable(x.to(self.device)) # batch x
                 b_y0 = Variable(y0.to(self.device))  # batch y0
@@ -413,7 +417,7 @@ class CNN_Classifier(object):
             epoch_acc_c = running_corrects1.double() / test_data_len
             epoch_acc_m = running_corrects2.double() / test_data_len
             torch.save(model,
-                       self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss, epoch_acc_c,
+                       self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss, epoch_acc_c,
                                                                                epoch_acc_m))
 
 
