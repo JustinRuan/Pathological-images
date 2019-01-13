@@ -51,7 +51,7 @@ class CNN_Classifier(object):
 
         self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
 
-        self.use_GPU = False
+        self.use_GPU = True
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
 
@@ -73,7 +73,7 @@ class CNN_Classifier(object):
                 block_config=block_config,
                 num_classes=self.num_classes,
                 small_inputs=True, # 32 x 32的图片为True
-                avgpool_size=8,
+                gvp_out_size=1,
                 efficient=True,
             )
         # elif self.patch_type == "500_128": # 128 x 128
