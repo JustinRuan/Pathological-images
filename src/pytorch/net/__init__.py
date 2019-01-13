@@ -7,7 +7,7 @@ __mtime__ = '2018-12-13'
 """
 
 from .simple_cnn import Simple_CNN
-from .densenet import DenseNet
+from .densenet import DenseNet, SEDenseNet
 from .ae import Autoencoder, VAE
 from .aae import Encoder, Decoder, Discriminator
 from .idec import IDEC

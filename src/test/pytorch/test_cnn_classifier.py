@@ -77,3 +77,13 @@ class Test_cnn_classifier(unittest.TestCase):
         for index, (x, y) in enumerate(train_loader):
             print(x.shape, y)
             if index > 10: break
+
+    def test_train_model_multi_task(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "se_densenet_22"
+        sample_name = "x_256"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+        cnn.train_model_multi_task(samples_name="T_NC_{}".format(sample_name), batch_size=32, epochs = 30)

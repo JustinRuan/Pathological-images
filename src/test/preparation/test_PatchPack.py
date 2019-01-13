@@ -102,14 +102,14 @@ class TestPatchPack(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         pack = PatchPack(c)
-        data_tag = pack.initialize_sample_tags({"S1000_256_cancer": (1, 10),
-                                                "S1000_256_normal": (0, 10),
-                                                "S2000_256_cancer": (1, 20),
-                                                "S2000_256_normal": (0, 20),
-                                                "S4000_256_cancer": (1, 40),
-                                                "S4000_256_normal": (0, 40),
+        data_tag = pack.initialize_sample_tags({"S1000_256_cancer": (1, 0),
+                                                "S1000_256_normal": (0, 0),
+                                                "S2000_256_cancer": (1, 1),
+                                                "S2000_256_normal": (0, 1),
+                                                "S4000_256_cancer": (1, 2),
+                                                "S4000_256_normal": (0, 2),
                                                 })
-        pack.create_train_test_data(data_tag, 0.9, 0.1, "T_NC_256")
+        pack.create_train_test_data(data_tag, 0.9, 0.1, "T_NC_x_256")
 
 
     def test_extract_features_save_file(self):

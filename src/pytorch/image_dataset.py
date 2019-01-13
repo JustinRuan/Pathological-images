@@ -34,24 +34,24 @@ class Image_Dataset(Dataset):
     def __len__(self):
         return len(self.x)
 
-class Image_Dataset2(Dataset):
-    def __init__(self, x_set, y_set, y2_set):
-        self.x, self.y ,self.y2 = x_set, y_set,y2_set
-        self.transform = torchvision.transforms.ToTensor()
-
-    def __getitem__(self, index):
-        file_name = self.x[index]
-        label1 = self.y[index]
-        label2 = self.y2[index]
-        # img = ImageNormalization.normalize_mean(imread(file_name)) / 255
-        img = imread(file_name) / 255
-        if img.shape==(128,128,3):
-            img=resize(img, (256,256,3))
-        img = self.transform(img).type(torch.FloatTensor)
-        return img, [label1, label2]
-
-    def __len__(self):
-        return len(self.x)
+# class Image_Dataset2(Dataset):
+#     def __init__(self, x_set, y_set, y2_set):
+#         self.x, self.y ,self.y2 = x_set, y_set,y2_set
+#         self.transform = torchvision.transforms.ToTensor()
+#
+#     def __getitem__(self, index):
+#         file_name = self.x[index]
+#         label1 = self.y[index]
+#         label2 = self.y2[index]
+#         # img = ImageNormalization.normalize_mean(imread(file_name)) / 255
+#         img = imread(file_name) / 255
+#         if img.shape==(128,128,3):
+#             img=resize(img, (256,256,3))
+#         img = self.transform(img).type(torch.FloatTensor)
+#         return img, [label1, label2]
+#
+#     def __len__(self):
+#         return len(self.x)
 
 # Exception: ctypes objects containing pointers cannot be pickled
 # class Seed_Dataset(Dataset):
