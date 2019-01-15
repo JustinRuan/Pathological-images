@@ -12,6 +12,10 @@ from core.util import get_seeds, transform_coordinate
 from pytorch.transfer_cnn import Transfer
 from pytorch.cnn_classifier import CNN_Classifier
 from pytorch.segmentation import Segmentation
+import cv2
+from scipy.interpolate import griddata
+
+# N = 500
 
 class Detector(object):
 
@@ -331,7 +335,92 @@ class Detector(object):
 
         return result_cancer
 
+    def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
+                               max_iter_nums, batch_size):
+        self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
+        cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
 
+        # 生成坐标网格
+        grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
+
+        sobel_img = None
+        interpolate_img = None
+        history = {}
+        N = 400
+
+        seeds_scale = self._params.GLOBAL_SCALE
+        amplify = extract_scale / seeds_scale
+        bias = int(0.25 * patch_size / amplify)
+
+        for i in range(max_iter_nums):
+            print("iter %d" % (i + 1))
+            seeds = self.get_random_seeds(N, x1, x2, y1, y2, sobel_img)
+
+            new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
+            print("the number of new seeds: ", len(new_seeds))
+
+            if len(new_seeds) / N < 0.9:
+                break
+
+            high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
+            predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
+            probs = self.get_cancer_probability(predictions)
+
+            for (x,y), pred in zip(new_seeds, probs):
+                xx = x - x1
+                yy = y - y1
+
+                if  not history.__contains__((xx, yy)):
+                    history[(xx, yy)] = pred
+                # else:
+                #     history[(xx, yy)].append(pred)
+
+                # all_seeds_preds[(xx - bias, yy - bias)] = pred
+                # all_seeds_preds[(xx + bias, yy - bias)] = pred
+                # all_seeds_preds[(xx - bias, yy + bias)] = pred
+                # all_seeds_preds[(xx + bias, yy + bias)] = pred
+
+
+            value = list(history.values())
+            point = list(history.keys())
+            interpolate_img, sobel_img = self.inter_sobel(point, value,
+                                                          (grid_x, grid_y), method='cubic')
+
+        return interpolate_img
+
+
+    def get_random_seeds(self, N, x1, x2, y1, y2, sobel_img):
+        n = 2 * N
+        x = np.random.randint(x1, x2 - 1, size=n, dtype='int')
+        y = np.random.randint(y1, y2 - 1, size=n, dtype='int')
+        if sobel_img is not None:
+            prob = sobel_img[y - y1, x - x1]
+            index = prob.argsort()
+            index = index[-N:]
+            x = x[index]
+            y = y[index]
+        return tuple(zip(x, y))
+
+    def get_cancer_probability(self, predictions):
+        probs = []
+        for pred, prob in predictions:
+            if pred == 0:
+                probs.append(1 - prob)
+            else:
+                probs.append(prob)
+
+        return probs
+
+    def inter_sobel(self, point, value,  grid_x_y, method='nearest', fill_value=0.0):
+        interpolate = griddata(point, value, grid_x_y, method=method, fill_value=fill_value)
+        sobel_img = cv2.Sobel(interpolate, -1, 2, 2)
+        return interpolate, sobel_img
+
+    def remove_duplicates(self, x1, y1,  new_seeds, old_seeds):
+        shift_seeds = set((xx - x1, yy - y1) for xx, yy in new_seeds)
+        result = shift_seeds - old_seeds
+        revert_seeds = set((xx + x1, yy + y1) for xx, yy in result)
+        return revert_seeds
 
 
 

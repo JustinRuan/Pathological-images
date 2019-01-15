@@ -4,7 +4,7 @@ from cnn import *
 import numpy as np
 import cv2
 # from transfer import *
-from pytorch.transfer_cnn import Transfer
+from cnn.transfer_cnn import Transfer
 import random
 from scipy.interpolate import griddata
 

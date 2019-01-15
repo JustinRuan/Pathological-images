@@ -226,4 +226,95 @@ class Test_detector(unittest.TestCase):
 
         plt.show()
 
+    def test_01(self):
+        test_set = [("001", 2100, 3800, 2400, 4000),
+                    ("003", 2400, 4700, 2600, 4850)]
+        id = 1
+        roi = test_set[id]
+        slice_id = roi[0]
+        x1 = roi[1]
+        y1 = roi[2]
+        x2 = roi[3]
+        y2 = roi[4]
 
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
+                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+
+        detector = Detector(c, imgCone)
+        print(detector.ImageHeight, detector.ImageWidth)
+        seeds = detector.get_random_seeds(10, x1, x2, y1, y2, None)
+        print(seeds)
+        seeds = detector.get_random_seeds(10, x1, x2, y1, y2, np.random.rand(150,200))
+        print(seeds)
+        print(np.array(seeds) - np.array([x1, y1]))
+        # a = np.array([x - x1, y - y1 ] for x,y in seeds)
+        # print(a)
+
+    def test_adaptive_detect_region(self):
+        test_set = [("001", 2100, 3800, 2400, 4000),
+                    ("003", 2400, 4700, 2600, 4850)]
+        id = 1
+        roi = test_set[id]
+        slice_id = roi[0]
+        x1 = roi[1]
+        y1 = roi[2]
+        x2 = roi[3]
+        y2 = roi[4]
+
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
+                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+
+        detector = Detector(c, imgCone)
+
+        # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
+        #                            iter_nums, batch_size, threshold):
+        cancer_map = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 20, 256, max_iter_nums = 50,
+                                                     batch_size = 20)
+
+        src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
+        mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
+
+        t1 = 0.5
+        false_positive_rate, true_positive_rate, roc_auc = detector.evaluate(t1, cancer_map, mask_img)
+
+        fig, axes = plt.subplots(2, 2, figsize=(15, 20), dpi=100)
+        ax = axes.ravel()
+
+        ax[1].imshow(src_img)
+        ax[1].set_title("src_img")
+
+        ax[3].imshow(src_img)
+        ax[3].imshow(mask_img, alpha=0.6)
+        ax[3].set_title("mask_img")
+
+        ax[0].set_title('Receiver Operating Characteristic')
+        ax[0].plot(false_positive_rate, true_positive_rate, 'g',
+                 label='x20  AUC = %0.4f' % roc_auc)
+
+        ax[0].legend(loc='lower right')
+        ax[0].plot([0, 1], [0, 1], 'r--')
+        ax[0].set_xlim([-0.1, 1.2])
+        ax[0].set_ylim([-0.1, 1.2])
+        ax[0].set_ylabel('True Positive Rate')
+        ax[0].set_xlabel('False Positive Rate')
+
+        ax[2].imshow(src_img)
+        ax[2].imshow(cancer_map, alpha=0.6)
+        ax[2].contour(cancer_map >= t1)
+        ax[2].set_title("cancer_map, t = %s" % t1)
+
+        for a in ax.ravel():
+            a.axis('off')
+        ax[0].axis("on")
+
+        plt.show()

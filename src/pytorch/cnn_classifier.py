@@ -55,6 +55,8 @@ class CNN_Classifier(object):
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
 
+        self.model = None
+
     def create_densenet(self, depth):
         '''
         生成指定深度的Densenet
@@ -307,14 +309,18 @@ class CNN_Classifier(object):
         '''
         seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size)
 
-        model = self.load_pretrained_model_on_predict(self.patch_type)
+        if self.model is None:
+            self.model = self.load_pretrained_model_on_predict(self.patch_type)
         # print(model)
+            if self.use_GPU:
+                self.model.cuda()
+            self.model.eval()
 
-        if self.use_GPU:
-            model.cuda()
-        model.eval()
+        len_seeds = len(seeds)
+        data_len = len(seeds) // batch_size
+        if len_seeds % batch_size > 0:
+            data_len += 1
 
-        data_len = len(seeds) // batch_size + 1
         results = []
 
         for step, x in enumerate(seeds_itor):
@@ -323,7 +329,7 @@ class CNN_Classifier(object):
             else:
                 b_x = Variable(x)  # batch x
 
-            output = model(b_x)
+            output = self.model(b_x)
             output_softmax = nn.functional.softmax(output)
             probs, preds = torch.max(output_softmax, 1)
             for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):

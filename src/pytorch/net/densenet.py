@@ -141,11 +141,11 @@ class DenseNet(nn.Module):
         # Final batch norm
         self.features.add_module('norm_final', nn.BatchNorm2d(num_features))
 
-        # global avg pool
-        self.pool_final = nn.Sequential(OrderedDict([
-            ("relu_final", nn.ReLU(inplace=True)),
-            ('gap_final', nn.AdaptiveAvgPool2d(self.gvp_out_size))
-            ]))
+        # # global avg pool
+        # self.pool_final = nn.Sequential(OrderedDict([
+        #     ("relu_final", nn.ReLU(inplace=True)),
+        #     ('gap_final', nn.AdaptiveAvgPool2d(self.gvp_out_size))
+        #     ]))
 
         # Linear layer
         self.classifier = nn.Linear(num_features, num_classes)
@@ -164,10 +164,10 @@ class DenseNet(nn.Module):
 
     def forward(self, x):
         features = self.features(x)
-        output = self.pool_final(features)
-        # out = F.relu(features, inplace=True)
-        # out = F.avg_pool2d(out, kernel_size=self.avgpool_size).view(features.size(0), -1)
-        out = output.view(features.size(0), -1)
+        # output = self.pool_final(features)
+        out = F.relu(features, inplace=True)
+        out = F.avg_pool2d(out, kernel_size=self.avgpool_size).view(features.size(0), -1)
+        # out = output.view(features.size(0), -1)
         out = self.classifier(out)
         return out
 
