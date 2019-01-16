@@ -336,9 +336,10 @@ class Detector(object):
         return result_cancer
 
     def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
-                               max_iter_nums, batch_size):
+                               max_iter_nums, batch_size, use_post = True):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
-        cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
+        # cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
+        cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
 
         # 生成坐标网格
         grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
@@ -378,9 +379,10 @@ class Detector(object):
             interpolate_img, sobel_img = self.inter_sobel(point, value,
                                                           (grid_x, grid_y), method='linear')
 
-            result = self.post_process(interpolate_img, bias)
+        if use_post:
+            interpolate_img = self.post_process(interpolate_img, bias)
 
-        return result, history
+        return interpolate_img, history
 
 
     def get_random_seeds(self, N, x1, x2, y1, y2, sobel_img):

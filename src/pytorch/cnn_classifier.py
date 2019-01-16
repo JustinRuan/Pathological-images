@@ -14,6 +14,7 @@ from torch.autograd import Variable
 import torch.utils.data as Data
 import torchvision      # 数据库模块
 from torchsummary import summary
+from sklearn import metrics
 
 from core.util import latest_checkpoint
 from pytorch.net import Simple_CNN
@@ -288,10 +289,16 @@ class CNN_Classifier(object):
         '''
         net_file = {"500_128":  "densenet_22_500_128_cp-0017-0.2167-0.9388.pth",
                     "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
-                    "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth", }
+                    "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
+                    "x_256" :   "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
+                    }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
         model = self.load_model(model_file=model_file)
+
+        if patch_type == "x_256":
+            # 关闭多任务的其它输出
+            model.MultiTask = False
 
         # 关闭求导，节约大量的显存
         for param in model.parameters():
@@ -312,8 +319,9 @@ class CNN_Classifier(object):
         if self.model is None:
             self.model = self.load_pretrained_model_on_predict(self.patch_type)
         # print(model)
-            if self.use_GPU:
-                self.model.cuda()
+        #     if self.use_GPU:
+        #         self.model.cuda()
+            self.model.to(self.device)
             self.model.eval()
 
         len_seeds = len(seeds)
@@ -324,10 +332,11 @@ class CNN_Classifier(object):
         results = []
 
         for step, x in enumerate(seeds_itor):
-            if self.use_GPU:
-                b_x = Variable(x).cuda()  # batch x
-            else:
-                b_x = Variable(x)  # batch x
+            # if self.use_GPU:
+            #     b_x = Variable(x).cuda()  # batch x
+            # else:
+            #     b_x = Variable(x)  # batch x
+            b_x = Variable(x.to(self.device))
 
             output = self.model(b_x)
             output_softmax = nn.functional.softmax(output)
@@ -338,6 +347,11 @@ class CNN_Classifier(object):
 
         return results
 
+######################################################################################################################
+
+############       multi task            #########
+
+######################################################################################################################
     def train_model_multi_task(self, samples_name=None, batch_size=100, epochs=20):
 
         train_data, test_data = self.load_custom_data(samples_name)
@@ -427,3 +441,53 @@ class CNN_Classifier(object):
                                                                                epoch_acc_m))
 
 
+    def evaluate_model_multi_task(self, samples_name=None, batch_size=100):
+
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
+        test_data = Image_Dataset(Xtest, Ytest)
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+                                      shuffle=False, num_workers=self.NUM_WORKERS)
+
+        model = self.load_model(model_file=None)
+        model.MultiTask = False
+        # 关闭求导，节约大量的显存
+        for param in model.parameters():
+            param.requires_grad = False
+        print(model)
+
+        model.to(self.device)
+        model.eval()
+
+        predicted_tags = []
+        test_data_len = len(test_loader)
+        for step, (x, _) in enumerate(test_loader):
+            b_x = Variable(x.to(self.device))  # batch x
+
+            # cancer_prob, magnifi_prob = model(b_x)
+            # _, cancer_preds = torch.max(cancer_prob, 1)
+            # _, magnifi_preds = torch.max(magnifi_prob, 1)
+            # for c_pred, m_pred in zip(cancer_preds.cpu().numpy(), magnifi_preds.cpu().numpy()):
+            #     predicted_tags.append((c_pred, m_pred))
+            cancer_prob = model(b_x)
+            _, cancer_preds = torch.max(cancer_prob, 1)
+            for c_pred in zip(cancer_preds.cpu().numpy()):
+                predicted_tags.append((c_pred))
+
+            print('predicting => %d / %d ' % (step + 1, test_data_len))
+
+        Ytest = np.array(Ytest)
+        predicted_tags = np.array(predicted_tags)
+        index_x10 = Ytest[:, 1] == 0
+        index_x20 = Ytest[:, 1] == 1
+        index_x40 = Ytest[:, 1] == 2
+        print("Classification report for classifier x all:\n%s\n"
+              % (metrics.classification_report(Ytest[:,0], predicted_tags[:,0], digits=4)))
+        print("Classification report for classifier x 10:\n%s\n"
+              % (metrics.classification_report(Ytest[index_x10,0], predicted_tags[index_x10,0], digits=4)))
+        print("Classification report for classifier x 20:\n%s\n"
+              % (metrics.classification_report(Ytest[index_x20,0], predicted_tags[index_x20,0], digits=4)))
+        print("Classification report for classifier x 40:\n%s\n"
+              % (metrics.classification_report(Ytest[index_x40,0], predicted_tags[index_x40,0], digits=4)))
+        # print("Confusion matrix:\n%s" % metrics.confusion_matrix(Ytest[:,0], predicted_tags[:,0]))
