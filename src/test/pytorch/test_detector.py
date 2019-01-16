@@ -12,6 +12,7 @@ from core import *
 import matplotlib.pyplot as plt
 from pytorch.detector import Detector
 import numpy as np
+from skimage.segmentation import mark_boundaries
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 
@@ -278,28 +279,26 @@ class Test_detector(unittest.TestCase):
 
         # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
         #                            iter_nums, batch_size, threshold):
-        cancer_map = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 20, 256, max_iter_nums = 50,
+        cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 20, 256, max_iter_nums = 50,
                                                      batch_size = 20)
+        # label_map = np.load("label_map.npy")
+        # cancer_map2 = detector.create_cancer_map_superpixels(cancer_map, label_map)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
         t1 = 0.5
-        false_positive_rate, true_positive_rate, roc_auc = detector.evaluate(t1, cancer_map, mask_img)
+        false_positive_rate, true_positive_rate, roc_auc, dice = detector.evaluate(t1, cancer_map, mask_img)
 
         fig, axes = plt.subplots(2, 2, figsize=(15, 20), dpi=100)
         ax = axes.ravel()
 
-        ax[1].imshow(src_img)
+        ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0),))
         ax[1].set_title("src_img")
-
-        ax[3].imshow(src_img)
-        ax[3].imshow(mask_img, alpha=0.6)
-        ax[3].set_title("mask_img")
 
         ax[0].set_title('Receiver Operating Characteristic')
         ax[0].plot(false_positive_rate, true_positive_rate, 'g',
-                 label='x20  AUC = %0.4f' % roc_auc)
+                 label='AUC = %0.6f' % roc_auc)
 
         ax[0].legend(loc='lower right')
         ax[0].plot([0, 1], [0, 1], 'r--')
@@ -308,10 +307,15 @@ class Test_detector(unittest.TestCase):
         ax[0].set_ylabel('True Positive Rate')
         ax[0].set_xlabel('False Positive Rate')
 
-        ax[2].imshow(src_img)
-        ax[2].imshow(cancer_map, alpha=0.6)
-        ax[2].contour(cancer_map >= t1)
-        ax[2].set_title("cancer_map, t = %s" % t1)
+        ax[2].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
+        ax[2].imshow(cancer_map, alpha=0.3)
+        ax[2].contour(cancer_map >= t1, alpha=0.6)
+        ax[2].set_title("cancer_map, t = {}, dice = {:.6f}".format(t1, dice))
+
+        point = np.array(list(history.keys()))
+        ax[3].imshow(mask_img)
+        ax[3].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9)
+        ax[3].set_title("history, count = %d" % len(point))
 
         for a in ax.ravel():
             a.axis('off')
