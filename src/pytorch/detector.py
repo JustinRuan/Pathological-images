@@ -14,6 +14,7 @@ from pytorch.cnn_classifier import CNN_Classifier
 from pytorch.segmentation import Segmentation
 import cv2
 from scipy.interpolate import griddata
+from core import Random_Gen
 
 # N = 500
 
@@ -33,6 +34,8 @@ class Detector(object):
         self.ImageHeight = h
         self.valid_map = np.zeros((h, w), dtype=np.bool)
         self.enable_transfer = False
+
+        self.random_gen = Random_Gen("halton") # random, sobol, haltan
         return
 
     def setting_detected_area(self, x1, y1, x2, y2, scale):
@@ -278,7 +281,7 @@ class Detector(object):
         predicted_tags = cancer_tag >= threshold
 
         print("Classification report for classifier:\n%s\n"
-              % (metrics.classification_report(mask_tag, predicted_tags)))
+              % (metrics.classification_report(mask_tag, predicted_tags, digits=4)))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
 
         false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, cancer_tag)
@@ -338,6 +341,7 @@ class Detector(object):
     def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, use_post = True):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
+        print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
         # cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
         cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
 
@@ -386,11 +390,11 @@ class Detector(object):
 
 
     def get_random_seeds(self, N, x1, x2, y1, y2, sobel_img):
-
         if sobel_img is not None:
             n = 4 * N
-            x = np.random.randint(x1, x2 - 1, size=n, dtype='int')
-            y = np.random.randint(y1, y2 - 1, size=n, dtype='int')
+            # x = np.random.randint(x1, x2 - 1, size=n, dtype='int')
+            # y = np.random.randint(y1, y2 - 1, size=n, dtype='int')
+            x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
 
             prob = sobel_img[y - y1, x - x1]
             index = prob.argsort()
@@ -399,8 +403,9 @@ class Detector(object):
             y = y[index]
         else:
             n = N
-            x = np.random.randint(x1, x2 - 1, size=n, dtype='int')
-            y = np.random.randint(y1, y2 - 1, size=n, dtype='int')
+            # x = np.random.randint(x1, x2 - 1, size=n, dtype='int')
+            # y = np.random.randint(y1, y2 - 1, size=n, dtype='int')
+            x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
         return tuple(zip(x, y))
 
     def get_cancer_probability(self, predictions):
@@ -435,74 +440,4 @@ class Detector(object):
         result = dilation(result, square(bias))
         return result
 
-    # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
-    #                            max_iter_nums, batch_size):
-    #     self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
-    #     cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
-    #
-    #     # 生成坐标网格
-    #     grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
-    #
-    #     sobel_img = None
-    #     interpolate_img = None
-    #     history = {}
-    #     history_ex = {}
-    #     N = 400
-    #
-    #     seeds_scale = self._params.GLOBAL_SCALE
-    #     amplify = extract_scale / seeds_scale
-    #     bias = int(0.5 * patch_size / amplify)
-    #
-    #     for i in range(max_iter_nums):
-    #         print("iter %d" % (i + 1))
-    #         seeds = self.get_random_seeds(N, x1, x2, y1, y2, sobel_img)
-    #
-    #         new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
-    #         print("the number of new seeds: ", len(new_seeds))
-    #
-    #         if len(new_seeds) / N < 0.8:
-    #             break
-    #
-    #         high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
-    #         predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
-    #         probs = self.get_cancer_probability(predictions)
-    #
-    #         for (x,y), pred in zip(new_seeds, probs):
-    #             xx = x - x1
-    #             yy = y - y1
-    #
-    #             history[(xx, yy)] = pred
-    #
-    #             for i in range(-1,0, 1):
-    #                 for j in range(-1,0, 1):
-    #                     x_i = xx + i * bias
-    #                     y_j = yy + j * bias
-    #                     if not history_ex.__contains__((x_i, y_j)):
-    #                         history_ex[(x_i, y_j)] = [pred]
-    #                     else:
-    #                         history_ex[(x_i, y_j)].append(pred)
-    #
-    #
-    #         point, value = self.merge_history(history, history_ex)
-    #
-    #         # value = list(history.values())
-    #         # point = list(history.keys())
-    #         interpolate_img, sobel_img = self.inter_sobel(point, value,
-    #                                                       (grid_x, grid_y), method='cubic')
-    #
-    #     return interpolate_img, history
-    #
-    # def merge_history(self,history, history_ex):
-    #     total_points = list(set(history.keys()) | set(history_ex.keys()))
-    #     value = []
-    #     for xy in total_points:
-    #         if history.__contains__(xy):
-    #             pred = history[xy]
-    #             # if history_ex.__contains__(xy):
-    #             #     pred_ex = np.mean(history_ex[xy])
-    #             #     pred = 0.5 * pred + 0.5 * pred_ex
-    #             value.append(pred)
-    #         else:
-    #             pred_ex = np.mean(history_ex[xy])
-    #             value.append(pred_ex)
-    #     return total_points, value
+# n = int(2 + 2 * np.sqrt(iter_num) * N)

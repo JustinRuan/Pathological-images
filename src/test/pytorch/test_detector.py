@@ -256,10 +256,44 @@ class Test_detector(unittest.TestCase):
         # a = np.array([x - x1, y - y1 ] for x,y in seeds)
         # print(a)
 
+    def test_02(self):
+        def func(x, y):
+            return x*np.exp(-x**2-y**2)
+
+        grid_x, grid_y = np.mgrid[-2: 2: 0.02, -2: 2: 0.02]
+        points = 4 * np.random.rand(1000, 2) - 2
+        values = func(points[:, 0], points[:, 1])
+
+        from scipy.interpolate import griddata
+        # grid_z0 = griddata(points, values, (grid_x, grid_y), method='nearest')
+        grid_z1 = griddata(points, values, (grid_x, grid_y), method='linear')
+        # grid_z2 = griddata(points, values, (grid_x, grid_y), method='cubic')
+
+        plt.subplot(121)
+        plt.imshow(func(grid_x, grid_y).T, extent= (-2,2,-2,2), origin='lower')
+        plt.plot(points[:, 0], points[:, 1], 'k.', ms=1)
+        plt.title('Original')
+        plt.subplot(122)
+        plt.imshow(grid_z1.T,  extent= (-2,2,-2,2), origin='lower')
+        plt.title('Linear')
+        plt.gcf().set_size_inches(6, 6)
+        plt.show()
+
+
     def test_adaptive_detect_region(self):
+        # test_set = {"001": (0, 1679, 2892, 5197),
+        #             "003": (721, 3244, 3044, 5851),
+        #             "044": (410, 2895, 2813, 6019),
+        #             "047": (391, 2402, 2891, 4280),
+        #             }
+
         test_set = [("001", 2100, 3800, 2400, 4000),
-                    ("003", 2400, 4700, 2600, 4850)]
-        id = 1
+                    ("003", 2400, 4700, 2600, 4850),
+                    ("003", 2000, 4500, 2800, 4950),
+                    ("003", 721, 3244, 3044, 5851), # 全切片范围
+                    ("044", 410, 2895, 2813, 6019),
+                    ]
+        id = 2
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -279,7 +313,7 @@ class Test_detector(unittest.TestCase):
 
         # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
         #                            iter_nums, batch_size, threshold):
-        cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums = 50,
+        cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums = 10,
                                                      batch_size = 20, use_post = True)
         # label_map = np.load("label_map.npy")
         # cancer_map2 = detector.create_cancer_map_superpixels(cancer_map, label_map)

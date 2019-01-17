@@ -7,6 +7,7 @@ from core.util import get_seeds, read_csv_file, transform_coordinate
 # from core.image_sequence import ImageSequence
 # from core.seed_sequence import SeedSequence
 from core.open_slide import Open_Slide
+from core.random_gen import Random_Gen
 
 # __all__ = ["Params", "KFB_Slide", "Block", "ImageCone", "util", "ImageSequence", "SeedSequence",
 #            "Open_Slide"]
