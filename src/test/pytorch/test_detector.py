@@ -47,7 +47,8 @@ class Test_detector(unittest.TestCase):
         ax = axes.ravel()
 
         ax[0].imshow(src_img)
-        ax[0].set_title("src_img")
+        shape = src_img.shape
+        ax[0].set_title("src_img {} x {}".format(shape[0] ,shape[1]))
 
         ax[1].imshow(mask_img)
         ax[1].set_title("mask_img")
@@ -288,12 +289,12 @@ class Test_detector(unittest.TestCase):
         #             }
 
         test_set = [("001", 2100, 3800, 2400, 4000),
-                    ("003", 2400, 4700, 2600, 4850),
-                    ("003", 2000, 4500, 2800, 4950),
+                    ("003", 2400, 4700, 2600, 4850), # 小的局部150 x 200
+                    ("003", 2000, 4300, 2800, 4900), # 600 x 800
                     ("003", 721, 3244, 3044, 5851), # 全切片范围
                     ("044", 410, 2895, 2813, 6019),
                     ]
-        id = 2
+        id = 3
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -313,7 +314,7 @@ class Test_detector(unittest.TestCase):
 
         # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
         #                            iter_nums, batch_size, threshold):
-        cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums = 10,
+        cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums = 50,
                                                      batch_size = 20, use_post = True)
         # label_map = np.load("label_map.npy")
         # cancer_map2 = detector.create_cancer_map_superpixels(cancer_map, label_map)
@@ -328,7 +329,8 @@ class Test_detector(unittest.TestCase):
         ax = axes.ravel()
 
         ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0),))
-        ax[1].set_title("src_img")
+        shape = src_img.shape
+        ax[1].set_title("src_img {} x {}".format(shape[0] ,shape[1]))
 
         ax[0].set_title('Receiver Operating Characteristic')
         ax[0].plot(false_positive_rate, true_positive_rate, 'g',
@@ -349,7 +351,9 @@ class Test_detector(unittest.TestCase):
         point = np.array(list(history.keys()))
         ax[3].imshow(mask_img)
         ax[3].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9)
-        ax[3].set_title("history, count = %d" % len(point))
+        total = shape[0] * shape[1]
+        count = len(point)
+        ax[3].set_title("history, count = {:d}, ratio = {:.4e}".format(count, count / total) )
 
         for a in ax.ravel():
             a.axis('off')

@@ -7,6 +7,7 @@ __mtime__ = '2018-10-26'
 """
 import numpy as np
 from sklearn import metrics
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from skimage.draw import rectangle # 需要skimage 0.14及以上版本
 from core.util import get_seeds, transform_coordinate
 from pytorch.transfer_cnn import Transfer
@@ -35,7 +36,8 @@ class Detector(object):
         self.valid_map = np.zeros((h, w), dtype=np.bool)
         self.enable_transfer = False
 
-        self.random_gen = Random_Gen("halton") # random, sobol, haltan
+        self.random_gen = Random_Gen("halton") # random, sobol, halton
+        self.cluster_centers = None
         return
 
     def setting_detected_area(self, x1, y1, x2, y2, scale):
@@ -350,6 +352,7 @@ class Detector(object):
 
         sobel_img = None
         interpolate_img = None
+        threshold = 0.05
         history = {}
         N = 400
 
@@ -359,7 +362,7 @@ class Detector(object):
 
         for i in range(max_iter_nums):
             print("iter %d" % (i + 1))
-            seeds = self.get_random_seeds(N, x1, x2, y1, y2, sobel_img)
+            seeds = self.get_random_seeds(N, x1, x2, y1, y2, sobel_img, threshold)
 
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
             print("the number of new seeds: ", len(new_seeds))
@@ -380,8 +383,12 @@ class Detector(object):
 
             value = list(history.values())
             point = list(history.keys())
-            interpolate_img, sobel_img = self.inter_sobel(point, value,
-                                                          (grid_x, grid_y), method='linear')
+            # interpolate_img, sobel_img = self.inter_sobel(point, value,
+            #                                               (grid_x, grid_y), method='linear')
+            # 使用cubic，会出现负值，而选用linear不会这样
+            interpolate_img = griddata(point, value, (grid_x, grid_y), method='linear', fill_value=0.0)
+            sobel_img, threshold = self.calc_sobel(interpolate_img)
+
 
         if use_post:
             interpolate_img = self.post_process(interpolate_img, bias)
@@ -389,24 +396,43 @@ class Detector(object):
         return interpolate_img, history
 
 
-    def get_random_seeds(self, N, x1, x2, y1, y2, sobel_img):
-        if sobel_img is not None:
-            n = 4 * N
-            # x = np.random.randint(x1, x2 - 1, size=n, dtype='int')
-            # y = np.random.randint(y1, y2 - 1, size=n, dtype='int')
-            x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
+    def get_random_seeds(self, N, x1, x2, y1, y2, sobel_img, threshold):
+        if sobel_img is not None and threshold > 0.01:
+            x = []
+            y =  []
+            while len(x) < N:
+                n = 2 * N
+                sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
 
-            prob = sobel_img[y - y1, x - x1]
-            index = prob.argsort()
-            index = index[-N:]
-            x = x[index]
-            y = y[index]
+                prob = sobel_img[sy - y1, sx - x1]
+                index = prob >= threshold
+                sx = sx[index]
+                sy = sy[index]
+
+                x.extend(sx)
+                y.extend(sy)
         else:
             n = N
-            # x = np.random.randint(x1, x2 - 1, size=n, dtype='int')
-            # y = np.random.randint(y1, y2 - 1, size=n, dtype='int')
             x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
         return tuple(zip(x, y))
+
+    def calc_sobel(self, interpolate):
+        sobel_img = np.abs(cv2.Sobel(interpolate, -1, 1, 1))
+
+        interpolate_value = interpolate.flatten()
+        sobel_value = sobel_img.reshape(-1, 1)
+
+        # if self.cluster_centers is None:
+        #     init_param = 'k-means++'
+        # else:
+        #     init_param = np.expand_dims(self.cluster_centers, axis=1)
+
+        clustering = MiniBatchKMeans(n_clusters=2, init='k-means++', max_iter=100, tol=1e-3).fit(sobel_value)
+        # threshold = clustering.cluster_centers_[0][0] + 0.01
+        self.cluster_centers = clustering.cluster_centers_.ravel()
+        threshold = np.mean(self.cluster_centers)
+        print("threshold = {:.6f}, clustering = {}".format(threshold, self.cluster_centers))
+        return sobel_img, threshold
 
     def get_cancer_probability(self, predictions):
         probs = []
@@ -418,14 +444,14 @@ class Detector(object):
 
         return probs
 
-    def inter_sobel(self, point, value,  grid_x_y, method='nearest', fill_value=0.0):
-        # 使用cubic，会出现负值，而选用linear不会这样
-        interpolate = griddata(point, value, grid_x_y, method='linear', fill_value=fill_value)
-        # sobel_img = np.abs(cv2.Sobel(interpolate, -1, 2, 2))
-        sobel_img = np.abs(cv2.Sobel(interpolate, -1, 1, 1))
-
-        # sobel_img = sobel_img + interpolate * (1 - interpolate)
-        return interpolate, sobel_img
+    # def inter_sobel(self, point, value,  grid_x_y, method='nearest', fill_value=0.0):
+    #     # 使用cubic，会出现负值，而选用linear不会这样
+    #     interpolate = griddata(point, value, grid_x_y, method='linear', fill_value=fill_value)
+    #     # sobel_img = np.abs(cv2.Sobel(interpolate, -1, 2, 2))
+    #     sobel_img = np.abs(cv2.Sobel(interpolate, -1, 1, 1))
+    #
+    #     # sobel_img = sobel_img + interpolate * (1 - interpolate)
+    #     return interpolate, sobel_img
 
     def remove_duplicates(self, x1, y1,  new_seeds, old_seeds):
         shift_seeds = set((xx - x1, yy - y1) for xx, yy in new_seeds)
@@ -441,3 +467,22 @@ class Detector(object):
         return result
 
 # n = int(2 + 2 * np.sqrt(iter_num) * N)
+
+    # def get_random_seeds(self, N, x1, x2, y1, y2, sobel_img):
+    #     if sobel_img is not None:
+    #         n = 12 * N
+    #         # x = np.random.randint(x1, x2 - 1, size=n, dtype='int')
+    #         # y = np.random.randint(y1, y2 - 1, size=n, dtype='int')
+    #         x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
+    #
+    #         prob = sobel_img[y - y1, x - x1]
+    #         index = prob.argsort()
+    #         index = index[-N:]
+    #         x = x[index]
+    #         y = y[index]
+    #     else:
+    #         n = N
+    #         # x = np.random.randint(x1, x2 - 1, size=n, dtype='int')
+    #         # y = np.random.randint(y1, y2 - 1, size=n, dtype='int')
+    #         x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
+    #     return tuple(zip(x, y))
