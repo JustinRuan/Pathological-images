@@ -96,7 +96,7 @@ class Test_encoder(unittest.TestCase):
         model_name = "cae"
         sample_name = "AE_500_32"
 
-        ae = EncoderFactory(c, model_name, sample_name, 64)
+        ae = EncoderFactory(c, model_name, sample_name, 16)
         loss = np.load("latent_vector_loss_{}.npy".format(model_name))
 
         print(loss)
@@ -111,6 +111,33 @@ class Test_encoder(unittest.TestCase):
         # x.scatter_(1, torch.tensor([[1], [1], [1], [1]]), rnd)
         x.scatter_(1, torch.from_numpy(index).long(), rnd)
         print(x)
+
+    def test_02(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "cae"
+        sample_name = "AE_500_32"
+
+        ae = EncoderFactory(c, model_name, sample_name, 16)
+        model = ae.create_initial_model()
+        from torchsummary import summary
+        summary(model, input_size=(3, 32, 32), device="cpu")
+
+    def test_03(self):
+        from visdom import Visdom
+        viz = Visdom()
+
+        # 单张
+        viz.image(
+            np.random.rand(3, 512, 256),
+            opts=dict(title='Random!', caption='How random.'),
+        )
+        # 多张
+        viz.images(
+            np.random.randn(20, 3, 64, 64),
+            opts=dict(title='Random images', caption='How random')
+        )
 
     def test_train_idec(self):
         c = Params()

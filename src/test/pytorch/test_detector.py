@@ -280,6 +280,11 @@ class Test_detector(unittest.TestCase):
         plt.gcf().set_size_inches(6, 6)
         plt.show()
 
+    def test_03(self):
+        from visdom import Visdom
+        viz = Visdom()
+
+
 
     def test_adaptive_detect_region(self):
         # test_set = {"001": (0, 1679, 2892, 5197),
@@ -325,6 +330,37 @@ class Test_detector(unittest.TestCase):
         t1 = 0.5
         false_positive_rate, true_positive_rate, roc_auc, dice = detector.evaluate(t1, cancer_map, mask_img)
 
+        from visdom import Visdom
+        viz = Visdom(env="main")
+        pic_auc = viz.line(
+            Y=true_positive_rate,
+            X=false_positive_rate,
+            opts={
+                'linecolor': np.array([
+                    [0, 0, 255],
+                ]),
+                'dash': np.array(['solid']), # 'solid', 'dash', 'dashdot'
+                'showlegend': True,
+                'legend' : ['AUC = %0.6f' % roc_auc,],
+                'xlabel' : 'False Positive Rate',
+                'ylabel' : 'True Positive Rate',
+                'title' : 'Receiver Operating Characteristic',
+            },
+        )
+
+        viz.line(
+            Y = [0, 1], X = [0, 1],
+            opts={
+                'linecolor': np.array([
+                    [255, 0, 0],
+                ]),
+                'dash': np.array(['dot']),  # 'solid', 'dash', 'dashdot'
+            },
+            name='y = x',
+            win=pic_auc,
+            update='insert',
+        )
+
         fig, axes = plt.subplots(2, 2, figsize=(15, 20), dpi=100)
         ax = axes.ravel()
 
@@ -332,16 +368,16 @@ class Test_detector(unittest.TestCase):
         shape = src_img.shape
         ax[1].set_title("src_img {} x {}".format(shape[0] ,shape[1]))
 
-        ax[0].set_title('Receiver Operating Characteristic')
-        ax[0].plot(false_positive_rate, true_positive_rate, 'g',
-                 label='AUC = %0.6f' % roc_auc)
-
-        ax[0].legend(loc='lower right')
-        ax[0].plot([0, 1], [0, 1], 'r--')
-        ax[0].set_xlim([-0.1, 1.2])
-        ax[0].set_ylim([-0.1, 1.2])
-        ax[0].set_ylabel('True Positive Rate')
-        ax[0].set_xlabel('False Positive Rate')
+        # ax[0].set_title('Receiver Operating Characteristic')
+        # ax[0].plot(false_positive_rate, true_positive_rate, 'g',
+        #          label='AUC = %0.6f' % roc_auc)
+        #
+        # ax[0].legend(loc='lower right')
+        # ax[0].plot([0, 1], [0, 1], 'r--')
+        # ax[0].set_xlim([-0.1, 1.2])
+        # ax[0].set_ylim([-0.1, 1.2])
+        # ax[0].set_ylabel('True Positive Rate')
+        # ax[0].set_xlabel('False Positive Rate')
 
         ax[2].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
         ax[2].imshow(cancer_map, alpha=0.3)
@@ -357,6 +393,6 @@ class Test_detector(unittest.TestCase):
 
         for a in ax.ravel():
             a.axis('off')
-        ax[0].axis("on")
+        # ax[0].axis("on")
 
         plt.show()

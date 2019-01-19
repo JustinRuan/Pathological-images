@@ -17,6 +17,8 @@ import cv2
 from scipy.interpolate import griddata
 from core import Random_Gen
 
+from visdom import Visdom
+
 # N = 500
 
 class Detector(object):
@@ -360,6 +362,9 @@ class Detector(object):
         amplify = extract_scale / seeds_scale
         bias = int(0.25 * patch_size / amplify)
 
+        viz = Visdom(env="main")
+        pic_thresh = None
+
         for i in range(max_iter_nums):
             print("iter %d" % (i + 1))
             seeds = self.get_random_seeds(N, x1, x2, y1, y2, sobel_img, threshold)
@@ -389,6 +394,10 @@ class Detector(object):
             interpolate_img = griddata(point, value, (grid_x, grid_y), method='linear', fill_value=0.0)
             sobel_img, threshold = self.calc_sobel(interpolate_img)
 
+            if pic_thresh is None:
+                pic_thresh =  viz.line(Y=[threshold], X=[i], opts=dict(title='treshold', caption='treshold'))
+            else:
+                viz.line(Y=[threshold], X=[i], win=pic_thresh, update="append")
 
         if use_post:
             interpolate_img = self.post_process(interpolate_img, bias)
@@ -419,7 +428,7 @@ class Detector(object):
     def calc_sobel(self, interpolate):
         sobel_img = np.abs(cv2.Sobel(interpolate, -1, 1, 1))
 
-        interpolate_value = interpolate.flatten()
+        # interpolate_value = interpolate.flatten()
         sobel_value = sobel_img.reshape(-1, 1)
 
         # if self.cluster_centers is None:
