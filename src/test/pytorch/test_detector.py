@@ -299,7 +299,7 @@ class Test_detector(unittest.TestCase):
                     ("003", 721, 3244, 3044, 5851), # 全切片范围
                     ("044", 410, 2895, 2813, 6019),
                     ]
-        id = 3
+        id = 2
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]

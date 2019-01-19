@@ -18,6 +18,7 @@ from scipy.interpolate import griddata
 from core import Random_Gen
 
 from visdom import Visdom
+from skimage.measure import find_contours
 
 # N = 500
 
@@ -362,8 +363,22 @@ class Detector(object):
         amplify = extract_scale / seeds_scale
         bias = int(0.25 * patch_size / amplify)
 
+        #########################################################################################################
         viz = Visdom(env="main")
         pic_thresh = None
+        pic_points = None
+        mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
+        c_mask = find_contours(np.array(mask_img).astype(int), level=0.5)
+        for i, contour in enumerate(c_mask):
+            contour = np.abs(np.array(contour - [y2 - y1, 0]))
+            c_name = "GT {}".format(i)
+            if pic_points is None:
+                pic_points = viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name,
+                                      opts={'linecolor': np.array([[0, 0, 0],]), 'showlegend':True,})
+            else:
+                viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name, win=pic_points, update='append',
+                         opts={'linecolor': np.array([[0, 0, 0], ])})
+        #########################################################################################################
 
         for i in range(max_iter_nums):
             print("iter %d" % (i + 1))
@@ -371,7 +386,16 @@ class Detector(object):
 
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
             print("the number of new seeds: ", len(new_seeds))
-
+            #######################################################################################
+            t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2] ) # 坐标原点移动，并翻转
+            len_seed = len(new_seeds)
+            t_y = np.full((len_seed, 1), i + 1)
+            random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed,1))
+            step_name = "Round {}".format(i + 1)
+            viz.scatter(X=t_seeds, Y=t_y, name=step_name, win=pic_points, update="append",
+                                     opts=dict(title='seeds', caption='seeds', showlegend=True,
+                                               markercolor=random_color, markersize=5))
+            ########################################################################################
             if len(new_seeds) / N < 0.9:
                 break
 
@@ -394,10 +418,14 @@ class Detector(object):
             interpolate_img = griddata(point, value, (grid_x, grid_y), method='linear', fill_value=0.0)
             sobel_img, threshold = self.calc_sobel(interpolate_img)
 
+            ########################################################################################################
+
             if pic_thresh is None:
                 pic_thresh =  viz.line(Y=[threshold], X=[i], opts=dict(title='treshold', caption='treshold'))
             else:
                 viz.line(Y=[threshold], X=[i], win=pic_thresh, update="append")
+
+            #########################################################################################################
 
         if use_post:
             interpolate_img = self.post_process(interpolate_img, bias)
@@ -406,7 +434,7 @@ class Detector(object):
 
 
     def get_random_seeds(self, N, x1, x2, y1, y2, sobel_img, threshold):
-        if sobel_img is not None and threshold > 0.01:
+        if sobel_img is not None and threshold > 0.015:
             x = []
             y =  []
             while len(x) < N:
@@ -436,7 +464,8 @@ class Detector(object):
         # else:
         #     init_param = np.expand_dims(self.cluster_centers, axis=1)
 
-        clustering = MiniBatchKMeans(n_clusters=2, init='k-means++', max_iter=100, tol=1e-3).fit(sobel_value)
+        clustering = MiniBatchKMeans(n_clusters=2, init='k-means++', max_iter=100,
+                                     batch_size=1000,tol=1e-3).fit(sobel_value)
         # threshold = clustering.cluster_centers_[0][0] + 0.01
         self.cluster_centers = clustering.cluster_centers_.ravel()
         threshold = np.mean(self.cluster_centers)
