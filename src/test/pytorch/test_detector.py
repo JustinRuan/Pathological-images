@@ -297,9 +297,10 @@ class Test_detector(unittest.TestCase):
                     ("003", 2400, 4700, 2600, 4850), # 小的局部150 x 200
                     ("003", 2000, 4300, 2800, 4900), # 600 x 800
                     ("003", 721, 3244, 3044, 5851), # 全切片范围
-                    ("044", 410, 2895, 2813, 6019),
+                    ("044", 410, 2895, 2813, 6019), # 4
+                    ("047", 391, 2402, 2891, 4280), # 5
                     ]
-        id = 2
+        id = 4
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -396,3 +397,36 @@ class Test_detector(unittest.TestCase):
         # ax[0].axis("on")
 
         plt.show()
+
+    def test_search_focus_area(self):
+        test_set = [("001", 2100, 3800, 2400, 4000),
+                    ("003", 2400, 4700, 2600, 4850),  # 小的局部150 x 200
+                    ("003", 2000, 4300, 2800, 4900),  # 600 x 800
+                    ("003", 721, 3244, 3044, 5851),  # 全切片范围
+                    ("044", 410, 2895, 2813, 6019),
+                    ]
+        id = 2
+        roi = test_set[id]
+        slice_id = roi[0]
+        x1 = roi[1]
+        y1 = roi[2]
+        x2 = roi[3]
+        y2 = roi[4]
+
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
+                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+
+        detector = Detector(c, imgCone)
+        detector.setting_detected_area(x1, y1, x2, y2, 1.25)
+
+        saved_record = np.load("detect.npz")
+        cancer_map = saved_record['arr_0']
+        result = detector.search_focus_area(x1, y1, cancer_map, (0.9, 0.1))
+        print(result)
+        # src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
+        # mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
