@@ -5,22 +5,22 @@ __author__ = 'Justin'
 __mtime__ = '2018-10-26'
 
 """
+import cv2
 import numpy as np
-from sklearn import metrics
-from sklearn.cluster import KMeans, MiniBatchKMeans
+from scipy.interpolate import griddata
+from skimage import morphology
 from skimage.draw import rectangle  # 需要skimage 0.14及以上版本
+from skimage.measure import find_contours
+from skimage.morphology import square, dilation, erosion
+from sklearn import metrics
+from sklearn.cluster import MiniBatchKMeans
+from visdom import Visdom
+
+from core import Random_Gen
 from core.util import get_seeds, transform_coordinate
-from pytorch.transfer_cnn import Transfer
 from pytorch.cnn_classifier import CNN_Classifier
 from pytorch.segmentation import Segmentation
-import cv2
-from scipy.interpolate import griddata
-from core import Random_Gen
-
-from visdom import Visdom
-from skimage.measure import find_contours, regionprops
-from skimage import io, filters, color, morphology, feature, measure
-from skimage.morphology import square, dilation, erosion
+from pytorch.transfer_cnn import Transfer
 
 
 # N = 500
@@ -351,6 +351,10 @@ class Detector(object):
 
         return result_cancer
 
+    ##################################################################################################################
+    ##########   自适应采样，全切片扫描    #################
+    ##################################################################################################################
+
     # 第一版本
     # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
     #                            max_iter_nums, batch_size, use_post=True):
@@ -484,6 +488,11 @@ class Detector(object):
     #     return sobel_img, threshold
 
     def get_cancer_probability(self, predictions):
+        '''
+        计算出每个检测点所得到的癌变概率
+        :param predictions: 预测的结果列表，（pred 预测的类型, prob可能性）
+        :return:概率列表
+        '''
         probs = []
         for pred, prob in predictions:
             if pred == 0:
@@ -493,22 +502,34 @@ class Detector(object):
 
         return probs
 
-    # def inter_sobel(self, point, value,  grid_x_y, method='nearest', fill_value=0.0):
-    #     # 使用cubic，会出现负值，而选用linear不会这样
-    #     interpolate = griddata(point, value, grid_x_y, method='linear', fill_value=fill_value)
-    #     # sobel_img = np.abs(cv2.Sobel(interpolate, -1, 2, 2))
-    #     sobel_img = np.abs(cv2.Sobel(interpolate, -1, 1, 1))
-    #
-    #     # sobel_img = sobel_img + interpolate * (1 - interpolate)
-    #     return interpolate, sobel_img
-
     def remove_duplicates(self, x1, y1, new_seeds, old_seeds):
+        '''
+        从新生成的种子坐标中，排除已经检测过的坐标位置
+        :param x1: 当前种子点new_seeds和old_seeds所用坐标系的原点，在全切片中的绝对x坐标
+        :param y1: 当前种子点new_seeds和old_seeds所用坐标系的原点，在全切片中的绝对y坐标
+        :param new_seeds: 新种子坐标（全切片中的绝对坐标，原点为切片的左上角）
+        :param old_seeds: 以前的检测过的坐标（在当前检测区域中的坐标，原点为检测区域的左上角）
+        :return: 没有检测过的种子点坐标，（原点为切片的左上角）
+        '''
         shift_seeds = set((xx - x1, yy - y1) for xx, yy in new_seeds)
         result = shift_seeds - old_seeds
         revert_seeds = set((xx + x1, yy + y1) for xx, yy in result)
         return revert_seeds
 
-    def get_random_seeds(self, N, x0, y0,  x1, x2, y1, y2, sobel_img, threshold):
+    def get_random_seeds(self, N, x0, y0, x1, x2, y1, y2, sobel_img, threshold):
+        '''
+        获取随机的种子点坐标（基本算法）
+        :param N: 获取种子点的数量
+        :param x0: Sobel_image的左上角在全切片的绝对位置坐标x
+        :param y0: Sobel_image的左上角在全切片的绝对位置坐标y
+        :param x1: 在全切片中当前检测区域的左上角x
+        :param x2: 在全切片中当前检测区域的右下角x
+        :param y1: 在全切片中当前检测区域的左上角y
+        :param y2: 在全切片中当前检测区域的右下角y
+        :param sobel_img: 梯度图
+        :param threshold: 边界阈值
+        :return: 种子点
+        '''
         if sobel_img is not None and threshold > self.search_therhold:
             x = []
             y = []
@@ -534,9 +555,16 @@ class Detector(object):
             x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
         return tuple(zip(x, y))
 
-    def post_process(self, cancer_map, bias, thresh = (0.7, 0.5)):
-        high_region = cancer_map > thresh[0]
-        low_region = cancer_map > thresh[1]
+    def post_process(self, cancer_map, bias, thresh=(0.7, 0.5)):
+        '''
+        后处理，对低概率区域进行抑制，对高概率区域进行膨胀
+        :param cancer_map: 癌症概率 图
+        :param bias: 形态学运算的模板大小
+        :param thresh: 高低概率的阈值
+        :return: 概率图
+        '''
+        high_region = cancer_map > thresh[0] # 高概率
+        low_region = cancer_map > thresh[1] # 低概率
 
         candidated_tag, num_tag = morphology.label(low_region, neighbors=8, return_num=True)
 
@@ -544,6 +572,7 @@ class Detector(object):
             selected_region = candidated_tag == index
             total = np.sum(high_region[selected_region] == True)
 
+            # 高概率区域面积过小，则抑制
             if total < 2 * 64:  # 256 / (40 /1.25) = 8
                 selected_cancer_map = cancer_map.copy()
                 temp = erosion(selected_cancer_map, square(2 * bias))
@@ -559,6 +588,20 @@ class Detector(object):
     # 第三版本: 增强自适应采样
     def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, use_post=True):
+        '''
+
+        :param x1: 检测区域的左上角x
+        :param y1: 检测区域的左上角y
+        :param x2: 检测区域的右下角x
+        :param y2: 检测区域的右下角y
+        :param coordinate_scale: （x1, y1, x2, y2）所对应的倍镜数
+        :param extract_scale: 提到图块所用的倍镜数
+        :param patch_size: 图块边长
+        :param max_iter_nums: 最大的迭代轮数
+        :param batch_size: 每批次的图片数量
+        :param use_post: 是否使用后处理操作
+        :return:
+        '''
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
 
@@ -591,9 +634,9 @@ class Detector(object):
                          opts={'linecolor': np.array([[0, 0, 0], ])})
         #########################################################################################################
 
-        threshold = 0.0
+        threshold = 0.0 # 边缘区域与平坦区域的分割阈值
         total_step = 1
-        count_tresh = 0
+        count_tresh = 0 # 达到收敛条件的累计次数
 
         rx1, ry1, rx2, ry2 = self.valid_rect
         for i in range(max_iter_nums):
@@ -619,7 +662,7 @@ class Detector(object):
             #     text_labels.append("{:.2f}".format(item))
 
             viz.scatter(X=t_seeds, name=step_name, win=pic_points, update="append",
-                        opts=dict(title='seeds', caption='seeds', showlegend=True, # textlabels=text_labels,
+                        opts=dict(title='seeds', caption='seeds', showlegend=True,  # textlabels=text_labels,
                                   markercolor=random_color, markersize=8))
             ########################################################################################
 
@@ -664,6 +707,11 @@ class Detector(object):
         return interpolate_img, history
 
     def calc_sobel(self, interpolate):
+        '''
+        计算梯度图，和边缘区域的阈值
+        :param interpolate 概率图:
+        :return: 梯度图，和边缘区域的阈值
+        '''
         sobel_img = np.abs(cv2.Sobel(interpolate, -1, 1, 1))
         sobel_value = sobel_img.reshape(-1, 1)
 
@@ -675,20 +723,33 @@ class Detector(object):
         print("threshold = {:.6f}, clustering = {}".format(threshold, self.cluster_centers))
         return sobel_img, threshold
 
-    def get_random_seeds_ex(self, N, x0, y0,  x1, x2, y1, y2, sobel_img, threshold):
+    def get_random_seeds_ex(self, N, x0, y0, x1, x2, y1, y2, sobel_img, threshold):
+        '''
+        获取随机的种子点坐标（扩展算法）
+        :param N: 获取种子点的数量
+        :param x0: Sobel_image的左上角在全切片的绝对位置坐标x
+        :param y0: Sobel_image的左上角在全切片的绝对位置坐标y
+        :param x1: 在全切片中当前检测区域的左上角x
+        :param x2: 在全切片中当前检测区域的右下角x
+        :param y1: 在全切片中当前检测区域的左上角y
+        :param y2: 在全切片中当前检测区域的右下角y
+        :param sobel_img: 梯度图
+        :param threshold: 边界阈值
+        :return: 种子点
+        '''
         # 目前，自适应采样分为三个阶段进行：
         # 1）第一轮，全局的Haltan随机采样，以此生成Sobel图
         # 2）第二轮开始，直到检测阈值Threshold达到设定范围之前的阶段：根据WxW区域内梯度局部极大值进行种子点的选择。
         #       相当于图像分辨率下降后的随机搜索过程，加速寻找可能性的区域。
         # 3）检测阈值达到设定值Threshold后， 算法进入精确的搜索阶段：只选择梯度值越过设定Threshold的点进行采样，
         #       直到采样过密，采样点重合条件达到，退出算法。
-        if sobel_img is None: # 第一轮
+        if sobel_img is None:  # 第一轮
             n = N
             x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
         else:
             x = []
             y = []
-            if threshold > self.search_therhold: # 精确搜索开始
+            if threshold > self.search_therhold:  # 精确搜索开始
                 count = 0
                 while len(x) < N:
                     n = 2 * N
@@ -706,7 +767,7 @@ class Detector(object):
                     # 设定越大，算法收敛速度越慢，但效果会好一点，。
                     if count > 50:
                         break
-            else:    # 大范围地随机搜索
+            else:  # 大范围地随机搜索
                 w = 16
                 half_w = w >> 1
                 n = 2 * N

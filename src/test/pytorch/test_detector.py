@@ -6,7 +6,6 @@ __mtime__ = '2018-06-02'
 
 """
 
-
 import unittest
 from core import *
 import matplotlib.pyplot as plt
@@ -15,6 +14,7 @@ import numpy as np
 from skimage.segmentation import mark_boundaries
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+
 
 class Test_detector(unittest.TestCase):
 
@@ -37,7 +37,7 @@ class Test_detector(unittest.TestCase):
         y2 = 4850
 
         # 001 的检测难度大，
-        test_set = {"001" : (2100, 3800, 2400, 4000),
+        test_set = {"001": (2100, 3800, 2400, 4000),
                     "003": (2400, 4700, 2600, 4850)}
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -48,7 +48,7 @@ class Test_detector(unittest.TestCase):
 
         ax[0].imshow(src_img)
         shape = src_img.shape
-        ax[0].set_title("src_img {} x {}".format(shape[0] ,shape[1]))
+        ax[0].set_title("src_img {} x {}".format(shape[0], shape[1]))
 
         ax[1].imshow(mask_img)
         ax[1].set_title("mask_img")
@@ -83,9 +83,10 @@ class Test_detector(unittest.TestCase):
         detector = Detector(c, imgCone)
         print(detector.ImageHeight, detector.ImageWidth)
 
-        seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1.25, 5, 128, interval = 64)
+        seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1.25, 5, 128, interval=64)
         new20_seeds, new20_predictions = detector.detect_region_detailed(seeds, predictions, 5, 128, 20, 256)
-        new40_seeds, new40_predictions = detector.detect_region_detailed(new20_seeds, new20_predictions, 20, 256, 40, 256)
+        new40_seeds, new40_predictions = detector.detect_region_detailed(new20_seeds, new20_predictions, 20, 256, 40,
+                                                                         256)
         # print(predictions_deep)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -113,7 +114,6 @@ class Test_detector(unittest.TestCase):
         # plt.show()
 
         return
-
 
     def test_show_result(self):
         test_set = [("001", 2100, 3800, 2400, 4000),
@@ -149,16 +149,17 @@ class Test_detector(unittest.TestCase):
         detector.setting_detected_area(x1, y1, x2, y2, 1.25)
         cancer_map, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 5, 1.25, seeds, predictions, 128,
                                                                      None, None)
-        cancer_map2, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 20, 1.25, new20_seeds, new20_predictions,
+        cancer_map2, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 20, 1.25, new20_seeds,
+                                                                      new20_predictions,
                                                                       256, prob_map, count_map)
-        cancer_map3, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 40, 1.25, new40_seeds, new40_predictions,
+        cancer_map3, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 40, 1.25, new40_seeds,
+                                                                      new40_predictions,
                                                                       256, prob_map, count_map)
 
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
         label_map = np.load("label_map.npy")
         cancer_map4 = detector.create_cancer_map_superpixels(cancer_map3, label_map)
-
 
         print("\n x5 低倍镜下的结果：")
         t1 = 0.8
@@ -187,13 +188,13 @@ class Test_detector(unittest.TestCase):
 
         ax[0].set_title('Receiver Operating Characteristic')
         ax[0].plot(false_positive_rate_x5, true_positive_rate_x5, 'g',
-                 label='x5  AUC = %0.4f' % roc_auc_x5)
+                   label='x5  AUC = %0.4f' % roc_auc_x5)
         ax[0].plot(false_positive_rate_x20, true_positive_rate_x20, 'b',
-                 label='x20 AUC = %0.4f' % roc_auc_x20)
+                   label='x20 AUC = %0.4f' % roc_auc_x20)
         ax[0].plot(false_positive_rate_x40, true_positive_rate_x40, 'c',
-                 label='x40 AUC = %0.4f' % roc_auc_x40)
+                   label='x40 AUC = %0.4f' % roc_auc_x40)
         ax[0].plot(false_positive_rate_f, true_positive_rate_f, 'r',
-                 label='final AUC = %0.4f' % roc_auc_f)
+                   label='final AUC = %0.4f' % roc_auc_f)
 
         ax[0].legend(loc='lower right')
         ax[0].plot([0, 1], [0, 1], 'r--')
@@ -219,7 +220,7 @@ class Test_detector(unittest.TestCase):
 
         ax[5].imshow(src_img)
         ax[5].imshow(cancer_map4, alpha=0.6)
-        ax[5].contour(cancer_map4>t4)
+        ax[5].contour(cancer_map4 > t4)
         ax[5].set_title("final cancer_map, t = %s" % t4)
 
         for a in ax.ravel():
@@ -251,7 +252,7 @@ class Test_detector(unittest.TestCase):
         print(detector.ImageHeight, detector.ImageWidth)
         seeds = detector.get_random_seeds(10, x1, x2, y1, y2, None)
         print(seeds)
-        seeds = detector.get_random_seeds(10, x1, x2, y1, y2, np.random.rand(150,200))
+        seeds = detector.get_random_seeds(10, x1, x2, y1, y2, np.random.rand(150, 200))
         print(seeds)
         print(np.array(seeds) - np.array([x1, y1]))
         # a = np.array([x - x1, y - y1 ] for x,y in seeds)
@@ -259,7 +260,7 @@ class Test_detector(unittest.TestCase):
 
     def test_02(self):
         def func(x, y):
-            return x*np.exp(-x**2-y**2)
+            return x * np.exp(-x ** 2 - y ** 2)
 
         grid_x, grid_y = np.mgrid[-2: 2: 0.02, -2: 2: 0.02]
         points = 4 * np.random.rand(1000, 2) - 2
@@ -271,11 +272,11 @@ class Test_detector(unittest.TestCase):
         # grid_z2 = griddata(points, values, (grid_x, grid_y), method='cubic')
 
         plt.subplot(121)
-        plt.imshow(func(grid_x, grid_y).T, extent= (-2,2,-2,2), origin='lower')
+        plt.imshow(func(grid_x, grid_y).T, extent=(-2, 2, -2, 2), origin='lower')
         plt.plot(points[:, 0], points[:, 1], 'k.', ms=1)
         plt.title('Original')
         plt.subplot(122)
-        plt.imshow(grid_z1.T,  extent= (-2,2,-2,2), origin='lower')
+        plt.imshow(grid_z1.T, extent=(-2, 2, -2, 2), origin='lower')
         plt.title('Linear')
         plt.gcf().set_size_inches(6, 6)
         plt.show()
@@ -283,8 +284,6 @@ class Test_detector(unittest.TestCase):
     def test_03(self):
         from visdom import Visdom
         viz = Visdom()
-
-
 
     def test_adaptive_detect_region(self):
         # test_set = {"001": (0, 1679, 2892, 5197),
@@ -294,13 +293,13 @@ class Test_detector(unittest.TestCase):
         #             }
 
         test_set = [("001", 2100, 3800, 2400, 4000),
-                    ("003", 2400, 4700, 2600, 4850), # 小的局部150 x 200
-                    ("003", 2000, 4300, 2800, 4900), # 600 x 800
-                    ("003", 721, 3244, 3044, 5851), # 全切片范围
-                    ("044", 410, 2895, 2813, 6019), # 4
-                    ("047", 391, 2402, 2891, 4280), # 5
+                    ("003", 2400, 4700, 2600, 4850),  # 小的局部150 x 200
+                    ("003", 2000, 4300, 2800, 4900),  # 600 x 800
+                    ("003", 721, 3244, 3044, 5851),  # 全切片范围
+                    ("044", 410, 2895, 2813, 6019),  # 4
+                    ("047", 391, 2402, 2891, 4280),  # 5
                     ]
-        id = 2
+        id = 4
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -320,8 +319,8 @@ class Test_detector(unittest.TestCase):
 
         # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
         #                            iter_nums, batch_size, threshold):
-        cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums = 50,
-                                                     batch_size = 20, use_post = True)
+        cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums=50,
+                                                              batch_size=20, use_post=True)
         # label_map = np.load("label_map.npy")
         # cancer_map2 = detector.create_cancer_map_superpixels(cancer_map, label_map)
 
@@ -340,17 +339,17 @@ class Test_detector(unittest.TestCase):
                 'linecolor': np.array([
                     [0, 0, 255],
                 ]),
-                'dash': np.array(['solid']), # 'solid', 'dash', 'dashdot'
+                'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
                 'showlegend': True,
-                'legend' : ['AUC = %0.6f' % roc_auc,],
-                'xlabel' : 'False Positive Rate',
-                'ylabel' : 'True Positive Rate',
-                'title' : 'Receiver Operating Characteristic',
+                'legend': ['AUC = %0.6f' % roc_auc, ],
+                'xlabel': 'False Positive Rate',
+                'ylabel': 'True Positive Rate',
+                'title': 'Receiver Operating Characteristic',
             },
         )
 
         viz.line(
-            Y = [0, 1], X = [0, 1],
+            Y=[0, 1], X=[0, 1],
             opts={
                 'linecolor': np.array([
                     [255, 0, 0],
@@ -365,9 +364,9 @@ class Test_detector(unittest.TestCase):
         fig, axes = plt.subplots(2, 2, figsize=(15, 20), dpi=100)
         ax = axes.ravel()
 
-        ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0),))
+        ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
         shape = src_img.shape
-        ax[1].set_title("src_img {} x {}".format(shape[0] ,shape[1]))
+        ax[1].set_title("src_img {} x {}".format(shape[0], shape[1]))
 
         # ax[0].set_title('Receiver Operating Characteristic')
         # ax[0].plot(false_positive_rate, true_positive_rate, 'g',
