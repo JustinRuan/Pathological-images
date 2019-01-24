@@ -300,7 +300,7 @@ class Test_detector(unittest.TestCase):
                     ("044", 410, 2895, 2813, 6019), # 4
                     ("047", 391, 2402, 2891, 4280), # 5
                     ]
-        id = 4
+        id = 2
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -390,7 +390,9 @@ class Test_detector(unittest.TestCase):
         ax[3].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9)
         total = shape[0] * shape[1]
         count = len(point)
-        ax[3].set_title("history, count = {:d}, ratio = {:.4e}".format(count, count / total) )
+        disp_text = "history, count = {:d}, ratio = {:.4e}".format(count, count / total)
+        ax[3].set_title(disp_text)
+        print(disp_text)
 
         for a in ax.ravel():
             a.axis('off')
