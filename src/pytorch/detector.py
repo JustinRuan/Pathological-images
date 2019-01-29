@@ -648,21 +648,27 @@ class Detector(object):
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
             print("the number of new seeds: ", len(new_seeds))
 
-            high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
-            predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
-            probs = self.get_cancer_probability(predictions)
+            # 单倍镜下进行检测
+            if True:
+                high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
+                predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
+                probs = self.get_cancer_probability(predictions)
+            # 多倍镜下进行检测, 效果不好啊！
+            else:
+                # def predict_multi_scale(self, src_img, scale_tuple, patch_size, seeds_scale, seeds, batch_size):
+                probs = cnn.predict_multi_scale(self._imgCone, (10, 20, 40), 256, seeds_scale, new_seeds, batch_size)
 
             #######################################################################################
             t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
             len_seed = len(new_seeds)
             random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed, 1))
             step_name = "Round {}".format(total_step)
-            # text_labels = []
-            # for item in probs:
-            #     text_labels.append("{:.2f}".format(item))
+            text_labels = []
+            for item in probs:
+                text_labels.append("{:.2f}".format(item))
 
             viz.scatter(X=t_seeds, name=step_name, win=pic_points, update="append",
-                        opts=dict(title='seeds', caption='seeds', showlegend=True,  # textlabels=text_labels,
+                        opts=dict(title='seeds', caption='seeds', showlegend=True,  #textlabels=text_labels,
                                   markercolor=random_color, markersize=8))
             ########################################################################################
 

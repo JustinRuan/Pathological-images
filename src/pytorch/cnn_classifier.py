@@ -19,7 +19,7 @@ from sklearn import metrics
 from core.util import latest_checkpoint
 from pytorch.net import Simple_CNN
 from pytorch.net import DenseNet, SEDenseNet
-from core.util import read_csv_file
+from core.util import read_csv_file, transform_coordinate
 from pytorch.image_dataset import Image_Dataset
 from pytorch.util import get_image_blocks_itor
 
@@ -491,3 +491,56 @@ class CNN_Classifier(object):
         print("Classification report for classifier x 40:\n%s\n"
               % (metrics.classification_report(Ytest[index_x40,0], predicted_tags[index_x40,0], digits=4)))
         # print("Confusion matrix:\n%s" % metrics.confusion_matrix(Ytest[:,0], predicted_tags[:,0]))
+
+
+    def predict_multi_scale(self, src_img, scale_tuple, patch_size, seeds_scale, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale_tuple: 提取图块的倍镜数的tuple
+        :param patch_size: 图块大小
+        :param seeds_scale: 种子点的倍镜数
+        :param seeds: 种子点的集合
+        :return: 预测结果与概率的
+        '''
+        assert self.patch_type == "x_256", "Only accept a model based on multiple scales"
+
+        if self.model is None:
+            self.model = self.load_pretrained_model_on_predict(self.patch_type)
+            self.model.to(self.device)
+            self.model.eval()
+
+        len_seeds = len(seeds)
+        len_scale = len(scale_tuple)
+
+        data_len = len(seeds) // batch_size
+        if len_seeds % batch_size > 0:
+            data_len += 1
+
+        multi_results = np.empty((len_seeds, len_scale))
+
+        for index, extract_scale in enumerate(scale_tuple):
+            high_seeds = transform_coordinate(0, 0, seeds_scale, seeds_scale, extract_scale, seeds)
+            seeds_itor = get_image_blocks_itor(src_img, extract_scale, high_seeds, patch_size, patch_size, batch_size)
+
+            results = []
+            for step, x in enumerate(seeds_itor):
+                b_x = Variable(x.to(self.device))
+
+                output = self.model(b_x)
+                output_softmax = nn.functional.softmax(output)
+                probs, preds = torch.max(output_softmax, 1)
+                for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
+                    # results.append((pred,prob))
+                    if pred == 1:
+                        results.append(prob)
+                    else:
+                        results.append(1 - prob)
+
+                print('scale = %d, predicting => %d / %d ' % (extract_scale, step + 1, data_len))
+
+            multi_results[:,index] = results
+
+        return np.max(multi_results, axis=1)   # 0.93
+        # return np.mean(multi_results, axis=1)  # 0.88
+        # return np.min(multi_results, axis=1)  # 0.58
