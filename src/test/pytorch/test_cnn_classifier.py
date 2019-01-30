@@ -132,3 +132,20 @@ class Test_cnn_classifier(unittest.TestCase):
     #         results.append((0, max_0))
     #
     #     print(results)
+
+    def test_02(self):
+        a = np.random.rand(5,3)
+        print(a)
+        b = np.max(a, axis=1)
+        print(b)
+
+    def test_export_ONNX_model(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "se_densenet_22"
+        sample_name = "x_256"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+
+        cnn.export_ONNX_model()

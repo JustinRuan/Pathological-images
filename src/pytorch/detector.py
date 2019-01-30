@@ -699,7 +699,7 @@ class Detector(object):
             if (len(new_seeds) / N < 0.9):
                 # 避免过早收敛
                 count_tresh += 1
-                if count_tresh > 3:
+                if count_tresh >= 2:
                     break
             else:
                 count_tresh = 0
