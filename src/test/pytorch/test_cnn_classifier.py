@@ -144,8 +144,10 @@ class Test_cnn_classifier(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         model_name = "se_densenet_22"
+        # model_name = "simple_cnn"
         sample_name = "x_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
 
-        cnn.export_ONNX_model()
+        # cnn.export_ONNX_model()
+        cnn.export_tensorboard_model()

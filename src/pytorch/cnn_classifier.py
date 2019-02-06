@@ -310,29 +310,41 @@ class CNN_Classifier(object):
         :return:
         '''
 
-        net_file = {"500_128":  "densenet_22_500_128_cp-0017-0.2167-0.9388.pth",
-                    "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
-                    "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
-                    "x_256" :   "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
-                    }
+        # net_file = {"500_128":  "densenet_22_500_128_cp-0017-0.2167-0.9388.pth",
+        #             "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
+        #             "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
+        #             "x_256" :   "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
+        #             }
+        #
+        # model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[self.patch_type])
 
-        model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[self.patch_type])
-
-        import torch.onnx
+        # import torch.onnx
         batch_size = 1  # just a random number
 
         # Input to the model
         x = Variable(torch.randn(batch_size, 3, 256, 256), requires_grad=True)
 
-        # torch_model = self.create_initial_model()
-        torch_model = torch.load(model_file, map_location=lambda storage, loc: storage)
-        torch_model.MultiTask = False
-        # torch_model.to(torch.device("cpu"))
+        torch_model = self.create_initial_model()
+        # torch_model = torch.load(model_file, map_location=lambda storage, loc: storage)
+        # torch_model.MultiTask = True
+
+        torch_model.eval()
         # Export the model
         torch_out = torch.onnx.export(torch_model,  # model being run
                                        x,  # model input (or a tuple for multiple inputs)
                                        "{}.onnx".format(self.model_name),  # where to save the model (can be a file or file-like object)
-                                      export_params=False, verbose=False)  # store the trained parameter weights inside the model file
+                                      export_params=True, verbose=False)  # store the trained parameter weights inside the model file
+
+    def export_tensorboard_model(self):
+        torch_model = self.create_initial_model()
+        batch_size = 1
+        x = Variable(torch.randn(batch_size, 3, 256, 256), requires_grad=True)
+        torch_model.eval()
+
+        from tensorboardX import SummaryWriter
+        with SummaryWriter(comment="{}".format(self.model_name)) as w:
+            w.add_graph(torch_model, (x, ))
+
 
     def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
         '''
