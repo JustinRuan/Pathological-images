@@ -149,5 +149,5 @@ class Test_cnn_classifier(unittest.TestCase):
 
         cnn = CNN_Classifier(c, model_name, sample_name)
 
-        # cnn.export_ONNX_model()
-        cnn.export_tensorboard_model()
+        cnn.export_ONNX_model()
+        # cnn.export_tensorboard_model()

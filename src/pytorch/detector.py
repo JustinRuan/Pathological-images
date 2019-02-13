@@ -621,6 +621,7 @@ class Detector(object):
         viz = Visdom(env="main")
         pic_thresh = None
         pic_points = None
+        pic_density = None
         mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
         c_mask = find_contours(np.array(mask_img).astype(int), level=0.5)
         for i, contour in enumerate(c_mask):
@@ -647,6 +648,9 @@ class Detector(object):
 
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
             print("the number of new seeds: ", len(new_seeds))
+
+            sampling_density = self.cacl_sampling_density(x1, y1, new_seeds, list(history.keys()), r=8)
+            print("Current sampling density = ", sampling_density)
 
             # 单倍镜下进行检测
             if True:
@@ -693,16 +697,22 @@ class Detector(object):
             else:
                 viz.line(Y=[threshold], X=[total_step], win=pic_thresh, update="append")
 
+            if pic_density is None:
+                pic_density = viz.line(Y=[sampling_density], X=[total_step], opts=dict(title='sampling density', caption='sampling density'))
+            else:
+                viz.line(Y=[sampling_density], X=[total_step], win=pic_density, update="append")
             #########################################################################################################
             total_step += 1
 
-            if (len(new_seeds) / N < 0.9):
-                # 避免过早收敛
-                count_tresh += 1
-                if count_tresh >= 2:
-                    break
-            else:
-                count_tresh = 0
+            # if (len(new_seeds) / N < 0.9):
+            #     # 避免过早收敛
+            #     count_tresh += 1
+            #     if count_tresh >= 2:
+            #         break
+            # else:
+            #     count_tresh = 0
+            if sampling_density > 3.0:
+                break
 
         if use_post:
             amplify = extract_scale / seeds_scale
@@ -711,6 +721,23 @@ class Detector(object):
 
         # np.savez("detect.npz", interpolate_img, history)
         return interpolate_img, history
+
+    def cacl_sampling_density(self, x1, y1, new_seeds, old_seeds, r = 8):
+
+        if not old_seeds:
+            return 0.0
+
+        seeds = np.array(old_seeds)
+        shift_seeds = set((xx - x1, yy - y1) for xx, yy in new_seeds)
+        result = []
+
+        for nx, ny in shift_seeds:
+            dxy = seeds - np.array([nx, ny])
+            max_dxy = np.max(np.abs(dxy), axis=1)
+            count = np.sum(max_dxy < r)
+            result.append(count)
+
+        return np.mean(result)
 
     def calc_sobel(self, interpolate):
         '''

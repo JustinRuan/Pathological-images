@@ -333,7 +333,7 @@ class CNN_Classifier(object):
         torch_out = torch.onnx.export(torch_model,  # model being run
                                        x,  # model input (or a tuple for multiple inputs)
                                        "{}.onnx".format(self.model_name),  # where to save the model (can be a file or file-like object)
-                                      export_params=True, verbose=False)  # store the trained parameter weights inside the model file
+                                      export_params=False, verbose=False)  # store the trained parameter weights inside the model file
 
     def export_tensorboard_model(self):
         torch_model = self.create_initial_model()
