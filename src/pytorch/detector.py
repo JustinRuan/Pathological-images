@@ -651,7 +651,12 @@ class Detector(object):
 
             sampling_density = self.cacl_sampling_density(x1, y1, new_seeds, list(history.keys()), r=8)
             print("Current sampling density = ", sampling_density)
-
+            ########################################################################################
+            if pic_density is None:
+                pic_density = viz.line(Y=[sampling_density], X=[total_step], opts=dict(title='sampling density', caption='sampling density'))
+            else:
+                pic_density = viz.line(Y=[sampling_density], X=[total_step], win=pic_density, update="append")
+            ########################################################################################
             # 单倍镜下进行检测
             if True:
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
@@ -695,12 +700,12 @@ class Detector(object):
             if pic_thresh is None:
                 pic_thresh = viz.line(Y=[threshold], X=[total_step], opts=dict(title='treshold', caption='treshold'))
             else:
-                viz.line(Y=[threshold], X=[total_step], win=pic_thresh, update="append")
+                pic_thresh = viz.line(Y=[threshold], X=[total_step], win=pic_thresh, update="append")
 
-            if pic_density is None:
-                pic_density = viz.line(Y=[sampling_density], X=[total_step], opts=dict(title='sampling density', caption='sampling density'))
-            else:
-                viz.line(Y=[sampling_density], X=[total_step], win=pic_density, update="append")
+            # if pic_thresh is None:
+            #     pic_thresh = viz.line(Y=np.column_stack((threshold, sampling_density)), X=np.column_stack((total_step, total_step)), opts=dict(title='treshold', caption='treshold'))
+            # else:
+            #     viz.line(Y=np.column_stack((threshold, sampling_density)), X=np.column_stack((total_step, total_step)), win=pic_thresh, update="append")
             #########################################################################################################
             total_step += 1
 
@@ -711,7 +716,7 @@ class Detector(object):
             #         break
             # else:
             #     count_tresh = 0
-            if sampling_density > 3.0:
+            if sampling_density > 5.0:
                 break
 
         if use_post:
@@ -785,7 +790,7 @@ class Detector(object):
             if threshold > self.search_therhold:  # 精确搜索开始
                 count = 0
                 while len(x) < N:
-                    n = 2 * N
+                    n = 2 * N + count * N
                     sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
 
                     prob = sobel_img[sy - y0, sx - x0]
