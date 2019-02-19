@@ -644,7 +644,7 @@ class Detector(object):
 
             print("iter {}, {}, {}".format(i + 1, (rx1, ry1), (rx2, ry2)))
             # seeds = self.get_random_seeds(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
-            seeds = self.get_random_seeds_ex(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
+            seeds = self.get_random_seeds_ex2(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
 
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
             print("the number of new seeds: ", len(new_seeds))
@@ -716,7 +716,7 @@ class Detector(object):
             #         break
             # else:
             #     count_tresh = 0
-            if sampling_density > 5.0:
+            if sampling_density > 8.0:
                 break
 
         if use_post:
@@ -805,6 +805,91 @@ class Detector(object):
                     # 设定越大，算法收敛速度越慢，但效果会好一点，。
                     if count > 50:
                         break
+            else:  # 大范围地随机搜索
+                w = 16
+                half_w = w >> 1
+                n = 2 * N
+                sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
+                grad_list = []
+                for xx, yy in zip(sx, sy):
+                    rr, cc = rectangle((yy - half_w - y0, xx - half_w - x0), extent=(w, w))
+
+                    select_y = (rr >= 0) & (rr < self.valid_area_height)
+                    select_x = (cc >= 0) & (cc < self.valid_area_width)
+                    select = select_x & select_y
+                    max_grad = np.max(sobel_img[rr[select], cc[select]])
+                    grad_list.append(max_grad)
+
+                index = np.array(grad_list).argsort()
+                sx = sx[index[-N:]]
+                sy = sy[index[-N:]]
+
+                x.extend(sx)
+                y.extend(sy)
+
+        return tuple(zip(x, y))
+
+    # 贪婪策略
+    def get_random_seeds_ex2(self, N, x0, y0, x1, x2, y1, y2, sobel_img, threshold):
+        '''
+        获取随机的种子点坐标（扩展算法）
+        :param N: 获取种子点的数量
+        :param x0: Sobel_image的左上角在全切片的绝对位置坐标x
+        :param y0: Sobel_image的左上角在全切片的绝对位置坐标y
+        :param x1: 在全切片中当前检测区域的左上角x
+        :param x2: 在全切片中当前检测区域的右下角x
+        :param y1: 在全切片中当前检测区域的左上角y
+        :param y2: 在全切片中当前检测区域的右下角y
+        :param sobel_img: 梯度图
+        :param threshold: 边界阈值
+        :return: 种子点
+        '''
+        # 目前，自适应采样分为三个阶段进行：
+        # 1）第一轮，全局的Haltan随机采样，以此生成Sobel图
+        # 2）第二轮开始，直到检测阈值Threshold达到设定范围之前的阶段：根据WxW区域内梯度局部极大值进行种子点的选择。
+        #       相当于图像分辨率下降后的随机搜索过程，加速寻找可能性的区域。
+        # 3）检测阈值达到设定值Threshold后， 算法进入精确的搜索阶段：只选择梯度值越过设定Threshold的点进行采样，
+        #       直到采样过密，采样点重合条件达到，退出算法。
+        if sobel_img is None:  # 第一轮
+            n = N
+            x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
+        else:
+            x = []
+            y = []
+            if threshold > self.search_therhold:  # 精确搜索开始
+                n = 4 * N
+                while len(x) <= N/10:
+                    sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
+
+                    prob = sobel_img[sy - y0, sx - x0]
+                    index = prob >= threshold
+                    sx = sx[index]
+                    sy = sy[index]
+
+                    x.extend(sx)
+                    y.extend(sy)
+
+                half_w = 128
+
+                if len(x) < N:
+                    for xx, yy in zip(sx, sy):
+                        nx1 = max(xx - half_w, x1)
+                        nx2 = min(xx + half_w, x2)
+                        ny1 = max(yy - half_w, y1)
+                        ny2 = min(yy + half_w, y2)
+                        sx2, sy2 = self.random_gen.generate_random(n, nx1, nx2, ny1, ny2)
+
+                        prob = sobel_img[sy2 - y0, sx2 - x0]
+                        index = prob >= threshold
+                        sx = sx2[index]
+                        sy = sy2[index]
+
+                        x.extend(sx)
+                        y.extend(sy)
+
+                        # if len(x) > 2 * N:
+                        #     break
+
             else:  # 大范围地随机搜索
                 w = 16
                 half_w = w >> 1

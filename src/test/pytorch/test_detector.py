@@ -299,7 +299,7 @@ class Test_detector(unittest.TestCase):
                     ("044", 410, 2895, 2813, 6019),  # 4
                     ("047", 391, 2402, 2891, 4280),  # 5
                     ]
-        id = 2
+        id = 4
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
