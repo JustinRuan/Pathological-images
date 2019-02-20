@@ -299,7 +299,7 @@ class Test_detector(unittest.TestCase):
                     ("044", 410, 2895, 2813, 6019),  # 4
                     ("047", 391, 2402, 2891, 4280),  # 5
                     ]
-        id = 4
+        id = 1
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -320,7 +320,7 @@ class Test_detector(unittest.TestCase):
         # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
         #                            iter_nums, batch_size, threshold):
         cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums=50,
-                                                              batch_size=20, use_post=True)
+                                                              batch_size=20, limit_sampling_density=10, use_post=True)
         # label_map = np.load("label_map.npy")
         # cancer_map2 = detector.create_cancer_map_superpixels(cancer_map, label_map)
 

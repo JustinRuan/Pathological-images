@@ -587,7 +587,7 @@ class Detector(object):
 
     # 第三版本: 增强自适应采样
     def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
-                               max_iter_nums, batch_size, use_post=True):
+                               max_iter_nums, batch_size, limit_sampling_density = 8.0, use_post=True):
         '''
 
         :param x1: 检测区域的左上角x
@@ -647,7 +647,7 @@ class Detector(object):
             seeds = self.get_random_seeds_ex2(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
 
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
-            print("the number of new seeds: ", len(new_seeds))
+            print("the number of new seeds: ", len(new_seeds), ', the number of seeds in history:', len(history))
 
             sampling_density = self.cacl_sampling_density(x1, y1, new_seeds, list(history.keys()), r=8)
             print("Current sampling density = ", sampling_density)
@@ -716,7 +716,7 @@ class Detector(object):
             #         break
             # else:
             #     count_tresh = 0
-            if sampling_density > 8.0:
+            if sampling_density > limit_sampling_density:
                 break
 
         if use_post:
