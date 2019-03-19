@@ -134,8 +134,8 @@ class Open_Slide(object):
         """
         w, h = self.get_image_width_height_byScale(scale)
         '''
-        癌变区代号 C， ano_TUMOR，将对应的标记区域，再腐蚀width宽。
-        正常间质区代号 S， ano_STROMA，将对应的标记区域，再腐蚀width宽。
+        癌变区代号 C， ano_TUMOR，将对应的标记区域，再腐蚀width宽。考虑嵌套的情况
+        正常间质区代号 S， ano_NORMAL，将对应的标记区域，再腐蚀width宽。不考虑嵌套的情况
         边缘区代号 E， 在C和N，L之间的一定宽度的边缘，= ALL(有效区域) - C
        '''
         img = np.zeros((h, w), dtype=np.bool)
@@ -143,20 +143,20 @@ class Open_Slide(object):
         for contour in self.ano["TUMOR"]:
             tumor_range = np.rint(contour * scale).astype(np.int)
             rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-            img[rr, cc] = 1
+            img[rr, cc] = ~ img[rr, cc]
 
         for contour in self.ano["NORMAL"]:
             tumor_range = np.rint(contour * scale).astype(np.int)
             rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
             img[rr, cc] = 0
 
+        C_img = img
+        N_img = ~img
+
         if edge_width > 1:
-            C_img = morphology.binary_erosion(img, selem=square(edge_width))
-            N_img = ~ morphology.binary_dilation(img, selem=square(edge_width))
-            E_img = np.bitwise_xor(np.ones((h, w), dtype=np.bool), np.bitwise_or(C_img, N_img))
+            C_inner = morphology.binary_erosion(img, selem=square(edge_width))
+            E_img = np.bitwise_xor(C_inner, C_img)
         else:
-            C_img = img
-            N_img = ~img
             E_img = np.zeros((h, w), dtype=np.bool)
 
         return {"C": C_img, "N": N_img, "E": E_img}

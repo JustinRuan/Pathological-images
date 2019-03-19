@@ -753,7 +753,7 @@ class Detector(object):
         sobel_img = np.abs(cv2.Sobel(interpolate, -1, 1, 1))
         sobel_value = sobel_img.reshape(-1, 1)
 
-        clustering = MiniBatchKMeans(n_clusters=2, init='k-means++', max_iter=100,
+        clustering = MiniBatchKMeans(n_clusters=2, init='k-means++', max_iter=100, compute_labels=False,
                                      batch_size=1000, tol=1e-3).fit(sobel_value)
 
         self.cluster_centers = clustering.cluster_centers_.ravel()

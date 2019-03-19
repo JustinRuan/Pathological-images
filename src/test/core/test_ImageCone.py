@@ -58,18 +58,18 @@ class TestImageCone(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_001.tif",
-                                 'Tumor/tumor_001.xml', "Tumor_001")
+        tag = imgCone.open_slide("Tumor/Tumor_014.tif",
+                                 'Tumor/tumor_014.xml', "Tumor_014")
         self.assertTrue(tag)
 
         if tag:
             scale = c.GLOBAL_SCALE
             fullImage = imgCone.get_fullimage_byScale(scale)
             masks = imgCone.create_mask_image(scale,4)
-            mask1 = imgCone.get_effective_zone(scale)
-            mask2 = masks["N"] & mask1
+            # mask1 = imgCone.get_effective_zone(scale)
+            # mask2 = masks["N"] & mask1
 
-            fig, axes = plt.subplots(2, 3, figsize=(12, 6), dpi=200)
+            fig, axes = plt.subplots(2, 2, figsize=(12, 6), dpi=200)
             ax = axes.ravel()
 
             ax[0].imshow(fullImage)
@@ -81,8 +81,8 @@ class TestImageCone(unittest.TestCase):
             ax[2].set_title("S_mask")
             ax[3].imshow(masks["E"])
             ax[3].set_title("E_mask")
-            ax[4].imshow(mask1)
-            ax[4].set_title("ROI")
+            # ax[4].imshow(mask1)
+            # ax[4].set_title("ROI")
 
             for a in ax.ravel():
                 a.axis('off')
