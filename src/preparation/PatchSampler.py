@@ -12,7 +12,7 @@ from skimage.morphology import square
 import os
 # from preparation import PatchFeature
 from feature import feature_extractor
-from core.util import get_seeds
+from core.util import get_seeds, transform_coordinate
 
 class PatchSampler(object):
     def __init__(self, params):
@@ -40,7 +40,7 @@ class PatchSampler(object):
         :param extract_scale: 提取图块所用分辨率
         :param patch_size: 切片的边长
         :param seeds: 中心点集合
-        :param seeds_name: 当前中心点集合的编码或代号（cancer, stroma, edge, lymph四个之一）
+        :param seeds_name: 当前中心点集合的编码或代号（cancer, edge, noraml, 三个之一）
         :return: 某个文件夹中的图块文件
         '''
         Root_path = self._params.PATCHS_ROOT_PATH
@@ -56,3 +56,38 @@ class PatchSampler(object):
             block.save_img(pathPatch)
 
         return
+
+    def detect_cancer_patches_with_scale(self, sourceCone, extract_scale, patch_size, sampling_interval):
+        low_scale = self._params.GLOBAL_SCALE
+        edge_width = 4  # (256 / (40 / 1.25) = 8, 256的图块在1.25倍镜下边长为8)
+
+        mask = sourceCone.create_mask_image(low_scale, edge_width)
+
+        C_mask = mask["C"]
+        E_mask = mask["E"]
+
+        c_seeds = get_seeds(C_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-8)
+        e_seeds = get_seeds(E_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+
+        return c_seeds, e_seeds
+
+    def get_multi_scale_seeds(self,extract_scale_list, seeds, seeds_scale):
+        seeds_dict = {}
+        seeds_dict[seeds_scale] = seeds
+
+        for extract_scale in extract_scale_list:
+            seeds_dict[extract_scale] = transform_coordinate(0, 0, 1.25, seeds_scale, extract_scale, seeds)
+
+        return seeds_dict
+
+    def detect_normal_patches_with_scale(self, sourceCone, extract_scale, patch_size, sampling_interval):
+        low_scale = self._params.GLOBAL_SCALE
+        eff_region = sourceCone.get_effective_zone(low_scale)
+        n_seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+
+        return n_seeds
+
+    def extract_patches_multi_scale(self, sourceCone, seeds_dict, patch_size, seeds_name):
+        for scale, seeds in seeds_dict.items():
+            self.extract_patches(sourceCone, scale, patch_size, seeds, seeds_name)
+

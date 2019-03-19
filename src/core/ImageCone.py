@@ -111,22 +111,23 @@ class ImageCone(object):
         '''
         return self._slide.create_mask_image(scale, width)
 
-    # def get_effective_zone(self, scale):
-    #     '''
-    #     得到切片中，有效处理区域的Mask图像
-    #     :param scale: 指定的倍镜
-    #     :return: Mask图像
-    #     '''
-    #     fullImg = self.get_fullimage_byScale(scale)
-    #
-    #     img = color.rgb2hsv(fullImg)
-    #     # mask = np.ones(img.Shape, dtype=np.uint8)
-    #     mask1 = (img[:, :, 2] < 0.9) & (img[:, :, 2] > 0.15)
-    #     mask2 = (img[:, :, 1] < 0.9) & (img[:, :, 1] > 0.10)
-    #     mask3 = (img[:, :, 0] < 0.9) & (img[:, :, 0] > 0.10)
-    #     result = mask1 & mask2 & mask3
-    #
-    #     result = morphology.binary_closing(result, square(10))
-    #     result = morphology.binary_opening(result, square(20))
-    #     result = morphology.binary_dilation(result, square(10))
-    #     return result
+    def get_effective_zone(self, scale):
+        '''
+        得到切片中，有效处理区域的Mask图像
+        :param scale: 指定的倍镜
+        :return: Mask图像
+        '''
+        fullImg = self.get_fullimage_byScale(scale)
+
+        img = color.rgb2hsv(fullImg)
+        # mask = np.ones(img.Shape, dtype=np.uint8)
+        mask1 = (img[:, :, 2] < 0.90) & (img[:, :, 2] > 0.15)
+        mask2 = (img[:, :, 1] > 0.15)
+        # mask3 = (img[:, :, 0] < 0.95) & (img[:, :, 0] > 0.05)
+        # result = mask1 & mask2 & mask3
+        result = mask1 & mask2
+
+        result = morphology.binary_closing(result, square(10))
+        # result = morphology.binary_opening(result, square(20))
+        result = morphology.binary_dilation(result, square(10))
+        return result

@@ -33,6 +33,8 @@ def get_seeds(MaskLow, lowScale, highScale, patch_size_high, spacingHigh, margin
     elif margin > 0:
         seed_img = morphology.binary_dilation(MaskLow, square(patch_size))
         seed_img = morphology.binary_dilation(seed_img, square(margin))  # 扩展边界
+    else:
+        seed_img = MaskLow
 
     space_patch = spacingHigh / amp
     pos = seed_img.nonzero()
