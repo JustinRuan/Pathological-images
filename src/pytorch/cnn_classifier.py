@@ -620,7 +620,7 @@ class CNN_Classifier(object):
         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
         Xtrain40, Ytrain40 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
 
-        Xtrain10, Xtrain20, Xtrain40, Ytrain10 = Xtrain10[:40], Xtrain20[:40],Xtrain40[:40],Ytrain10[:40] # for debug
+        # Xtrain10, Xtrain20, Xtrain40, Ytrain10 = Xtrain10[:40], Xtrain20[:40],Xtrain40[:40],Ytrain10[:40] # for debug
         train_data = Image_Dataset_MSC(Xtrain10, Xtrain20, Xtrain40, Ytrain10)
 
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
@@ -632,7 +632,7 @@ class CNN_Classifier(object):
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
         Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
 
-        Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
+        # Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
         test_data = Image_Dataset_MSC(Xtest10, Xtest20, Xtest40, Ytest10)
         return train_data, test_data
 
@@ -674,23 +674,23 @@ class CNN_Classifier(object):
                 b_y0 = Variable(y0.to(self.device))  # batch y0
                 b_y1 = Variable(y1.to(self.device))  # batch y1
 
-                cancer_prob, magnifi_prob = model(b_x)
+                cancer_prob, edge_prob = model(b_x)
                 c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
-                m_loss = loss_func(magnifi_prob, b_y1)  # cross entropy loss
-                loss = (1 - beta) * c_loss + beta * m_loss
+                e_loss = loss_func(edge_prob, b_y1)  # cross entropy loss
+                loss = (1 - beta) * c_loss + beta * e_loss
                 optimizer.zero_grad()  # clear gradients for this training step
                 loss.backward()  # backpropagation, compute gradients
                 optimizer.step()
 
                 # 数据统计
                 _, c_preds = torch.max(cancer_prob, 1)
-                _, m_preds = torch.max(magnifi_prob, 1)
+                _, e_preds = torch.max(edge_prob, 1)
                 running_loss = loss.item()
                 running_corrects1 = torch.sum(c_preds == b_y0.data)
-                running_corrects2 = torch.sum(m_preds == b_y1.data)
+                running_corrects2 = torch.sum(e_preds == b_y1.data)
 
                 total_loss += running_loss
-                print('%d / %d ==> Total Loss: %.4f | Cancer Acc: %.4f | Magnifi Acc: %.4f '
+                print('%d / %d ==> Total Loss: %.4f | Cancer Acc: %.4f | Edge Acc: %.4f '
                       % (step, train_data_len, running_loss, running_corrects1.double() / b_x.size(0),
                          running_corrects2.double() / b_x.size(0)))
 
@@ -706,16 +706,16 @@ class CNN_Classifier(object):
                 b_y0 = Variable(y0.to(self.device))  # batch y0
                 b_y1 = Variable(y1.to(self.device))  # batch y1
 
-                cancer_prob, magnifi_prob = model(b_x)
+                cancer_prob, edge_prob = model(b_x)
                 c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
-                m_loss = loss_func(magnifi_prob, b_y1)  # cross entropy loss
-                loss = (1 - beta) * c_loss + beta * m_loss
+                e_loss = loss_func(edge_prob, b_y1)  # cross entropy loss
+                loss = (1 - beta) * c_loss + beta * e_loss
 
                 _, c_preds = torch.max(cancer_prob, 1)
-                _, m_preds = torch.max(magnifi_prob, 1)
+                _, e_preds = torch.max(edge_prob, 1)
                 running_loss += loss.item() * b_x.size(0)
                 running_corrects1 += torch.sum(c_preds == b_y0.data)
-                running_corrects2 += torch.sum(m_preds == b_y1.data)
+                running_corrects2 += torch.sum(e_preds == b_y1.data)
 
             test_data_len = len(test_data)
             epoch_loss = running_loss / test_data_len
