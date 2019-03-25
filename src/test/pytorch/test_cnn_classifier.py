@@ -151,3 +151,14 @@ class Test_cnn_classifier(unittest.TestCase):
 
         cnn.export_ONNX_model()
         # cnn.export_tensorboard_model()
+
+    def test_train_model_msc(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "se_densenet_c9_22"
+        sample_name = "msc_256"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+        samples_name = {10:"T_NC_msc_256_S1000", 20:"T_NC_msc_256_S2000", 40:"T_NC_msc_256_S4000"}
+        cnn.train_model_msc(samples_name=samples_name, batch_size=20, epochs = 30)

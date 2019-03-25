@@ -275,3 +275,105 @@ class SEDenseNet(nn.Module):
             # out = F.avg_pool2d(out, kernel_size=self.avgpool_size).view(features.size(0), -1)
             out = self.classifier(output)
             return out
+
+#######################################################################################################
+########   SE-DenseNet  C9 #########
+#######################################################################################################
+class SEDenseNet_C9(nn.Module):
+    r"""Densenet-BC model class, based on
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
+
+    Args:
+        growth_rate (int) - how many filters to add each layer (`k` in paper)
+        block_config (list of 4 ints) - how many layers in each pooling block
+        num_init_features (int) - the number of filters to learn in the first convolution layer
+        bn_size (int) - multiplicative factor for number of bottle neck layers
+          (i.e. bn_size * k features in the bottleneck layer)
+        drop_rate (float) - dropout rate after each dense layer
+        num_classes (int) - number of classification classes
+    """
+
+    def __init__(self, growth_rate=12, block_config=(6, 12, 24, 16),
+                 num_init_features=24, bn_size=4, drop_rate=0, num_classes=2, gvp_out_size=1, MultiTask=True):
+
+        super(SEDenseNet_C9, self).__init__()
+
+        self.gvp_out_size = gvp_out_size
+        self.MultiTask = MultiTask
+        # First convolution
+        self.features = nn.Sequential(OrderedDict([
+            ('conv0', nn.Conv2d(9, num_init_features, kernel_size=7, stride=2, padding=3, bias=False)),
+            ('norm0', nn.BatchNorm2d(num_init_features)),
+            ('relu0', nn.ReLU(inplace=True)),
+            ('pool0', nn.MaxPool2d(kernel_size=3, stride=2, padding=1)),
+        ]))
+
+        # # Add SELayer at first convolution
+        # self.features.add_module("SELayer_0a", SELayer(channel=num_init_features))
+
+        # Each denseblock
+        num_features = num_init_features
+        for i, num_layers in enumerate(block_config):
+            # Add a SELayer
+            self.features.add_module("SELayer_%da" % (i + 1), SELayer(channel=num_features))
+
+            block = _DenseBlock(num_layers=num_layers, num_input_features=num_features,
+                                bn_size=bn_size, growth_rate=growth_rate, drop_rate=drop_rate)
+            self.features.add_module('denseblock%d' % (i + 1), block)
+
+            num_features = num_features + num_layers * growth_rate
+
+            if i != len(block_config) - 1:
+                # Add a SELayer behind each transition block
+                self.features.add_module("SELayer_%db" % (i + 1), SELayer(channel=num_features))
+
+                trans = _Transition(num_input_features=num_features, num_output_features=num_features // 2)
+                self.features.add_module('transition%d' % (i + 1), trans)
+                num_features = num_features // 2
+
+        # Final batch norm
+        self.features.add_module('norm5', nn.BatchNorm2d(num_features))
+
+        # Add SELayer
+        self.features.add_module("SELayer_0b", SELayer(channel=num_features))
+
+        # global avg pool
+        self.pool_final = nn.Sequential(OrderedDict([
+            ("relu_final", nn.ReLU(inplace=True)),
+            ('gap_final', nn.AdaptiveAvgPool2d(self.gvp_out_size))
+            ]))
+
+        # Linear layer
+        if self.MultiTask:
+            self.out = nn.ModuleList()
+            self.classifier = nn.Linear(num_features, num_classes)
+            self.classifier2 = nn.Linear(num_features, 3)
+            self.out.append(self.classifier)
+            self.out.append(self.classifier2)
+        else:
+            self.classifier = nn.Linear(num_features, num_classes)
+
+        # Official init from torch repo.
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        features = self.features(x)
+        output = self.pool_final(features)
+        output = output.view(features.size(0), -1)
+
+        if self.MultiTask:
+            # output = F.relu(features, inplace=True)
+            # output = F.avg_pool2d(output, kernel_size=self.avgpool_size).view(features.size(0), -1)
+            out1 = self.out[0](output)
+            out2 = self.out[1](output)
+            return out1, out2
+        else:
+            out = self.classifier(output)
+            return out

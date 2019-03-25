@@ -34,6 +34,38 @@ class Image_Dataset(Dataset):
     def __len__(self):
         return len(self.x)
 
+class Image_Dataset_MSC(Dataset):
+    def __init__(self, x10_set, x20_set, x40_set, y_set, transform = None):
+        self.y = y_set
+        self.x10 = x10_set
+        self.x20 = x20_set
+        self.x40 = x40_set
+
+        if transform is None:
+            self.transform = torchvision.transforms.ToTensor()
+        else:
+            self.transform = transform
+
+    def __getitem__(self, index):
+        file_name10 = self.x10[index]
+        file_name20 = self.x20[index]
+        file_name40 = self.x40[index]
+        label = self.y[index]
+
+        img10 = imread(file_name10) / 255
+        img20 = imread(file_name20) / 255
+        img40 = imread(file_name40) / 255
+
+        img = np.concatenate((img10, img20, img40), axis=-1)
+
+        img = self.transform(img).type(torch.FloatTensor)
+
+        return img, label
+
+    def __len__(self):
+        return len(self.y)
+
+
 # class Image_Dataset2(Dataset):
 #     def __init__(self, x_set, y_set, y2_set):
 #         self.x, self.y ,self.y2 = x_set, y_set,y2_set

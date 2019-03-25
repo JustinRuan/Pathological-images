@@ -18,9 +18,9 @@ from sklearn import metrics
 
 from core.util import latest_checkpoint
 from pytorch.net import Simple_CNN
-from pytorch.net import DenseNet, SEDenseNet
+from pytorch.net import DenseNet, SEDenseNet, SEDenseNet_C9
 from core.util import read_csv_file, transform_coordinate
-from pytorch.image_dataset import Image_Dataset
+from pytorch.image_dataset import Image_Dataset, Image_Dataset_MSC
 from pytorch.util import get_image_blocks_itor
 
 class CNN_Classifier(object):
@@ -40,7 +40,7 @@ class CNN_Classifier(object):
         if self.patch_type == "500_128":
             self.num_classes = 2
             self.image_size = 128
-        elif self.patch_type in ["2000_256", "4000_256", "x_256"]:
+        elif self.patch_type in ["2000_256", "4000_256", "x_256", "msc_256"]:
             self.num_classes = 2
             self.image_size = 256
         elif self.patch_type == "cifar10":
@@ -52,7 +52,7 @@ class CNN_Classifier(object):
 
         self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
 
-        self.use_GPU = True
+        self.use_GPU = False
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
 
@@ -116,6 +116,22 @@ class CNN_Classifier(object):
         )
         return  model
 
+    def create_se_densenet_c9(self, depth, num_init_features):
+        # Get densenet configuration
+        if (depth - 4) % 3:
+            raise Exception('Invalid depth')
+        block_config = [(depth - 4) // 6 for _ in range(3)]
+
+        # Models
+        model = SEDenseNet_C9(
+            growth_rate=12,
+            block_config=block_config,
+            num_init_features=num_init_features,
+            num_classes=self.num_classes,
+            gvp_out_size=1,
+        )
+        return  model
+
     def create_initial_model(self):
         '''
         生成初始化的模型
@@ -129,6 +145,10 @@ class CNN_Classifier(object):
             model = self.create_se_densenet(depth=22)
         elif self.model_name =="se_densenet_40":
             model=self.create_se_densenet(depth=40)
+        elif self.model_name == "se_densenet_c9_22":
+            model = self.create_se_densenet_c9(depth=22, num_init_features=24)
+        elif self.model_name == "se_densenet_c9_40":
+            model = self.create_se_densenet_c9(depth=40, num_init_features=24)
         return model
 
     def load_model(self, model_file = None):
@@ -586,3 +606,122 @@ class CNN_Classifier(object):
         return np.max(multi_results, axis=1)   # 0.93
         # return np.mean(multi_results, axis=1)  # 0.88
         # return np.min(multi_results, axis=1)  # 0.58
+
+    ###############################################################################################################
+    # Multiple scale combination (MSC)
+    ###############################################################################################################
+    def load_msc_data(self, samples_name_dict):
+        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
+        Xtrain10, Ytrain10 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+
+        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
+        Xtrain20, Ytrain20 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+
+        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
+        Xtrain40, Ytrain40 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+
+        Xtrain10, Xtrain20, Xtrain40, Ytrain10 = Xtrain10[:40], Xtrain20[:40],Xtrain40[:40],Ytrain10[:40] # for debug
+        train_data = Image_Dataset_MSC(Xtrain10, Xtrain20, Xtrain40, Ytrain10)
+
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
+        Xtest10, Ytest10 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
+        Xtest20, Ytest20 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
+        Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+
+        Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
+        test_data = Image_Dataset_MSC(Xtest10, Xtest20, Xtest40, Ytest10)
+        return train_data, test_data
+
+    def train_model_msc(self, samples_name=None, batch_size=100, epochs=20):
+
+        train_data, test_data = self.load_msc_data(samples_name)
+
+        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size,
+                                       shuffle=True, num_workers = self.NUM_WORKERS)
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+                                      shuffle=False, num_workers = self.NUM_WORKERS)
+
+        model = self.load_model(model_file=None)
+        summary(model, input_size=(9, self.image_size, self.image_size), device="cpu")
+
+        model.to(self.device)
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)  # 学习率为0.01的学习器
+        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-2, alpha=0.99)
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
+                                                               factor=0.1)  # mode为min，则loss不下降学习率乘以factor，max则反之
+        loss_func = nn.CrossEntropyLoss(reduction='mean')
+
+        beta = 0.5
+        # training and testing
+        for epoch in range(epochs):
+            print('Epoch {}/{}'.format(epoch + 1, epochs))
+            print('-' * 80)
+
+            model.train()
+
+            train_data_len = len(train_loader) # train_data.__len__() // batch_size + 1
+            total_loss = 0
+            for step, (x, (y0, y1)) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
+
+                b_x = Variable(x.to(self.device)) # batch x
+                b_y0 = Variable(y0.to(self.device))  # batch y0
+                b_y1 = Variable(y1.to(self.device))  # batch y1
+
+                cancer_prob, magnifi_prob = model(b_x)
+                c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
+                m_loss = loss_func(magnifi_prob, b_y1)  # cross entropy loss
+                loss = (1 - beta) * c_loss + beta * m_loss
+                optimizer.zero_grad()  # clear gradients for this training step
+                loss.backward()  # backpropagation, compute gradients
+                optimizer.step()
+
+                # 数据统计
+                _, c_preds = torch.max(cancer_prob, 1)
+                _, m_preds = torch.max(magnifi_prob, 1)
+                running_loss = loss.item()
+                running_corrects1 = torch.sum(c_preds == b_y0.data)
+                running_corrects2 = torch.sum(m_preds == b_y1.data)
+
+                total_loss += running_loss
+                print('%d / %d ==> Total Loss: %.4f | Cancer Acc: %.4f | Magnifi Acc: %.4f '
+                      % (step, train_data_len, running_loss, running_corrects1.double() / b_x.size(0),
+                         running_corrects2.double() / b_x.size(0)))
+
+            scheduler.step(total_loss)
+
+            running_loss = 0.0
+            running_corrects1 = 0
+            running_corrects2 = 0
+            model.eval()
+            for x, (y0, y1) in test_loader:
+
+                b_x = Variable(x.to(self.device)) # batch x
+                b_y0 = Variable(y0.to(self.device))  # batch y0
+                b_y1 = Variable(y1.to(self.device))  # batch y1
+
+                cancer_prob, magnifi_prob = model(b_x)
+                c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
+                m_loss = loss_func(magnifi_prob, b_y1)  # cross entropy loss
+                loss = (1 - beta) * c_loss + beta * m_loss
+
+                _, c_preds = torch.max(cancer_prob, 1)
+                _, m_preds = torch.max(magnifi_prob, 1)
+                running_loss += loss.item() * b_x.size(0)
+                running_corrects1 += torch.sum(c_preds == b_y0.data)
+                running_corrects2 += torch.sum(m_preds == b_y1.data)
+
+            test_data_len = len(test_data)
+            epoch_loss = running_loss / test_data_len
+            epoch_acc_c = running_corrects1.double() / test_data_len
+            epoch_acc_m = running_corrects2.double() / test_data_len
+            torch.save(model,
+                       self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss, epoch_acc_c,
+                                                                               epoch_acc_m))
+

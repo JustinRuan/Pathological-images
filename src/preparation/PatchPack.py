@@ -194,7 +194,7 @@ class PatchPack(object):
             temp_block.x = int(multiple * temp_block.x)
             temp_block.y = int(multiple * temp_block.y)
             temp_block.scale = multiple * temp_block.scale
-            new_filename = "{}/{}".format(dirname, temp_block.encoding())
+            new_filename = "{}/{}.jpg".format(dirname, temp_block.encoding())
             data_tag.append((new_filename, tag))
 
         return data_tag
