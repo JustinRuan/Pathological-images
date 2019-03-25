@@ -11,8 +11,9 @@ from core import *
 from preparation import *
 import matplotlib.pyplot as plt
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestPatchSampler(unittest.TestCase):
 
@@ -22,39 +23,44 @@ class TestPatchSampler(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         imgCone = ImageCone(c, Open_Slide())
+        patch_size = 256
+        extract_scale = 10
 
-        # 读取数字全扫描切片图像
-        code = "001"
-        tag = imgCone.open_slide("Tumor/Tumor_{}.tif".format(code),
-                                 'Tumor/tumor_{}.xml'.format(code), "Tumor_{}".format(code))
-        self.assertTrue(tag)
+        ps = PatchSampler(c)
 
-        if tag:
-            patch_size = 256
-            extract_scale = 10
+        patch_spacing = 128
 
-            ps = PatchSampler(c)
+        for i in range(1, 51):
+            code = "{:0>3d}".format(i)
+            print("processing ", code, " ... ...")
 
-            patch_spacing = 200
-            while True:
-                c_seeds, e_seeds = ps.detect_cancer_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
-                print("slide code = ", code, ", cancer_seeds = ", len(c_seeds), ", edge_seeds = ", len(e_seeds))
+            # 读取数字全扫描切片图像
+            # code = "003"
+            tag = imgCone.open_slide("Train_Tumor/Tumor_{}.tif".format(code),
+                                     'Train_Tumor/tumor_{}.xml'.format(code), "Tumor_{}".format(code))
+            self.assertTrue(tag)
 
-                print("是否提取图块？Y/N")
-                tag_c = input()
-                if tag_c == "Y":
-                    seeds_dict = ps.get_multi_scale_seeds([20, 40], c_seeds, extract_scale)
-                    ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "cancer")
+            if tag:
 
-                    seeds_dict2 = ps.get_multi_scale_seeds([20, 40], e_seeds, extract_scale)
-                    ps.extract_patches_multi_scale(imgCone, seeds_dict2, patch_size, "edge")
-                    break
-                else:
-                    print("输入癌变区域图块的提取间隔：")
-                    patch_spacing = int(input())
+                while True:
+                    c_seeds, e_seeds = ps.detect_cancer_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
+                    print("slide code = ", code, ", cancer_seeds = ", len(c_seeds), ", edge_seeds = ", len(e_seeds))
 
-            print("%s 完成" % code)
-            return
+                    print("是否提取图块？Y/N")
+                    tag_c = input()
+                    if tag_c == "Y" or len(tag_c) == 0:
+                        seeds_dict = ps.get_multi_scale_seeds([20, 40], c_seeds, extract_scale)
+                        ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "cancer")
+
+                        seeds_dict2 = ps.get_multi_scale_seeds([20, 40], e_seeds, extract_scale)
+                        ps.extract_patches_multi_scale(imgCone, seeds_dict2, patch_size, "edge")
+                        break
+                    else:
+                        print("输入癌变区域图块的提取间隔：")
+                        patch_spacing = int(input())
+
+                print("%s 完成" % code)
+        return
 
    # 提取Normal切片的编号：1~50
     def test_patch_openslide_normal(self):
@@ -62,32 +68,43 @@ class TestPatchSampler(unittest.TestCase):
         c.load_config_file(JSON_PATH)
         imgCone = ImageCone(c, Open_Slide())
 
-        # 读取数字全扫描切片图像
-        code = "001"
-        tag = imgCone.open_slide("Normal/Normal_{}.tif".format(code),
-                                None, "Normal_{}".format(code))
-        self.assertTrue(tag)
+        patch_size = 256
+        extract_scale = 10
 
-        if tag:
-            patch_size = 256
-            extract_scale = 10
+        ps = PatchSampler(c)
 
-            ps = PatchSampler(c)
+        patch_spacing = 400
 
-            patch_spacing = 400
-            while True:
+        for i in range(16, 51):
+            code = "{:0>3d}".format(i)
+            print("processing ", code, " ... ...")
+
+            # 读取数字全扫描切片图像
+            # code = "001"
+            tag = imgCone.open_slide("Train_Normal/Normal_{}.tif".format(code),
+                                    None, "Normal_{}".format(code))
+            self.assertTrue(tag)
+
+            if tag:
                 n_seeds = ps.detect_normal_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
                 print("slide code = ", code, ", normal_seeds = ", len(n_seeds))
 
-                print("是否提取图块？Y/N")
-                tag_c = input()
-                if tag_c == "Y":
-                    seeds_dict = ps.get_multi_scale_seeds([20, 40], n_seeds, extract_scale)
-                    ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal")
-                    break
-                else:
-                    print("输入癌变区域图块的提取间隔：")
-                    patch_spacing = int(input())
+                seeds_dict = ps.get_multi_scale_seeds([20, 40], n_seeds, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal")
 
-            print("%s 完成" % code)
-            return
+                # while True:
+                #     n_seeds = ps.detect_normal_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
+                #     print("slide code = ", code, ", normal_seeds = ", len(n_seeds))
+                #
+                #     print("是否提取图块？Y/N")
+                #     tag_c = input()
+                #     if tag_c == "Y" or len(tag_c) == 0:
+                #         seeds_dict = ps.get_multi_scale_seeds([20, 40], n_seeds, extract_scale)
+                #         ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal")
+                #         break
+                #     else:
+                #         print("输入癌变区域图块的提取间隔：")
+                #         patch_spacing = int(input())
+
+                print("%s 完成" % code)
+        return

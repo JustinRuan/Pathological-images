@@ -47,11 +47,15 @@ class Block(object):
         file_code = filename[left + 1 : right]
         code = file_code.split("_")
 
-        self.slice_number = code[0]
-        self.x = int(code[1])
-        self.y = int(code[2])
-        self.scale = float(code[3])/100
-        self.opcode = int(code[4])
+        if len(code) > 5:
+            pos = file_code.find(code[-5])
+            self.slice_number = file_code[:pos + len(code[-5])]
+        else:
+            self.slice_number = code[0]
+        self.x = int(code[-4])
+        self.y = int(code[-3])
+        self.scale = float(code[-2])/100
+        self.opcode = int(code[-1])
         self.w = w
         self.h = h
 

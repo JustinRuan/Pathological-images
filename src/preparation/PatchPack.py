@@ -23,15 +23,15 @@ from sklearn.feature_selection import chi2
 from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
 from preparation.normalization import ImageNormalization
+from core.Block import Block
 
 class PatchPack(object):
     def __init__(self, params):
         self._params = params
 
-    # "stroma"     0
+    # "normal"     0
     # "cancer"     1
-    # "lymph"      2
-    # "edge"      3
+    # "edge"      2
     def loading_filename_tags(self, dir_code, tag):
         '''
         从包含指定字符串的目录中读取文件列表，并给定标记
@@ -68,7 +68,7 @@ class PatchPack(object):
                     L.append((rfile, tag))
         return L
 
-    def create_train_test_data(self, data_tag, train_size, test_size, file_tag):
+    def create_train_test_data(self, data_tag, train_size, test_size, file_tag, suffle = True):
         '''
         生成样本文件的列表，存入txt中
         :param data_tag: 样本集
@@ -86,7 +86,9 @@ class PatchPack(object):
         train_count = int(train_size * count)
         test_count = int(test_size * count)
 
-        random.shuffle(data_tag)
+        if suffle:
+            random.shuffle(data_tag)
+
         train_data = data_tag[:train_count]
         test_data = data_tag[train_count : train_count + test_count]
 
@@ -149,6 +151,60 @@ class PatchPack(object):
 
         return data_tag
 
+    ###############################################################################################################
+    # Multiple scale combination (MSC)
+    ###############################################################################################################
+    def create_train_test_data_MSC(self, scale_tag, data_tag, train_size, test_size, file_tag):
+        if (train_size + test_size > 1):
+            return
+
+        dir_x10 = scale_tag[10]
+        dir_x20 = scale_tag[20]
+        dir_x40 = scale_tag[40]
+
+        dir_x10_tag = {}
+        for key, value in data_tag.items():
+            full_dir_x10 = "{}_{}".format(dir_x10, key)
+            dir_x10_tag[full_dir_x10] = value
+
+        data_x10_tag = self.initialize_sample_tags(dir_x10_tag)
+        random.shuffle(data_x10_tag)
+
+        data_x20_tag = self.get_msc_filenames(dir_x10, dir_x20, data_x10_tag, 2)
+        data_x40_tag = self.get_msc_filenames(dir_x10, dir_x40, data_x10_tag, 4)
+
+        new_file_tag = "{}_{}".format(file_tag, dir_x10)
+        self.create_train_test_data(data_x10_tag, train_size, test_size, new_file_tag, suffle=False)
+
+        new_file_tag = "{}_{}".format(file_tag, dir_x20)
+        self.create_train_test_data(data_x20_tag, train_size, test_size, new_file_tag, suffle=False)
+
+        new_file_tag = "{}_{}".format(file_tag, dir_x40)
+        self.create_train_test_data(data_x40_tag, train_size, test_size, new_file_tag, suffle=False)
+
+        return
+
+    def get_msc_filenames(self, scale_x10_tag, scale_other_tag, data_x10_tag, multiple):
+        data_tag = []
+        temp_block = Block()
+        for pathname, tag in data_x10_tag:
+            [dirname, filename]=os.path.split(pathname)
+            dirname = dirname.replace(scale_x10_tag, scale_other_tag)
+            temp_block.decoding(filename, 256, 256)
+            temp_block.x = int(multiple * temp_block.x)
+            temp_block.y = int(multiple * temp_block.y)
+            temp_block.scale = multiple * temp_block.scale
+            new_filename = "{}/{}".format(dirname, temp_block.encoding())
+            data_tag.append((new_filename, tag))
+
+        return data_tag
+
+    ################################################################################################################
+
+
+    ################################################################################################################
+    #  有待探索的
+    ################################################################################################################
     def extract_feature_save_file(self, train_file_code):
         pf = FeatureExtractor(self._params)
         features, tag = pf.extract_features_by_file_list("{}.txt".format(train_file_code), features_name = "most")

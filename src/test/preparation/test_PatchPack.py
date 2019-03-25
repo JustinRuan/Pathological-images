@@ -174,3 +174,18 @@ class TestPatchPack(unittest.TestCase):
         dir_map = {"S500_128_True_cancer.txt": 1, "S500_128_True_normal.txt": 0}
         pack.packing_refined_samples(dir_map, 5, 128, "TrueS")
 
+    ###############################################################################################################
+    # Multiple scale combination (MSC)
+    ###############################################################################################################
+    def test_pack_samples_MSC(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        pack = PatchPack(c)
+        data_tag = pack.create_train_test_data_MSC({10: "S1000", 20:"S2000", 40:"S4000"},
+                                               {"256_cancer": (1, 2),
+                                                "256_edge":   (1, 1),
+                                                "256_normal": (0, 0),
+                                                },
+                                                   0.9, 0.1, "T_NC_msc_256")
+
