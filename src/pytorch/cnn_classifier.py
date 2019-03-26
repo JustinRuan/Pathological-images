@@ -21,7 +21,7 @@ from pytorch.net import Simple_CNN
 from pytorch.net import DenseNet, SEDenseNet, SEDenseNet_C9
 from core.util import read_csv_file, transform_coordinate
 from pytorch.image_dataset import Image_Dataset, Image_Dataset_MSC
-from pytorch.util import get_image_blocks_itor
+from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor
 
 class CNN_Classifier(object):
 
@@ -146,7 +146,7 @@ class CNN_Classifier(object):
         elif self.model_name =="se_densenet_40":
             model=self.create_se_densenet(depth=40)
         elif self.model_name == "se_densenet_c9_22":
-            model = self.create_se_densenet_c9(depth=22, num_init_features=54)
+            model = self.create_se_densenet_c9(depth=22, num_init_features=36)
         elif self.model_name == "se_densenet_c9_40":
             model = self.create_se_densenet_c9(depth=40, num_init_features=54)
         return model
@@ -311,12 +311,13 @@ class CNN_Classifier(object):
                     "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
                     "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
                     "x_256" :   "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
+                    "msc_256":  "se_densenet_c9_22_msc_256_0028-0.1045-0.9810-0.9436.pth",
                     }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
         model = self.load_model(model_file=model_file)
 
-        if patch_type == "x_256":
+        if patch_type in ["x_256", "msc_256"]:
             # 关闭多任务的其它输出
             model.MultiTask = False
 
@@ -724,4 +725,94 @@ class CNN_Classifier(object):
             torch.save(model,
                        self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss, epoch_acc_c,
                                                                                epoch_acc_m))
+
+    def evaluate_model_msc(self, samples_name_dict=None, batch_size=100):
+
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
+        Xtest10, Ytest10 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
+        Xtest20, Ytest20 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
+        Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+
+        # Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
+        test_data = Image_Dataset_MSC(Xtest10, Xtest20, Xtest40, Ytest10)
+
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+                                      shuffle=False, num_workers=self.NUM_WORKERS)
+
+        model = self.load_model(model_file=None)
+        model.MultiTask = True
+        # 关闭求导，节约大量的显存
+        for param in model.parameters():
+            param.requires_grad = False
+        print(model)
+
+        model.to(self.device)
+        model.eval()
+
+        predicted_tags = []
+        test_data_len = len(test_loader)
+        for step, (x, _) in enumerate(test_loader):
+            b_x = Variable(x.to(self.device))  # batch x
+
+            # cancer_prob = model(b_x)
+            # _, cancer_preds = torch.max(cancer_prob, 1)
+            # for c_pred in zip(cancer_preds.cpu().numpy()):
+            #     predicted_tags.append((c_pred))
+            cancer_prob, edge_prob = model(b_x)
+            _, cancer_preds = torch.max(cancer_prob, 1)
+            _, edge_preds = torch.max(edge_prob, 1)
+            for c_pred, m_pred in zip(cancer_preds.cpu().numpy(), edge_preds.cpu().numpy()):
+                predicted_tags.append((c_pred, m_pred))
+
+            print('predicting => %d / %d ' % (step + 1, test_data_len))
+
+        # Ytest = np.array(Ytest10[:60]) # for debug
+        Ytest = np.array(Ytest10)
+        predicted_tags = np.array(predicted_tags)
+
+        print("Classification report for classifier (normal, cancer):\n%s\n"
+              % (metrics.classification_report(Ytest[:,0], predicted_tags[:,0], digits=4)))
+        print("Classification report for classifier (normal, edge, cancer):\n%s\n"
+              % (metrics.classification_report(Ytest[:,1], predicted_tags[:,1], digits=4)))
+
+    def predict_msc(self, src_img, patch_size, seeds_scale, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param patch_size: 图块大小
+        :param seeds_scale: 种子点的倍镜数
+        :param seeds: 种子点的集合
+        :return: 预测结果与概率的
+        '''
+        assert self.patch_type == "msc_256", "Only accept a model based on multiple scales"
+
+        if self.model is None:
+            self.model = self.load_pretrained_model_on_predict(self.patch_type)
+            self.model.to(self.device)
+            self.model.eval()
+
+        seeds_itor = get_image_blocks_msc_itor(src_img, seeds_scale, seeds, patch_size, patch_size, batch_size)
+
+        len_seeds = len(seeds)
+        data_len = len(seeds) // batch_size
+        if len_seeds % batch_size > 0:
+            data_len += 1
+
+        results = []
+
+        for step, x in enumerate(seeds_itor):
+            b_x = Variable(x.to(self.device))
+
+            output = self.model(b_x)
+            output_softmax = nn.functional.softmax(output)
+            probs, preds = torch.max(output_softmax, 1)
+            for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
+                results.append((pred, prob))
+            print('predicting => %d / %d ' % (step + 1, data_len))
+
+        return results
 

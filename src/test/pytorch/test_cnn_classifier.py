@@ -161,7 +161,7 @@ class Test_cnn_classifier(unittest.TestCase):
 
         cnn = CNN_Classifier(c, model_name, sample_name)
         samples_name = {10:"T_NC_msc_256_S1000", 20:"T_NC_msc_256_S2000", 40:"T_NC_msc_256_S4000"}
-        cnn.train_model_msc(samples_name=samples_name, batch_size=20, epochs = 30)
+        cnn.train_model_msc(samples_name=samples_name, batch_size=10, epochs = 30)
 
     def test_Image_Dataset_MSC(self):
         c = Params()
@@ -181,3 +181,33 @@ class Test_cnn_classifier(unittest.TestCase):
         for index, (x, y) in enumerate(train_loader):
             print(x.shape, y)
             if index > 10: break
+
+    def test_evaluate_model_msc(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "se_densenet_c9_22"
+        sample_name = "msc_256"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+        samples_name = {10: "T_NC_msc_256_S1000", 20: "T_NC_msc_256_S2000", 40: "T_NC_msc_256_S4000"}
+        cnn.evaluate_model_msc(samples_name, batch_size=32)
+
+    def test_predict_msc(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "se_densenet_c9_22"
+        sample_name = "msc_256"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Tumor/Tumor_004.tif",
+                                 None, "Tumor_004")
+        seeds = [(34816, 48960), (35200, 48640), (12800, 56832)] # C, C, S,
+        # def predict_multi_scale(self, src_img, scale_tuple, patch_size, seeds_scale, seeds, batch_size):
+        result = cnn.predict_msc(imgCone, 256, 20, seeds, 4)
+        print(result)
