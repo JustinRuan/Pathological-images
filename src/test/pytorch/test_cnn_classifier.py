@@ -65,8 +65,8 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # model_name = "simple_cnn"
         model_name = "densenet_22"
-        sample_name = "500_128"
-        # sample_name = "2000_256"
+        # sample_name = "500_128"
+        sample_name = "2000_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
 
@@ -162,3 +162,22 @@ class Test_cnn_classifier(unittest.TestCase):
         cnn = CNN_Classifier(c, model_name, sample_name)
         samples_name = {10:"T_NC_msc_256_S1000", 20:"T_NC_msc_256_S2000", 40:"T_NC_msc_256_S4000"}
         cnn.train_model_msc(samples_name=samples_name, batch_size=20, epochs = 30)
+
+    def test_Image_Dataset_MSC(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "se_densenet_c9_22"
+        sample_name = "msc_256"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+
+        samples_name = {10: "T_NC_msc_256_S1000", 20: "T_NC_msc_256_S2000", 40: "T_NC_msc_256_S4000"}
+        train_data, test_data = cnn.load_msc_data(samples_name)
+        print(train_data.__len__())
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=False, num_workers=2)
+        print(train_loader)
+
+        for index, (x, y) in enumerate(train_loader):
+            print(x.shape, y)
+            if index > 10: break

@@ -52,7 +52,7 @@ class CNN_Classifier(object):
 
         self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
 
-        self.use_GPU = False
+        self.use_GPU = True
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
 
@@ -146,9 +146,9 @@ class CNN_Classifier(object):
         elif self.model_name =="se_densenet_40":
             model=self.create_se_densenet(depth=40)
         elif self.model_name == "se_densenet_c9_22":
-            model = self.create_se_densenet_c9(depth=22, num_init_features=24)
+            model = self.create_se_densenet_c9(depth=22, num_init_features=54)
         elif self.model_name == "se_densenet_c9_40":
-            model = self.create_se_densenet_c9(depth=40, num_init_features=24)
+            model = self.create_se_densenet_c9(depth=40, num_init_features=54)
         return model
 
     def load_model(self, model_file = None):
