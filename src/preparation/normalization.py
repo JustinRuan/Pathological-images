@@ -16,9 +16,8 @@ class ImageNormalization(object):
         self._params = params
         return
 
-    def calculate_avg_mean_std(self, data_filename):
+    def calculate_avg_mean_std(self, data_filenames):
         root_path = self._params.PATCHS_ROOT_PATH
-        data_file = "{}/{}".format(root_path, data_filename)
 
         count = 0
         mean_l = []
@@ -27,33 +26,38 @@ class ImageNormalization(object):
         std_l = []
         std_a = []
         std_b = []
-        f = open(data_file, "r")
-        for line in f:
-            items = line.split(" ")
-            patch_file = "{}/{}".format(root_path, items[0])
-            img = io.imread(patch_file, as_gray=False)
 
-            lab_img = color.rgb2lab(img)
+        for data_filename in data_filenames:
+            data_file = "{}/{}".format(root_path, data_filename)
 
-            # LAB三通道分离
-            labO_l = lab_img[:, :, 0]
-            labO_a = lab_img[:, :, 1]
-            labO_b = lab_img[:, :, 2]
 
-            # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
-            std_l.append(np.std(labO_l))
-            std_a.append(np.std(labO_a))
-            std_b.append(np.std(labO_b))
+            f = open(data_file, "r")
+            for line in f:
+                items = line.split(" ")
+                patch_file = "{}/{}".format(root_path, items[0])
+                img = io.imread(patch_file, as_gray=False)
 
-            mean_l.append(np.mean(labO_l))
-            mean_a.append(np.mean(labO_a))
-            mean_b.append(np.mean(labO_b))
+                lab_img = color.rgb2lab(img)
 
-            if (0 == count%1000):
-                print("{} calculate mean and std >>> {}".format(time.asctime( time.localtime()), count))
-            count += 1
+                # LAB三通道分离
+                labO_l = lab_img[:, :, 0]
+                labO_a = lab_img[:, :, 1]
+                labO_b = lab_img[:, :, 2]
 
-        f.close()
+                # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
+                std_l.append(np.std(labO_l))
+                std_a.append(np.std(labO_a))
+                std_b.append(np.std(labO_b))
+
+                mean_l.append(np.mean(labO_l))
+                mean_a.append(np.mean(labO_a))
+                mean_b.append(np.mean(labO_b))
+
+                if (0 == count%1000):
+                    print("{} calculate mean and std >>> {}".format(time.asctime( time.localtime()), count))
+                count += 1
+
+            f.close()
 
         avg_mean_l = np.mean(mean_l)
         avg_mean_a = np.mean(mean_a)

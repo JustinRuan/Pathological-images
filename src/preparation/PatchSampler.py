@@ -57,9 +57,9 @@ class PatchSampler(object):
 
         return
 
-    def detect_cancer_patches_with_scale(self, sourceCone, extract_scale, patch_size, sampling_interval):
+    def detect_cancer_patches_with_scale(self, sourceCone, extract_scale, patch_size, sampling_interval, edge_width):
         low_scale = self._params.GLOBAL_SCALE
-        edge_width = 4  # (256 / (40 / 1.25) = 8, 256的图块在1.25倍镜下边长为8)
+        # edge_width = 4  # (256 / (40 / 1.25) = 8, 256的图块在1.25倍镜下边长为8)
 
         mask = sourceCone.create_mask_image(low_scale, edge_width)
 

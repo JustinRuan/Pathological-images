@@ -26,8 +26,8 @@ class Image_Dataset(Dataset):
     def __getitem__(self, index):
         file_name = self.x[index]
         label = self.y[index]
-        # img = ImageNormalization.normalize_mean(imread(file_name)) / 255
-        img = imread(file_name) / 255
+        img = ImageNormalization.normalize_mean(imread(file_name)) / 255
+        # img = imread(file_name) / 255
         img = self.transform(img).type(torch.FloatTensor)
         return img, label
 
@@ -52,6 +52,9 @@ class Image_Dataset_MSC(Dataset):
         file_name40 = self.x40[index]
         label = self.y[index]
 
+        # img = ImageNormalization.normalize_mean(imread(file_name10)) / 255
+        # img = ImageNormalization.normalize_mean(imread(file_name20)) / 255
+        # img = ImageNormalization.normalize_mean(imread(file_name40)) / 255
         img10 = imread(file_name10) / 255
         img20 = imread(file_name20) / 255
         img40 = imread(file_name40) / 255

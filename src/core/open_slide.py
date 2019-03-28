@@ -154,10 +154,14 @@ class Open_Slide(object):
         N_img = ~img
 
         if edge_width > 1:
-            C_inner = morphology.binary_erosion(img, selem=square(edge_width))
+            C_inner = morphology.binary_erosion(img, selem=square(2 * edge_width))
             EI_img = np.bitwise_xor(C_inner, C_img)
-            C_outer = morphology.binary_dilation(img, selem=square(edge_width))
+            EI_img = morphology.binary_erosion(EI_img, selem=square(edge_width))
+
+            C_outer = morphology.binary_dilation(img, selem=square(2 * edge_width))
             EO_img = np.bitwise_xor(C_outer, C_img)
+            EO_img = morphology.binary_erosion(EO_img, selem=square(edge_width))
+
         else:
             EI_img = np.zeros((h, w), dtype=np.bool)
             EO_img = np.zeros((h, w), dtype=np.bool)

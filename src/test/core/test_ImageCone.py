@@ -9,6 +9,7 @@ __mtime__ = '2018-05-19'
 import unittest
 from core import *
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class TestImageCone(unittest.TestCase):
@@ -65,7 +66,7 @@ class TestImageCone(unittest.TestCase):
         if tag:
             scale = c.GLOBAL_SCALE
             fullImage = imgCone.get_fullimage_byScale(scale)
-            masks = imgCone.create_mask_image(scale,4)
+            masks = imgCone.create_mask_image(scale,8)
             eff_region = imgCone.get_effective_zone(scale)
 
             fig, axes = plt.subplots(1, 6, figsize=(8, 3), dpi=200)
@@ -80,7 +81,8 @@ class TestImageCone(unittest.TestCase):
             ax[2].set_title("S_mask")
             ax[3].imshow(masks["EI"])
             ax[3].set_title("EI_mask")
-            ax[4].imshow(masks["EO"])
+            # ax[4].imshow(masks["EO"])
+            ax[4].imshow(np.bitwise_or(masks["EI"], masks["EO"]))
             ax[4].set_title("EO_mask")
             ax[5].imshow(eff_region)
             ax[5].set_title("eff_region")

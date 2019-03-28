@@ -605,8 +605,8 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
 
-        # cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
-        cnn = CNN_Classifier(self._params, "se_densenet_c9_22", "msc_256")
+        cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
+        # cnn = CNN_Classifier(self._params, "se_densenet_c9_22", "msc_256")
 
         # 生成坐标网格
         grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
@@ -658,7 +658,7 @@ class Detector(object):
             else:
                 pic_density = viz.line(Y=[sampling_density], X=[total_step], win=pic_density, update="append")
             ########################################################################################
-            mode = 3
+            mode = 1
             # 单倍镜下进行检测
             if mode == 1:
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)

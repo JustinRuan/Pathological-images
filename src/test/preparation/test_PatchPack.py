@@ -183,9 +183,10 @@ class TestPatchPack(unittest.TestCase):
 
         pack = PatchPack(c)
         pack.create_train_test_data_MSC({10: "S1000", 20:"S2000", 40:"S4000"},
-                                               {"256_cancer": (1, 1),
-                                                # "256_edge":   (1, 1),
-                                                "256_normal": (0, 0),
+                                               {"256_cancer":       (1, 3),
+                                                "256_edgeinner":    (1, 2),
+                                                "256_edgeouter":    (0, 1),
+                                                "256_normal":       (0, 0),
                                                 },
-                                                   0.9, 0.1, "T_NC2_msc_256")
+                                                   0.4, 0.02, "T_NC2_msc_256")
 
