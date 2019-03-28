@@ -23,22 +23,24 @@ class Test_detector(unittest.TestCase):
         c.load_config_file(JSON_PATH)
         imgCone = ImageCone(c, Open_Slide())
 
-        id = "003"
+        slice_id = "001"
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % id,
-                                 'Tumor/tumor_%s.xml' % id, "Tumor_%s" % id)
+        # tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % id,
+        #                          'Tumor/tumor_%s.xml' % id, "Tumor_%s" % id)
+        tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
+                                 'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
 
         detector = Detector(c, imgCone)
         print(detector.ImageHeight, detector.ImageWidth)
 
-        x1 = 2400
-        y1 = 4700
-        x2 = 2600
-        y2 = 4850
+        x1 = 100
+        y1 = 100
+        x2 = 2700
+        y2 = 2600
 
-        # 001 的检测难度大，
-        test_set = {"001": (2100, 3800, 2400, 4000),
-                    "003": (2400, 4700, 2600, 4850)}
+        # # 001 的检测难度大，
+        # test_set = {"001": (2100, 3800, 2400, 4000),
+        #             "003": (2400, 4700, 2600, 4850)}
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -291,15 +293,19 @@ class Test_detector(unittest.TestCase):
         #             "044": (410, 2895, 2813, 6019),
         #             "047": (391, 2402, 2891, 4280),
         #             }
-
+        # # train set
+        # test_set = [("001", 2100, 3800, 2400, 4000),
+        #             ("003", 2400, 4700, 2600, 4850),  # 小的局部150 x 200
+        #             ("003", 2000, 4300, 2800, 4900),  # 600 x 800
+        #             ("003", 721, 3244, 3044, 5851),  # 全切片范围
+        #             ("044", 410, 2895, 2813, 6019),  # 4
+        #             ("047", 391, 2402, 2891, 4280),  # 5
+        #             ]
+        # test test
         test_set = [("001", 2100, 3800, 2400, 4000),
-                    ("003", 2400, 4700, 2600, 4850),  # 小的局部150 x 200
-                    ("003", 2000, 4300, 2800, 4900),  # 600 x 800
-                    ("003", 721, 3244, 3044, 5851),  # 全切片范围
-                    ("044", 410, 2895, 2813, 6019),  # 4
-                    ("047", 391, 2402, 2891, 4280),  # 5
                     ]
-        id = 2
+
+        id = 0
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -312,15 +318,17 @@ class Test_detector(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
-                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+        # tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
+        #                          'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+        tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
+                                 'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
 
         detector = Detector(c, imgCone)
 
         # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
         #                            iter_nums, batch_size, threshold):
         cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums=50,
-                                                              batch_size=20, limit_sampling_density=10, use_post=True)
+                                                              batch_size=30, limit_sampling_density=10, use_post=True)
         # label_map = np.load("label_map.npy")
         # cancer_map2 = detector.create_cancer_map_superpixels(cancer_map, label_map)
 

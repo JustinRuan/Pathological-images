@@ -182,10 +182,10 @@ class TestPatchPack(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         pack = PatchPack(c)
-        data_tag = pack.create_train_test_data_MSC({10: "S1000", 20:"S2000", 40:"S4000"},
-                                               {"256_cancer": (1, 2),
-                                                "256_edge":   (1, 1),
+        pack.create_train_test_data_MSC({10: "S1000", 20:"S2000", 40:"S4000"},
+                                               {"256_cancer": (1, 1),
+                                                # "256_edge":   (1, 1),
                                                 "256_normal": (0, 0),
                                                 },
-                                                   0.9, 0.1, "T_NC_msc_256")
+                                                   0.9, 0.1, "T_NC2_msc_256")
 

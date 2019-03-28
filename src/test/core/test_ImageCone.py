@@ -68,7 +68,7 @@ class TestImageCone(unittest.TestCase):
             masks = imgCone.create_mask_image(scale,4)
             eff_region = imgCone.get_effective_zone(scale)
 
-            fig, axes = plt.subplots(1, 5, figsize=(12, 3), dpi=200)
+            fig, axes = plt.subplots(1, 6, figsize=(8, 3), dpi=200)
             ax = axes.ravel()
 
             ax[0].imshow(fullImage)
@@ -78,10 +78,12 @@ class TestImageCone(unittest.TestCase):
             ax[1].set_title("C_mask")
             ax[2].imshow(masks["N"])
             ax[2].set_title("S_mask")
-            ax[3].imshow(masks["E"])
-            ax[3].set_title("E_mask")
-            ax[4].imshow(eff_region)
-            ax[4].set_title("eff_region")
+            ax[3].imshow(masks["EI"])
+            ax[3].set_title("EI_mask")
+            ax[4].imshow(masks["EO"])
+            ax[4].set_title("EO_mask")
+            ax[5].imshow(eff_region)
+            ax[5].set_title("eff_region")
 
             for a in ax.ravel():
                 a.axis('off')

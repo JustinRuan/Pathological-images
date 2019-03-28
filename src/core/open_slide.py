@@ -6,7 +6,7 @@ __mtime__ = '2018-11-13'
 
 """
 import os
-os.environ['PATH'] = r"D:\code\python\openslide\bin" + ";" + os.environ['PATH']  # 一定要路径加到前面去
+# os.environ['PATH'] = r"D:\code\python\openslide\bin" + ";" + os.environ['PATH']  # 一定要路径加到前面去
 import numpy as np
 import math
 import openslide
@@ -118,7 +118,7 @@ class Open_Slide(object):
                     posArray[i][1] = float(item.getAttribute("Y")) / self.Normalization_coefficient
                     i += 1
 
-                if range_type == "_0" or range_type == "_1" :
+                if range_type in ["_0", "_1", "Tumor"]:
                     self.ano["TUMOR"].append(posArray)
                 elif range_type == "_2":
                     self.ano["NORMAL"].append(posArray)
@@ -155,11 +155,14 @@ class Open_Slide(object):
 
         if edge_width > 1:
             C_inner = morphology.binary_erosion(img, selem=square(edge_width))
-            E_img = np.bitwise_xor(C_inner, C_img)
+            EI_img = np.bitwise_xor(C_inner, C_img)
+            C_outer = morphology.binary_dilation(img, selem=square(edge_width))
+            EO_img = np.bitwise_xor(C_outer, C_img)
         else:
-            E_img = np.zeros((h, w), dtype=np.bool)
+            EI_img = np.zeros((h, w), dtype=np.bool)
+            EO_img = np.zeros((h, w), dtype=np.bool)
 
-        return {"C": C_img, "N": N_img, "E": E_img}
+        return {"C": C_img, "N": N_img, "EI": EI_img, "EO": EO_img}
 
 
 

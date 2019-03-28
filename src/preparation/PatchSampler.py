@@ -64,12 +64,14 @@ class PatchSampler(object):
         mask = sourceCone.create_mask_image(low_scale, edge_width)
 
         C_mask = mask["C"]
-        E_mask = mask["E"]
+        EI_mask = mask["EI"]
+        EO_mask = mask["EO"]
 
         c_seeds = get_seeds(C_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-8)
-        e_seeds = get_seeds(E_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+        ei_seeds = get_seeds(EI_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+        eo_seeds = get_seeds(EO_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
 
-        return c_seeds, e_seeds
+        return c_seeds, ei_seeds, eo_seeds
 
     def get_multi_scale_seeds(self,extract_scale_list, seeds, seeds_scale):
         seeds_dict = {}

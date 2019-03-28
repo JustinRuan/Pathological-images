@@ -311,7 +311,7 @@ class CNN_Classifier(object):
                     "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
                     "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
                     "x_256" :   "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
-                    "msc_256":  "se_densenet_c9_22_msc_256_0028-0.1045-0.9810-0.9436.pth",
+                    "msc_256":  "cp-0024-0.1263-0.9469-0.9226.pth",
                     }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
@@ -795,6 +795,8 @@ class CNN_Classifier(object):
             self.model.to(self.device)
             self.model.eval()
 
+        # self.model.MultiTask = True
+
         seeds_itor = get_image_blocks_msc_itor(src_img, seeds_scale, seeds, patch_size, patch_size, batch_size)
 
         len_seeds = len(seeds)
@@ -808,10 +810,31 @@ class CNN_Classifier(object):
             b_x = Variable(x.to(self.device))
 
             output = self.model(b_x)
+            # cancer_prob, edge_prob = self.model(b_x)
             output_softmax = nn.functional.softmax(output)
             probs, preds = torch.max(output_softmax, 1)
             for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
-                results.append((pred, prob))
+                if pred == 1:
+                    results.append(prob)
+                else:
+                    results.append(1 - prob)
+            # for prob, pred, three_prob in zip(probs.cpu().numpy(), preds.cpu().numpy(), output_softmax.cpu().numpy()):
+            #     cancer_edge_prob = three_prob[1] + three_prob[-1]
+            #     if pred == 2:
+            #         results.append((1, cancer_edge_prob))
+            #     elif pred == 1:
+            #         if three_prob[-1] > 10 * three_prob[0]:
+            #             results.append((1, cancer_edge_prob))
+            #         else:
+            #             results.append((0, 1 - three_prob[-1]))
+            #     else:
+            #         results.append((0, 1 - three_prob[-1]))
+            # for three_prob in output_softmax.cpu().numpy():
+            #     if three_prob[-1] > three_prob[0]:
+            #         results.append((1, three_prob[-1] + three_prob[1]))
+            #     else:
+            #         results.append((0, three_prob[0] + three_prob[1]))
+
             print('predicting => %d / %d ' % (step + 1, data_len))
 
         return results

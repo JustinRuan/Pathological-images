@@ -160,7 +160,7 @@ class Test_cnn_classifier(unittest.TestCase):
         sample_name = "msc_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
-        samples_name = {10:"T_NC_msc_256_S1000", 20:"T_NC_msc_256_S2000", 40:"T_NC_msc_256_S4000"}
+        samples_name = {10:"T_NC2_msc_256_S1000", 20:"T_NC2_msc_256_S2000", 40:"T_NC2_msc_256_S4000"}
         cnn.train_model_msc(samples_name=samples_name, batch_size=10, epochs = 30)
 
     def test_Image_Dataset_MSC(self):

@@ -347,7 +347,7 @@ class SEDenseNet_C9(nn.Module):
         if self.MultiTask:
             self.out = nn.ModuleList()
             self.classifier = nn.Linear(num_features, num_classes)
-            self.classifier2 = nn.Linear(num_features, 3)
+            self.classifier2 = nn.Linear(num_features, 2)
             self.out.append(self.classifier)
             self.out.append(self.classifier2)
         else:
