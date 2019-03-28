@@ -28,9 +28,9 @@ class TestPatchSampler(unittest.TestCase):
 
         ps = PatchSampler(c)
 
-        patch_spacing = 256
+        patch_spacing = 400
 
-        for i in range(1, 51):
+        for i in range(1, 2):
             code = "{:0>3d}".format(i)
             print("processing ", code, " ... ...")
 
@@ -43,7 +43,7 @@ class TestPatchSampler(unittest.TestCase):
             if tag:
 
                 c_seeds, ei_seeds, eo_seeds = ps.detect_cancer_patches_with_scale(imgCone, extract_scale, patch_size,
-                                                                                  patch_spacing)
+                                                                                  patch_spacing, edge_width=8)
                 print("slide code = ", code, ", cancer_seeds = ", len(c_seeds),
                       ", inner edge_seeds = ", len(ei_seeds), ", outer edge_seeds = ", len(eo_seeds))
 
@@ -91,7 +91,7 @@ class TestPatchSampler(unittest.TestCase):
 
         ps = PatchSampler(c)
 
-        patch_spacing = 400
+        patch_spacing = 800
 
         for i in range(1, 51):
             code = "{:0>3d}".format(i)

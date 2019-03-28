@@ -59,8 +59,8 @@ class TestImageCone(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_014.tif",
-                                 'Tumor/tumor_014.xml', "Tumor_014")
+        tag = imgCone.open_slide("Train_Tumor/Tumor_014.tif",
+                                 'Train_Tumor/tumor_014.xml', "Tumor_014")
         self.assertTrue(tag)
 
         if tag:
@@ -82,7 +82,7 @@ class TestImageCone(unittest.TestCase):
             ax[3].imshow(masks["EI"])
             ax[3].set_title("EI_mask")
             # ax[4].imshow(masks["EO"])
-            ax[4].imshow(np.bitwise_or(masks["EI"], masks["EO"]))
+            ax[4].imshow(np.bitwise_and(masks["EI"], masks["EO"]))
             ax[4].set_title("EO_mask")
             ax[5].imshow(eff_region)
             ax[5].set_title("eff_region")

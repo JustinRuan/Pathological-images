@@ -71,7 +71,18 @@ class PatchSampler(object):
         ei_seeds = get_seeds(EI_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
         eo_seeds = get_seeds(EO_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
 
-        return c_seeds, ei_seeds, eo_seeds
+        c_seeds = set(c_seeds)
+        ei_seeds = set(ei_seeds)
+        eo_seeds = set(eo_seeds)
+        c_and_ei = c_seeds & ei_seeds
+        c_and_eo = c_seeds & eo_seeds
+        eo_and_ei = eo_seeds & ei_seeds
+
+        result_c = list(c_seeds - c_and_ei - c_and_eo)
+        result_ei = list(ei_seeds - eo_and_ei)
+        result_eo = list(eo_seeds - eo_and_ei)
+
+        return result_c, result_ei, result_eo
 
     def get_multi_scale_seeds(self,extract_scale_list, seeds, seeds_scale):
         seeds_dict = {}
