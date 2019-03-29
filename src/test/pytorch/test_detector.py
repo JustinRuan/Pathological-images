@@ -289,20 +289,20 @@ class Test_detector(unittest.TestCase):
 
     def test_adaptive_detect_region(self):
         # # train set
-        # test_set = [("001", 2100, 3800, 2400, 4000),
-        #             ("003", 2400, 4700, 2600, 4850),  # 小的局部150 x 200
-        #             ("003", 2000, 4300, 2800, 4900),  # 600 x 800
-        #             ("003", 721, 3244, 3044, 5851),  # 全切片范围
-        #             ("044", 410, 2895, 2813, 6019),  # 4
-        #             ("047", 391, 2402, 2891, 4280),  # 5
-        #             ]
-        # test test
-        test_set = [("001", 100, 100, 2600, 2700),
-                    ("016", 0, 200, 3250, 2900),
-                    ("021", 0, 2400, 3000, 6500),
-                    ("001", 800, 1600, 1600, 2300),]
+        test_set = [("001", 2100, 3800, 2400, 4000),
+                    ("003", 2400, 4700, 2600, 4850),  # 小的局部150 x 200
+                    ("003", 2000, 4300, 2800, 4900),  # 600 x 800
+                    ("003", 721, 3244, 3044, 5851),  # 全切片范围
+                    ("044", 410, 2895, 2813, 6019),  # 4
+                    ("047", 391, 2402, 2891, 4280),  # 5
+                    ]
+        # # test test
+        # test_set = [("001", 100, 100, 2600, 2700),
+        #             ("016", 0, 200, 3250, 2900),
+        #             ("021", 0, 2400, 3000, 6500),
+        #             ("001", 800, 1600, 1600, 2300),]
 
-        id = 2
+        id = 3
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -315,10 +315,10 @@ class Test_detector(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        # tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
-        #                          'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
-        tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
-                                 'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
+        tag = imgCone.open_slide("Train_Tumor/Tumor_%s.tif" % slice_id,
+                                 'Train_Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+        # tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
+        #                          'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
 
         detector = Detector(c, imgCone)
 
@@ -444,7 +444,7 @@ class Test_detector(unittest.TestCase):
                     ("021", 0, 2400, 3000, 6500),
                     ("001", 800, 1600, 1600, 2300),]
 
-        id = 2
+        id = 3
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]

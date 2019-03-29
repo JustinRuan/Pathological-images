@@ -311,7 +311,7 @@ class CNN_Classifier(object):
                     "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
                     "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
                     "x_256" :   "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
-                    "msc_256":  "cp-0024-0.1263-0.9469-0.9226.pth",
+                    "msc_256":  "se_densenet_c9_22_msc_256_0030-0.2319-0.9775-0.6928.pth",
                     }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])

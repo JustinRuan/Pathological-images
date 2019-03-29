@@ -8,6 +8,7 @@ __mtime__ = '2018-12-19'
 import torch
 import torchvision
 import numpy as np
+from preparation.normalization import ImageNormalization
 
 def get_image_blocks_itor(src_img, fScale, seeds, nWidth, nHeight, batch_size):
     '''
@@ -61,6 +62,10 @@ def get_image_blocks_msc_itor(src_img, seeds_scale, seeds, nWidth, nHeight, batc
         block10 = src_img.get_image_block(10, int(r10 * x), int(r10 * y), nWidth, nHeight)
         block20 = src_img.get_image_block(20, int(r20 * x), int(r20 * y), nWidth, nHeight)
         block40 = src_img.get_image_block(40, int(r40 * x), int(r40 * y), nWidth, nHeight)
+
+        # img10 = ImageNormalization.normalize_mean( block10.get_img()) / 255
+        # img20 = ImageNormalization.normalize_mean(block20.get_img()) / 255
+        # img40 = ImageNormalization.normalize_mean(block40.get_img()) / 255
 
         img10 = block10.get_img() / 255
         img20 = block20.get_img() / 255

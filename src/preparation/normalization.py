@@ -153,4 +153,6 @@ class ImageNormalization(object):
 
     @staticmethod
     def normalize_mean(src_img):
-        return ImageNormalization.normalize_shift_mean(src_img, 63, 18, -15)
+        # return ImageNormalization.normalize_shift_mean(src_img, 63, 18, -15)
+        return ImageNormalization.normalize_shift_mean(src_img, 75, 12, -4) # P0327
+        # return ImageNormalization.normalize(75, 12, -4, 14, 5, 3)

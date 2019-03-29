@@ -605,8 +605,10 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
 
-        cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
-        # cnn = CNN_Classifier(self._params, "se_densenet_c9_22", "msc_256")
+        model_name = "se_densenet_c9_22"
+        sample_name = "msc_256"
+        # cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
+        cnn = CNN_Classifier(self._params, model_name, sample_name)
 
         # 生成坐标网格
         grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
@@ -658,18 +660,18 @@ class Detector(object):
             else:
                 pic_density = viz.line(Y=[sampling_density], X=[total_step], win=pic_density, update="append")
             ########################################################################################
-            mode = 1
+
             # 单倍镜下进行检测
-            if mode == 1:
+            if model_name == "se_densenet_22":
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
                 predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
                 probs = self.get_cancer_probability(predictions)
-            # 多倍镜下进行检测, 效果不好啊！
-            elif mode == 2:
-                # def predict_multi_scale(self, src_img, scale_tuple, patch_size, seeds_scale, seeds, batch_size):
-                probs = cnn.predict_multi_scale(self._imgCone, (10, 20, 40), 256, seeds_scale, new_seeds, batch_size)
+            # # 多倍镜下进行检测, 效果不好啊！
+            # elif mode == 2:
+            #     # def predict_multi_scale(self, src_img, scale_tuple, patch_size, seeds_scale, seeds, batch_size):
+            #     probs = cnn.predict_multi_scale(self._imgCone, (10, 20, 40), 256, seeds_scale, new_seeds, batch_size)
             # 多倍镜联合
-            else:
+            elif model_name == "se_densenet_c9_22":
                 probs = cnn.predict_msc(self._imgCone, 256, seeds_scale, new_seeds, batch_size)
                 # probs = self.get_cancer_probability(predictions)
 

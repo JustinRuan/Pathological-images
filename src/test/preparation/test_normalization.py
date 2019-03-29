@@ -11,6 +11,7 @@ from core import *
 import matplotlib.pyplot as plt
 from skimage.io import imread
 from preparation.normalization import ImageNormalization
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 
 class TestNormalization(unittest.TestCase):
 
@@ -49,10 +50,11 @@ class TestNormalization(unittest.TestCase):
 
     def test_calculate_mean_std(self):
         c = Params()
-        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin.json")
+        c.load_config_file(JSON_PATH)
 
         normal = ImageNormalization(c)
         avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b = \
-            normal.calculate_avg_mean_std("T_SC_2000_256_test.txt")
+            normal.calculate_avg_mean_std(["T_NC_x_256_test.txt"])
 
         print(avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b)
+        # 75.8213814145 12.1614585447 -4.43519343475 14.7552670861 5.36667117015 3.29930331455
