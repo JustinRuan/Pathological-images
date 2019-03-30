@@ -14,9 +14,10 @@ import matplotlib.pyplot as plt
 from skimage.io import imread
 from core.util import read_csv_file
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestPatchPack(unittest.TestCase):
 
@@ -109,7 +110,7 @@ class TestPatchPack(unittest.TestCase):
                                                 "S4000_256_cancer": (1, 2),
                                                 "S4000_256_normal": (0, 2),
                                                 })
-        pack.create_train_test_data(data_tag, 0.9, 0.1, "T_NC_x_256")
+        pack.create_train_test_data(data_tag, 0, 1, "T_NC_x_256")
 
 
     def test_extract_features_save_file(self):
@@ -188,5 +189,5 @@ class TestPatchPack(unittest.TestCase):
                                                 "256_edgeouter":    (0, 1),
                                                 "256_normal":       (0, 0),
                                                 },
-                                                   0.4, 0.02, "T_NC2_msc_256")
+                                                   0, 1, "T_NC2_msc_256")
 

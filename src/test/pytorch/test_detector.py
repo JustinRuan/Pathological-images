@@ -13,8 +13,8 @@ from pytorch.detector import Detector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class Test_detector(unittest.TestCase):
 
@@ -439,12 +439,38 @@ class Test_detector(unittest.TestCase):
 
     def test_adaptive_detect_region_test(self):
         # test test
-        test_set = [("001", 100, 100, 2600, 2700),
-                    ("016", 0, 200, 3250, 2900),
-                    ("021", 0, 2400, 3000, 6500),
-                    ("001", 800, 1600, 1600, 2300),]
+        test_set = {1: ("001", 100, 100, 2600, 2700),  # 检测不出
+                    2: ("001", 800, 1600, 1600, 2300),  # 同上
+                    3: ("016", 0, 200, 3250, 2900),  # 检测不出
+                    4: ("021", 0, 2400, 3000, 6500),  # 检测 dice， c3 0.9, c9 0.95
+                    5: ("026", 0, 0, 0, 0),  # 检测，dice c3= 0.11
+                    6: ("061", 0, 0, 0, 0),  # 检测, c3 = 0.06,
+                    7: ("004", 0, 0, 0, 0),  # 检测，c3 = 0
+                    8: ("008", 0, 0, 0, 0),  # 检测，c3 = 0
+                    9: ("010", 0, 0, 0, 0),  # 检测,c3 = 0
+                    11: ("011", 0, 0, 0, 0),  # 检测,c3 = 0
+                    12: ("013", 0, 0, 0, 0),  # 检测,c3 = 0
+                    13: ("016", 0, 0, 0, 0),  # 检测,c3 =
+                    14: ("027", 0, 0, 0, 0),  # 检测,c3 =
+                    15: ("029", 0, 0, 0, 0),  # 检测,c3 =
+                    16: ("030", 0, 0, 0, 0),
+                    17: ("033", 0, 0, 0, 0),
+                    18: ("038", 0, 0, 0, 0),
+                    19: ("040", 0, 0, 0, 0),
+                    20: ("046", 0, 0, 0, 0),
+                    21: ("048", 0, 0, 0, 0),
+                    22: ("051", 0, 0, 0, 0),
+                    23: ("052", 0, 0, 0, 0),
+                    24: ("071", 0, 0, 0, 0),
+                    25: ("064", 0, 0, 0, 0),
+                    26: ("065", 0, 0, 0, 0),
+                    27: ("066", 0, 0, 0, 0),
+                    28: ("068", 0, 0, 0, 0),
+                    29: ("069", 0, 0, 0, 0),
+                    30: ("073", 0, 0, 0, 0),
+                    }
 
-        id = 3
+        id = 12
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -464,8 +490,13 @@ class Test_detector(unittest.TestCase):
 
         detector = Detector(c, imgCone)
 
-        # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
-        #                            iter_nums, batch_size, threshold):
+        if x2 * y2 == 0:
+            print("y ", detector.ImageHeight, ", x ", detector.ImageWidth)
+            y2 = detector.ImageHeight - 1
+            x2 = detector.ImageWidth - 1
+            y1 = 0
+            x1 = 0
+
         cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums=50,
                                                               batch_size=30, limit_sampling_density=10, use_post=True)
 

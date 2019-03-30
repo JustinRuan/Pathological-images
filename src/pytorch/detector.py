@@ -605,8 +605,10 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
 
-        model_name = "se_densenet_c9_22"
-        sample_name = "msc_256"
+        # model_name = "se_densenet_c9_22"
+        #         # sample_name = "msc_256"
+        model_name = "se_densenet_22"
+        sample_name = "x_256"
         # cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
         cnn = CNN_Classifier(self._params, model_name, sample_name)
 
@@ -625,17 +627,17 @@ class Detector(object):
         pic_thresh = None
         pic_points = None
         pic_density = None
-        mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
-        c_mask = find_contours(np.array(mask_img).astype(int), level=0.5)
-        for i, contour in enumerate(c_mask):
-            contour = np.abs(np.array(contour - [y2 - y1, 0]))
-            c_name = "GT {}".format(i)
-            if pic_points is None:
-                pic_points = viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name,
-                                      opts={'linecolor': np.array([[0, 0, 0], ]), 'showlegend': True, })
-            else:
-                viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name, win=pic_points, update='append',
-                         opts={'linecolor': np.array([[0, 0, 0], ])})
+        # mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
+        # c_mask = find_contours(np.array(mask_img).astype(int), level=0.5)
+        # for i, contour in enumerate(c_mask):
+        #     contour = np.abs(np.array(contour - [y2 - y1, 0]))
+        #     c_name = "GT {}".format(i)
+        #     if pic_points is None:
+        #         pic_points = viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name,
+        #                               opts={'linecolor': np.array([[0, 0, 0], ]), 'showlegend': True, })
+        #     else:
+        #         viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name, win=pic_points, update='append',
+        #                  opts={'linecolor': np.array([[0, 0, 0], ])})
         #########################################################################################################
 
         threshold = 0.0 # 边缘区域与平坦区域的分割阈值
@@ -676,17 +678,17 @@ class Detector(object):
                 # probs = self.get_cancer_probability(predictions)
 
             #######################################################################################
-            t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
-            len_seed = len(new_seeds)
-            random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed, 1))
-            step_name = "Round {}".format(total_step)
-            text_labels = []
-            for item in probs:
-                text_labels.append("{:.2f}".format(item))
+            # t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
+            # len_seed = len(new_seeds)
+            # random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed, 1))
+            # step_name = "Round {}".format(total_step)
+            # text_labels = []
+            # for item in probs:
+            #     text_labels.append("{:.2f}".format(item))
 
-            viz.scatter(X=t_seeds, name=step_name, win=pic_points, update="append",
-                        opts=dict(title='seeds', caption='seeds', showlegend=True,  #textlabels=text_labels,
-                                  markercolor=random_color, markersize=8))
+            # viz.scatter(X=t_seeds, name=step_name, win=pic_points, update="append",
+            #             opts=dict(title='seeds', caption='seeds', showlegend=True,  #textlabels=text_labels,
+            #                       markercolor=random_color, markersize=8))
             ########################################################################################
 
             for (x, y), pred in zip(new_seeds, probs):
