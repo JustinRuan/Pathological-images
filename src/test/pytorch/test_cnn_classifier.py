@@ -12,8 +12,8 @@ from core import Params, ImageCone, Open_Slide
 from pytorch.cnn_classifier import CNN_Classifier
 import torch
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -33,13 +33,25 @@ class Test_cnn_classifier(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        # model_name = "simple_cnn"
-        model_name = "densenet_22"
-        sample_name = "500_128"
-        # sample_name = "2000_256"
+        model_name = "simple_cnn"
+        # model_name = "densenet_22"
+        # sample_name = "500_128"
+        sample_name = "4000_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
-        cnn.train_model(samples_name="T_NC_{}".format(sample_name), batch_size=32, epochs = 30)
+        cnn.train_model(samples_name="T_NC_Simple_{}".format(sample_name), batch_size=32, epochs = 30)
+
+    def test_evaluate_model(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        # model_name = "se_densenet_22"
+        # sample_name = "x_256"
+        model_name = "simple_cnn"
+        sample_name = "4000_256"
+
+        cnn = CNN_Classifier(c, model_name, sample_name)
+        cnn.evaluate_model(samples_name="T_NC_Simple0330_{}".format(sample_name), model_file=None, batch_size=20)
 
     def test_predict_on_batch(self):
         c = Params()

@@ -104,7 +104,7 @@ class PatchPack(object):
 
                     f.write("{}{}\n".format(item, str_tag))
                 else:
-                    f.write("{}{}\n".format(item, tag))
+                    f.write("{} {}\n".format(item, tag))
             f.close()
 
         # full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag,"test")

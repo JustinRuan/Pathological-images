@@ -23,11 +23,17 @@ class Image_Dataset(Dataset):
         else:
             self.transform = transform
 
+        # self.normalization = None
+        self.normalization = ImageNormalization.normalize_mean
+
     def __getitem__(self, index):
         file_name = self.x[index]
         label = self.y[index]
-        # img = ImageNormalization.normalize_mean(imread(file_name)) / 255
-        img = imread(file_name) / 255
+        if self.normalization is not None:
+            img = self.normalization(imread(file_name)) / 255
+        else:
+            img = imread(file_name) / 255
+
         img = self.transform(img).type(torch.FloatTensor)
         return img, label
 

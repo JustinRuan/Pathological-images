@@ -264,6 +264,41 @@ class CNN_Classifier(object):
 
         return
 
+    def evaluate_model(self, samples_name=None, model_file=None, batch_size=100):
+
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
+        test_data = Image_Dataset(Xtest, Ytest)
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+                                      shuffle=False, num_workers=self.NUM_WORKERS)
+
+        model = self.load_model(model_file=model_file)
+        # 关闭求导，节约大量的显存
+        for param in model.parameters():
+            param.requires_grad = False
+        print(model)
+
+        model.to(self.device)
+        model.eval()
+
+        predicted_tags = []
+        test_data_len = len(test_loader)
+        for step, (x, _) in enumerate(test_loader):
+            b_x = Variable(x.to(self.device))  # batch x
+
+            cancer_prob = model(b_x)
+            _, cancer_preds = torch.max(cancer_prob, 1)
+            for c_pred in zip(cancer_preds.cpu().numpy()):
+                predicted_tags.append((c_pred))
+
+            print('predicting => %d / %d ' % (step + 1, test_data_len))
+
+        Ytest = np.array(Ytest)
+        predicted_tags = np.array(predicted_tags)
+        print("Classification report for classifier :\n%s\n"
+              % (metrics.classification_report(Ytest, predicted_tags, digits=4)))
+
     def load_cifar_data(self, patch_type):
         '''
         加载cifar数量
