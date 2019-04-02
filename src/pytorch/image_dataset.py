@@ -19,21 +19,21 @@ class Image_Dataset(Dataset):
     def __init__(self, x_set, y_set, transform = None):
         self.x, self.y = x_set, y_set
         if transform is None:
-            self.transform = torchvision.transforms.ToTensor()
+            # self.transform = torchvision.transforms.ToTensor()
+            self.transform = torchvision.transforms.Compose([
+                torchvision.transforms.ToTensor(),
+                # RGB道通的归一化
+                torchvision.transforms.Normalize((0.7886, 0.6670, 0.7755), (0.1324, 0.1474, 0.1172)),
+                # R,G,B每层的归一化用到的均值和方差
+            ])
         else:
             self.transform = transform
-
-        # self.normalization = None
-        self.normalization = ImageNormalization.normalize_mean
 
     def __getitem__(self, index):
         file_name = self.x[index]
         label = self.y[index]
-        if self.normalization is not None:
-            img = self.normalization(imread(file_name)) / 255
-        else:
-            img = imread(file_name) / 255
 
+        img = np.divide(imread(file_name), 255.0, dtype=np.float32)
         img = self.transform(img).type(torch.FloatTensor)
         return img, label
 

@@ -10,7 +10,7 @@ import unittest
 from core import *
 import matplotlib.pyplot as plt
 from skimage.io import imread
-from preparation.normalization import ImageNormalization
+from preparation.normalization import ImageNormalization, ImageNormalization_RGB
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 
 class TestNormalization(unittest.TestCase):
@@ -59,3 +59,16 @@ class TestNormalization(unittest.TestCase):
         print(avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b)
         # 75.8213814145 12.1614585447 -4.43519343475 14.7552670861 5.36667117015 3.29930331455
         # 72.045864114 18.8354567365 -15.1904675708 12.0857086087 6.98746504921 5.32472202136  #P0330
+
+    def test_calculate_mean_std_RGB(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        normal = ImageNormalization_RGB(c)
+        avg_mean_r, avg_mean_g, avg_mean_b, avg_std_r, avg_std_g, avg_std_b = \
+            normal.calculate_avg_mean_std_RGB(["T_NC_Simple0327_4000_256_test.txt"])
+
+        print(avg_mean_r, avg_mean_g, avg_mean_b, avg_std_r, avg_std_g, avg_std_b)
+        # T_NC_Simple0327_4000_256_test.txt
+        #  0.788584186842 0.666972466448 0.775474451527 0.132370413651 0.147355493385 0.117168562872
+        # (0.7886, 0.6670, 0.7755), (0.1324, 0.1474, 0.1172)
