@@ -15,25 +15,41 @@ from skimage.io import imread
 from preparation.normalization import ImageNormalization
 from skimage.transform import resize
 
+
+
 class Image_Dataset(Dataset):
     def __init__(self, x_set, y_set, transform = None):
         self.x, self.y = x_set, y_set
         if transform is None:
-            # self.transform = torchvision.transforms.ToTensor()
-            self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.ToTensor(),
-                # RGB道通的归一化
-                torchvision.transforms.Normalize((0.7886, 0.6670, 0.7755), (0.1324, 0.1474, 0.1172)),
-                # R,G,B每层的归一化用到的均值和方差
-            ])
+            self.transform = torchvision.transforms.ToTensor()
+            # self.transform = torchvision.transforms.Compose([
+            #     torchvision.transforms.ToTensor(),
+            #     # RGB道通的归一化
+            #     torchvision.transforms.Normalize((0.7886, 0.6670, 0.7755), (0.1324, 0.1474, 0.1172)),
+            #     # R,G,B每层的归一化用到的均值和方差
+            # ])
         else:
             self.transform = transform
+
+        if True:
+            # 72.6668955191 16.8991760939 -9.97997070951 13.427538741 5.76732834018 4.89131967314
+            self.normal = ImageNormalization(None, avg_mean_l=72.66, avg_mean_a=16.9, avg_mean_b=-9.98,
+                                             avg_std_l=13.43, avg_std_a=5.767, avg_std_b=4.891)
+        else:
+            self.normal = None
 
     def __getitem__(self, index):
         file_name = self.x[index]
         label = self.y[index]
 
-        img = np.divide(imread(file_name), 255.0, dtype=np.float32)
+        # #RGB归一化前除255
+        # img = np.divide(imread(file_name), 255.0, dtype=np.float32)
+
+        # LAB空间归一化
+        img = imread(file_name)
+        if self.normal is not None:
+            img = self.normal.normalize(img)
+
         img = self.transform(img).type(torch.FloatTensor)
         return img, label
 

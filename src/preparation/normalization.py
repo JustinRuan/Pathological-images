@@ -13,10 +13,21 @@ from skimage import io
 
 # Reinhard algorithm
 class ImageNormalization(object):
-    def __init__(self, params):
+    def __init__(self, params, avg_mean_l=0, avg_mean_a=0, avg_mean_b=0, avg_std_l=0, avg_std_a=0, avg_std_b=0):
         self._params = params
+        self.avg_mean_l = avg_mean_l
+        self.avg_mean_a = avg_mean_a
+        self.avg_mean_b = avg_mean_b
+        self.avg_std_l = avg_std_l
+        self.avg_std_a = avg_std_a
+        self.avg_std_b = avg_std_b
         return
 
+    '''
+    Lab颜色空间中的L分量用于表示像素的亮度，取值范围是[0,100],表示从纯黑到纯白；
+    a表示从红色到绿色的范围，取值范围是[127,-128]；
+    b表示从黄色到蓝色的范围，取值范围是[127,-128]。
+    '''
     def calculate_avg_mean_std(self, data_filenames):
         root_path = self._params.PATCHS_ROOT_PATH
 
@@ -69,16 +80,7 @@ class ImageNormalization(object):
 
         return avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b
 
-    '''
-    Lab颜色空间中的L分量用于表示像素的亮度，取值范围是[0,100],表示从纯黑到纯白；
-    a表示从红色到绿色的范围，取值范围是[127,-128]；
-    b表示从黄色到蓝色的范围，取值范围是[127,-128]。
-    '''
-    @staticmethod
-    def normalize(src_img, avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b):
-     #   avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b = \
-     #       64.4142491342, 17.8558880865, -14.9493230523, 9.69010566298, 4.87607967592, 4.22826851423  # 5 x 128
-    # 62.8356120408,19.4081460042,-16.2194449226,12.0661142823,6.86495094844,7.14640136961   # 20 x 256
+    def normalize(self, src_img):
         lab_img = color.rgb2lab(src_img)
 
         # LAB三通道分离
@@ -95,21 +97,16 @@ class ImageNormalization(object):
         aMO = np.mean(labO_a)
         bMO = np.mean(labO_b)
 
-        labO_l= (labO_l - lMO) / lsbO * avg_std_l + avg_mean_l
-        labO_a = (labO_a - aMO) / asbO * avg_std_a + avg_mean_a
-        labO_b = (labO_b - bMO) / bsbO * avg_std_b + avg_mean_b
+        labO_l= (labO_l - lMO) / lsbO * self.avg_std_l + self.avg_mean_l
+        labO_a = (labO_a - aMO) / asbO * self.avg_std_a + self.avg_mean_a
+        labO_b = (labO_b - bMO) / bsbO * self.avg_std_b + self.avg_mean_b
 
-        # labO_l[labO_l > 4] = 4
-        # labO_l[labO_l < -4] = -4
-        # labO_a[labO_a > 8] = 8
-        # labO_a[labO_a < -8] = -8
-        # labO_b[labO_b > 8] = 8
-        # labO_b[labO_b < -8] = -8
-
-        # labO_ls = 100 * (labO_l + 4) / 8
-        # labO_as = 40 * labO_a
-        # labO_bs = 40 * labO_b
-        # labO = np.dstack([labO_ls, labO_as, labO_bs])
+        labO_l[labO_l > 100] = 100
+        labO_l[labO_l < 0] = 0
+        labO_a[labO_a > 127] = 127
+        labO_a[labO_a < -128] = -128
+        labO_b[labO_b > 127] = 127
+        labO_b[labO_b < -128] = -128
 
         labO = np.dstack([labO_l, labO_a, labO_b])
         # LAB to RGB变换
@@ -117,46 +114,38 @@ class ImageNormalization(object):
 
         return rgb_image
 
-    @staticmethod
-    def normalize_shift_mean(src_img, avg_mean_l, avg_mean_a, avg_mean_b):
-     #   avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b = \
-     #       64.4142491342, 17.8558880865, -14.9493230523, 9.69010566298, 4.87607967592, 4.22826851423  # 5 x 128
-    # 62.8356120408,19.4081460042,-16.2194449226,12.0661142823,6.86495094844,7.14640136961   # 20 x 256
-        lab_img = color.rgb2lab(src_img)
+    # @staticmethod
+    # def normalize_shift_mean(src_img, avg_mean_l, avg_mean_a, avg_mean_b):
+    #     lab_img = color.rgb2lab(src_img)
+    #
+    #     # LAB三通道分离
+    #     labO_l = lab_img[:, :, 0]
+    #     labO_a = lab_img[:, :, 1]
+    #     labO_b = lab_img[:, :, 2]
+    #
+    #     # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
+    #     lsbO = np.std(labO_l)
+    #     asbO = np.std(labO_a)
+    #     bsbO = np.std(labO_b)
+    #
+    #     lMO = np.mean(labO_l)
+    #     aMO = np.mean(labO_a)
+    #     bMO = np.mean(labO_b)
+    #
+    #     # labO_l= (labO_l - lMO) / lsbO * avg_std_l + avg_mean_l
+    #     # labO_a = (labO_a - aMO) / asbO * avg_std_a + avg_mean_a
+    #     # labO_b = (labO_b - bMO) / bsbO * avg_std_b + avg_mean_b
+    #
+    #     labO_l = (labO_l - lMO) + avg_mean_l
+    #     labO_a = (labO_a - aMO) + avg_mean_a
+    #     labO_b = (labO_b - bMO) + avg_mean_b
+    #
+    #     labO = np.dstack([labO_l, labO_a, labO_b])
+    #     # LAB to RGB变换
+    #     rgb_image = color.lab2rgb(labO)
+    #
+    #     return rgb_image
 
-        # LAB三通道分离
-        labO_l = lab_img[:, :, 0]
-        labO_a = lab_img[:, :, 1]
-        labO_b = lab_img[:, :, 2]
-
-        # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
-        lsbO = np.std(labO_l)
-        asbO = np.std(labO_a)
-        bsbO = np.std(labO_b)
-
-        lMO = np.mean(labO_l)
-        aMO = np.mean(labO_a)
-        bMO = np.mean(labO_b)
-
-        # labO_l= (labO_l - lMO) / lsbO * avg_std_l + avg_mean_l
-        # labO_a = (labO_a - aMO) / asbO * avg_std_a + avg_mean_a
-        # labO_b = (labO_b - bMO) / bsbO * avg_std_b + avg_mean_b
-
-        labO_l = (labO_l - lMO) + avg_mean_l
-        labO_a = (labO_a - aMO) + avg_mean_a
-        labO_b = (labO_b - bMO) + avg_mean_b
-
-        labO = np.dstack([labO_l, labO_a, labO_b])
-        # LAB to RGB变换
-        rgb_image = color.lab2rgb(labO)
-
-        return rgb_image
-
-    @staticmethod
-    def normalize_mean(src_img):
-        # return ImageNormalization.normalize_shift_mean(src_img, 63, 18, -15)
-        return ImageNormalization.normalize_shift_mean(src_img, 75, 12, -4) # P0327
-        # return ImageNormalization.normalize(75, 12, -4, 14, 5, 3)
 
 class ImageNormalization_RGB(object):
     def __init__(self, params):

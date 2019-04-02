@@ -54,11 +54,11 @@ class TestNormalization(unittest.TestCase):
 
         normal = ImageNormalization(c)
         avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b = \
-            normal.calculate_avg_mean_std(["T_NC_x_256_test.txt"])
+            normal.calculate_avg_mean_std(["T_NC_Simple0327_2_4000_256_test.txt"])
 
         print(avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b)
-        # 75.8213814145 12.1614585447 -4.43519343475 14.7552670861 5.36667117015 3.29930331455
-        # 72.045864114 18.8354567365 -15.1904675708 12.0857086087 6.98746504921 5.32472202136  #P0330
+        # P0327 Test
+        # 72.6668955191 16.8991760939 -9.97997070951 13.427538741 5.76732834018 4.89131967314
 
     def test_calculate_mean_std_RGB(self):
         c = Params()
