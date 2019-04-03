@@ -39,7 +39,7 @@ class Test_cnn_classifier(unittest.TestCase):
         sample_name = "4000_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
-        cnn.train_model(samples_name="T_NC_Simple_{}".format(sample_name), batch_size=32, epochs = 30)
+        cnn.train_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), batch_size=20, epochs = 10)
 
     def test_evaluate_model(self):
         c = Params()
