@@ -20,18 +20,18 @@ class ImageNormalization(object):
 
         if method == "reinhard":
             self.method = self.normalize_Reinhard
-            self.avg_mean = kwarg["mean"]
-            self.avg_std = kwarg["std"]
+            self.source_mean = kwarg["source_mean"]
+            self.source_std = kwarg["source_std"]
+            self.target_mean = kwarg["target_mean"]
+            self.target_std = kwarg["target_std"]
         elif method == "lab_mean":
-            self.method = self.normalize_lab_mean
-            self.avg_mean = kwarg["mean"]
+            pass
         elif method == "rgb_norm":
             self.method = self.normalize_rgb
             self.source_mean = kwarg["source_mean"]
             self.source_std = kwarg["source_std"]
             self.target_mean = kwarg["target_mean"]
             self.target_std = kwarg["target_std"]
-            self.min_max_scaler = preprocessing.MinMaxScaler(feature_range=(0, 255))
         elif method == "rgb_hist":
             self.method = self.normalize_rgb_hist
         return
@@ -47,66 +47,23 @@ class ImageNormalization(object):
         labO_a = np.array(lab_img[:, :, 1])
         labO_b = np.array(lab_img[:, :, 2])
 
-        # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
-        lsbO = np.std(labO_l)
-        asbO = np.std(labO_a)
-        bsbO = np.std(labO_b)
+        # # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
+        labO_l = (labO_l - self.source_mean[0]) / self.source_std[0] * self.target_std[0] + self.target_mean[0]
+        labO_a = (labO_a - self.source_mean[1]) / self.source_std[1] * self.target_std[1] + self.target_mean[1]
+        labO_b = (labO_b - self.source_mean[2]) / self.source_std[2] * self.target_std[2] + self.target_mean[2]
 
-        lMO = np.mean(labO_l)
-        aMO = np.mean(labO_a)
-        bMO = np.mean(labO_b)
-
-        # if not (lsbO == 0 or asbO == 0 or bsbO == 0):
-        if lsbO != 0:
-            labO_l= (labO_l - lMO) / lsbO * self.avg_std[0] + self.avg_mean[0]
-            labO_a = (labO_a - aMO) / asbO * self.avg_std[1] + self.avg_mean[1]
-            labO_b = (labO_b - bMO) / bsbO * self.avg_std[2] + self.avg_mean[2]
-
-            # labO_l[labO_l > 100] = 100
-            # labO_l[labO_l < 0] = 0
-            # labO_a[labO_a > 127] = 127
-            # labO_a[labO_a < -128] = -128
-            # labO_b[labO_b > 127] = 127
-            # labO_b[labO_b < -128] = -128
-
-            labO = np.dstack([labO_l, labO_a, labO_b])
-            # LAB to RGB变换
-            rgb_image = color.lab2rgb(labO)
-
-            return rgb_image
-        else:
-            return src_img
-
-    def normalize_lab_mean(self, src_img, ):
-        lab_img = color.rgb2lab(src_img)
-
-        # LAB三通道分离
-        labO_l = lab_img[:, :, 0]
-        labO_a = lab_img[:, :, 1]
-        labO_b = lab_img[:, :, 2]
-
-        # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
-        # lsbO = np.std(labO_l)
-        # asbO = np.std(labO_a)
-        # bsbO = np.std(labO_b)
-
-        lMO = np.mean(labO_l)
-        aMO = np.mean(labO_a)
-        bMO = np.mean(labO_b)
-
-        # labO_l= (labO_l - lMO) / lsbO * avg_std_l + avg_mean_l
-        # labO_a = (labO_a - aMO) / asbO * avg_std_a + avg_mean_a
-        # labO_b = (labO_b - bMO) / bsbO * avg_std_b + avg_mean_b
-
-        labO_l = (labO_l - lMO) + self.avg_mean[0]
-        labO_a = (labO_a - aMO) + self.avg_mean[1]
-        labO_b = (labO_b - bMO) + self.avg_mean[2]
+        labO_l[labO_l > 100] = 100
+        labO_l[labO_l < 0] = 0
+        labO_a[labO_a > 127] = 127
+        labO_a[labO_a < -128] = -128
+        labO_b[labO_b > 127] = 127
+        labO_b[labO_b < -128] = -128
 
         labO = np.dstack([labO_l, labO_a, labO_b])
         # LAB to RGB变换
         rgb_image = color.lab2rgb(labO)
-
         return rgb_image
+
 
     def normalize_rgb(self, src_img, ):
         # RGB三通道分离
@@ -114,15 +71,18 @@ class ImageNormalization(object):
         rgb_g = src_img[:, :, 1]
         rgb_b = src_img[:, :, 2]
 
-
         rgb1_r= (rgb_r - self.source_mean[0]) / self.source_std[0] * self.target_std[0] + self.target_mean[0]
         rgb1_g = (rgb_g - self.source_mean[1]) / self.source_std[1] * self.target_std[1] + self.target_mean[1]
         rgb1_b = (rgb_b - self.source_mean[2]) / self.source_std[2] * self.target_std[2] + self.target_mean[2]
-        rgb1_r = self.min_max_scaler.fit_transform(rgb1_r).astype(np.int)
-        rgb1_g = self.min_max_scaler.fit_transform(rgb1_g).astype(np.int)
-        rgb1_b = self.min_max_scaler.fit_transform(rgb1_b).astype(np.int)
 
-        rgb_result = np.dstack([rgb1_r, rgb1_g, rgb1_b])
+        rgb1_r[rgb1_r > 255] = 255
+        rgb1_r[rgb1_r < 0] = 0
+        rgb1_g[rgb1_g > 255] = 255
+        rgb1_g[rgb1_g < 0] = 0
+        rgb1_b[rgb1_b > 255] = 255
+        rgb1_b[rgb1_b < 0] = 0
+
+        rgb_result = np.dstack([rgb1_r.astype(np.int), rgb1_g.astype(np.int), rgb1_b.astype(np.int)])
 
         return rgb_result
 

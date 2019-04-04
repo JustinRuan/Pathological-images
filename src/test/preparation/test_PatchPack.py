@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 from skimage.io import imread
 from core.util import read_csv_file
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestPatchPack(unittest.TestCase):
 
@@ -56,8 +56,8 @@ class TestPatchPack(unittest.TestCase):
 
         pack = PatchPack(c)
         data_tag = pack.initialize_sample_tags({"S4000_256_cancer": 1, "S4000_256_normal": 0})
-        # pack.create_data_txt(data_tag, "T_NC_2000_256")
-        pack.create_train_test_data(data_tag, 0.9, 0.1, "T_NC_Simple0327_2_4000_256")
+        pack.create_data_txt(data_tag, "T_NC_P0404_4000_256")
+        # pack.create_train_test_data(data_tag, 0.9, 0.1, "T_NC_Simple0327_2_4000_256")
 
     #################################################################################################################
     ####################  20 x 256  ############################

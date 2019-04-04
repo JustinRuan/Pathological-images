@@ -22,7 +22,7 @@ class TestNormalization(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         # filename = "T_NC_Simple0330_4000_256_test.txt"
-        filename = "T_NC_Simple0327_2_4000_256_test.txt"
+        filename = "T_NC_P0404_4000_256_test.txt"
         patch_path = c.PATCHS_ROOT_PATH
         all_file_list, _ = util.read_csv_file(patch_path, "{}/{}".format(patch_path, filename))
 
@@ -30,14 +30,16 @@ class TestNormalization(unittest.TestCase):
         rnd = random.randint(0, len(all_file_list) // N)
         file_list = all_file_list[rnd:rnd + N]
 
-        # normal = ImageNormalization("lab_mean", mean=(72.66, 16.9, -9.98),
-        #                             std=(13.43, 5.767, 4.891))
+        normal = ImageNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
+                                    target_std=(13.42, 5.767, 4.891),
+                                    source_mean=(72.45, 17.63, -17.77),
+                                    source_std=(10.77, 7.064, 6.50))
 
-        # normal = ImageNormalization("rgb_norm", target_mean=(201.2, 170.3, 197.9),
-        #                             target_std=(33.6, 37.36, 29.72),
-        #                             source_mean=(198.9, 168.0, 206.2),
-        #                             source_std=(27.94, 31.93, 22.56))
-        normal = ImageNormalization("rgb_hist")
+        # normal = ImageNormalization("rgb_norm", target_mean=(198.9, 168.0, 206.2),
+        #                             target_std=(27.94, 31.93, 22.56),
+        #                             source_mean=(194.1, 169.3, 210.4),
+        #                             source_std=(27.86, 30.92, 20.25))
+        # normal = ImageNormalization("rgb_hist")
 
         fig = plt.figure(figsize=(16, 10), dpi=100)
         for index, filename in enumerate(file_list):
@@ -60,19 +62,25 @@ class TestNormalization(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         normal = ImageNormalizationTool(c)
+        filename = "T_NC_P0404_4000_256_test.txt"
         avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b = \
-            normal.calculate_avg_mean_std(["T_NC_Simple0327_2_4000_256_test.txt"])
+            normal.calculate_avg_mean_std([filename])
 
         print(avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b)
         # P0327 Test
         # 72.6668955191 16.8991760939 -9.97997070951 13.427538741 5.76732834018 4.89131967314
+        # (72.66, 16.89, -9.979), (13.42, 5.767, 4.891)
+
+        # T_NC_P0404_4000_256.txt
+        # 72.4550587842 17.6308215754 -17.7722937628 10.7780328825 7.06444637399 6.50070533929
+        # (72.45, 17.63, -17.77), (10.77, 7.064, 6.50)
 
     def test_calculate_mean_std_RGB(self):
         c = Params()
         c.load_config_file(JSON_PATH)
 
         normal = ImageNormalizationTool(c)
-        filename = "T_NC_Simple0330_4000_256_test.txt"
+        filename = "T_NC_P0404_4000_256.txt"
         # filename = "T_NC_Simple0327_2_4000_256_test.txt"
         avg_mean_r, avg_mean_g, avg_mean_b, avg_std_r, avg_std_g, avg_std_b = \
             normal.calculate_avg_mean_std_RGB([filename])
@@ -89,3 +97,7 @@ class TestNormalization(unittest.TestCase):
         # (0.7803, 0.6589, 0.8086), (0.1096, 0.1252, 0.0885)
         # 201.200932593 170.389103839 197.969921493 33.6008670407 37.3686477541 29.7284223274
         # (201.2, 170.3, 197.9) (33.6, 37.36, 29.72)
+
+        # T_NC_P0404_4000_256.txt
+        # 194.179581005 169.338380381 210.455308373 27.8654252516 30.9280496823 20.2526431351
+        # (194.1, 169.3, 210.4) (27.86, 30.92, 20.25)
