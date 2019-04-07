@@ -7,16 +7,15 @@ __mtime__ = '2018-11-05'
 """
 
 import time
+import os
 from skimage import color
 import numpy as np
 from skimage import io
 
-from sklearn import preprocessing
-from skimage import exposure
 
 # Reinhard algorithm
 class ImageNormalization(object):
-    def __init__(self,  method, **kwarg):
+    def __init__(self, method, **kwarg):
 
         if method == "reinhard":
             self.method = self.normalize_Reinhard
@@ -32,8 +31,21 @@ class ImageNormalization(object):
             self.source_std = kwarg["source_std"]
             self.target_mean = kwarg["target_mean"]
             self.target_std = kwarg["target_std"]
-        elif method == "rgb_hist":
-            self.method = self.normalize_rgb_hist
+        elif method == "match_hist":
+            self.method = self.normalize_hist
+            path = kwarg["path"]
+            print("prepare transform function ...", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            source_path = "{}/sources".format(path)
+            template_path = "{}/templates".format(path)
+            sources = self._loading_hist_data(source_path)
+            templates = self._loading_hist_data(template_path)
+
+            self.LUT = []
+            self.LUT.append(self._estimate_cumulative_cdf(sources["L"], templates["L"], start=0, end=100))
+            self.LUT.append(self._estimate_cumulative_cdf(sources["A"], templates["A"], start=-128, end=127))
+            self.LUT.append(self._estimate_cumulative_cdf(sources["B"], templates["B"], start=-128, end=127))
+
+            print("produced transform function.", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         return
 
     def normalize(self, src_img):
@@ -86,16 +98,73 @@ class ImageNormalization(object):
 
         return rgb_result
 
-    def normalize_rgb_hist(self, src_img):
-        # # RGB三通道分离
-        # rgb_r = src_img[:, :, 0]
-        # rgb_g = src_img[:, :, 1]
-        # rgb_b = src_img[:, :, 2]
+    def _estimate_cumulative_cdf(self, source, template, start, end):
+        source = np.array(source)
+        template = np.array(template)
+        src_values, src_counts = np.unique(source.ravel(),  return_counts=True)
+        tmpl_values, tmpl_counts = np.unique(template.ravel(), return_counts=True)
 
-        return exposure.equalize_hist(src_img)
+        # calculate normalized quantiles for each array
+        src_quantiles = np.cumsum(src_counts) / source.size
+        tmpl_quantiles = np.cumsum(tmpl_counts) / template.size
 
+        interp_a_values = np.interp(src_quantiles, tmpl_quantiles, tmpl_values)
 
+        if src_values[0] > start:
+            src_values = np.insert(src_values, 0, start)
+            interp_a_values = np.insert(interp_a_values, 0, start)
+        if src_values[-1] < end:
+            src_values = np.append(src_values, end)
+            interp_a_values = np.append(interp_a_values, end)
 
+        new_source = np.arange(start, end + 1)
+        interp_b_values = np.interp(new_source, src_values, interp_a_values)
+        # result = dict(zip(new_source, np.rint(interp_b_values)))
+        # return result
+        return np.rint(interp_b_values)
+
+    def _loading_hist_data(self, path):
+
+        results = {"L":[], "A":[], "B": []}
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                if os.path.splitext(file)[1] == '.jpg':
+                    file_path = os.path.join(root, file)
+                    img = io.imread(file_path, as_gray=False)
+                    lab_img = color.rgb2lab(img)
+
+                    # LAB三通道分离
+                    labO_l = np.array(lab_img[:, :, 0])
+                    labO_a = np.array(lab_img[:, :, 1])
+                    labO_b = np.array(lab_img[:, :, 2])
+
+                    results["L"].append(labO_l.astype(np.int))
+                    results["A"].append(labO_a.astype(np.int))
+                    results["B"].append(labO_b.astype(np.int))
+        return results
+
+    def normalize_hist(self, src_img):
+        lab_img = color.rgb2lab(src_img)
+
+        # LAB三通道分离
+        lab0_l = np.array(lab_img[:, :, 0]).astype(np.int)
+        lab0_a = np.array(lab_img[:, :, 1]).astype(np.int)
+        lab0_b = np.array(lab_img[:, :, 2]).astype(np.int)
+
+        LUT_L = self.LUT[0]
+        lab1_l = LUT_L[lab0_l]
+
+        LUT_A = self.LUT[1]
+        lab1_a = LUT_A[128 + lab0_a]
+
+        LUT_B = self.LUT[2]
+        lab1_b = LUT_A[128 + lab0_b]
+
+        labO = np.dstack([lab1_l, lab1_a, lab1_b])
+        # LAB to RGB变换
+        rgb_image = color.lab2rgb(labO)
+
+        return rgb_image
 
 class ImageNormalizationTool(object):
     def __init__(self, params):

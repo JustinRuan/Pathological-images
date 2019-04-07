@@ -15,6 +15,8 @@ from skimage.io import imread
 from preparation.normalization import ImageNormalization
 from skimage.transform import resize
 
+PROJECT_ROOT = "D:/CloudSpace/WorkSpace/PatholImage"
+
 class Image_Dataset(Dataset):
     def __init__(self, x_set, y_set, transform = None):
         self.x, self.y = x_set, y_set
@@ -27,10 +29,14 @@ class Image_Dataset(Dataset):
         #                         target_std=(27.94, 31.93, 22.56),
         #                         source_mean=(194.1, 169.3, 210.4),
         #                         source_std=(27.86, 30.92, 20.25))
-        self.normal = ImageNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
-                                    target_std=(13.42, 5.767, 4.891),
-                                    source_mean=(72.45, 17.63, -17.77),
-                                    source_std=(10.77, 7.064, 6.50))
+
+        # self.normal = ImageNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
+        #                             target_std=(13.42, 5.767, 4.891),
+        #                             source_mean=(72.45, 17.63, -17.77),
+        #                             source_std=(10.77, 7.064, 6.50))
+
+        self.normal = ImageNormalization("match_hist", path = PROJECT_ROOT + "/data/hist")
+
         # self.normal = None
 
     def __getitem__(self, index):

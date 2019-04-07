@@ -13,8 +13,8 @@ from skimage.io import imread
 import random
 
 from preparation.normalization import ImageNormalization, ImageNormalizationTool
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestNormalization(unittest.TestCase):
 
@@ -30,16 +30,17 @@ class TestNormalization(unittest.TestCase):
         rnd = random.randint(0, len(all_file_list) // N)
         file_list = all_file_list[rnd:rnd + N]
 
-        normal = ImageNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
-                                    target_std=(13.42, 5.767, 4.891),
-                                    source_mean=(72.45, 17.63, -17.77),
-                                    source_std=(10.77, 7.064, 6.50))
+        # normal = ImageNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
+        #                             target_std=(13.42, 5.767, 4.891),
+        #                             source_mean=(72.45, 17.63, -17.77),
+        #                             source_std=(10.77, 7.064, 6.50))
 
         # normal = ImageNormalization("rgb_norm", target_mean=(198.9, 168.0, 206.2),
         #                             target_std=(27.94, 31.93, 22.56),
         #                             source_mean=(194.1, 169.3, 210.4),
         #                             source_std=(27.86, 30.92, 20.25))
-        # normal = ImageNormalization("rgb_hist")
+
+        normal = ImageNormalization("match_hist", path = c.PROJECT_ROOT + "/data/hist")
 
         fig = plt.figure(figsize=(16, 10), dpi=100)
         for index, filename in enumerate(file_list):
@@ -101,3 +102,9 @@ class TestNormalization(unittest.TestCase):
         # T_NC_P0404_4000_256.txt
         # 194.179581005 169.338380381 210.455308373 27.8654252516 30.9280496823 20.2526431351
         # (194.1, 169.3, 210.4) (27.86, 30.92, 20.25)
+
+    def test_calc_hist(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        normal = ImageNormalization("match_hist", path = c.PROJECT_ROOT + "/data/hist")
