@@ -13,8 +13,8 @@ from skimage.io import imread
 import random
 
 from preparation.normalization import ImageNormalization, ImageNormalizationTool
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestNormalization(unittest.TestCase):
 
@@ -23,7 +23,7 @@ class TestNormalization(unittest.TestCase):
         c.load_config_file(JSON_PATH)
         # filename = "T_NC_Simple0330_4000_256_test.txt"
         filename = "T_NC_P0404_4000_256_test.txt"
-        patch_path = c.PATCHS_ROOT_PATH
+        patch_path = c.PATCHS_ROOT_PATH["P0404"]
         all_file_list, _ = util.read_csv_file(patch_path, "{}/{}".format(patch_path, filename))
 
         N = 20
@@ -40,7 +40,7 @@ class TestNormalization(unittest.TestCase):
         #                             source_mean=(194.1, 169.3, 210.4),
         #                             source_std=(27.86, 30.92, 20.25))
 
-        normal = ImageNormalization("match_hist", path = c.PROJECT_ROOT + "/data/hist")
+        normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy", hist_source = "hist_soures.npy")
 
         fig = plt.figure(figsize=(16, 10), dpi=100)
         for index, filename in enumerate(file_list):
@@ -107,4 +107,6 @@ class TestNormalization(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        normal = ImageNormalization("match_hist", path = c.PROJECT_ROOT + "/data/hist")
+        normal = ImageNormalizationTool(c)
+        # normal.calculate_hist("P0404", "T_NC_P0404_4000_256_test.txt", "Target", "Target_T1_4000_256_test.txt")
+        normal.calculate_hist("P0330", "T_NC_Simple0330_4000_256_test.txt", "Target", "Target_T1_4000_256_test.txt")

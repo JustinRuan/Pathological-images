@@ -55,9 +55,10 @@ class TestPatchPack(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         pack = PatchPack(c)
-        data_tag = pack.initialize_sample_tags({"S4000_256_cancer": 1, "S4000_256_normal": 0})
-        pack.create_data_txt(data_tag, "T_NC_P0404_4000_256")
+        data_tag = pack.initialize_sample_tags("Target", {"S4000_256_cancer": 1, "S4000_256_normal": 0})
+        # pack.create_data_txt(data_tag, "T_NC_P0404_4000_256")
         # pack.create_train_test_data(data_tag, 0.9, 0.1, "T_NC_Simple0327_2_4000_256")
+        pack.create_train_test_data(data_tag, 0, 1, "Target_T1_4000_256")
 
     #################################################################################################################
     ####################  20 x 256  ############################

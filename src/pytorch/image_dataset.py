@@ -35,7 +35,7 @@ class Image_Dataset(Dataset):
         #                             source_mean=(72.45, 17.63, -17.77),
         #                             source_std=(10.77, 7.064, 6.50))
 
-        self.normal = ImageNormalization("match_hist", path = PROJECT_ROOT + "/data/hist")
+        self.normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy", hist_source = "hist_soures.npy")
 
         # self.normal = None
 

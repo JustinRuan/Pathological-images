@@ -266,8 +266,8 @@ class CNN_Classifier(object):
 
     def evaluate_model(self, samples_name=None, model_file=None, batch_size=100):
 
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
         # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
         test_data = Image_Dataset(Xtest, Ytest)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,

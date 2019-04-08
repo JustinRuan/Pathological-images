@@ -11,7 +11,7 @@ import os
 from skimage import color
 import numpy as np
 from skimage import io
-
+from core.util import read_csv_file, get_project_root
 
 # Reinhard algorithm
 class ImageNormalization(object):
@@ -33,19 +33,18 @@ class ImageNormalization(object):
             self.target_std = kwarg["target_std"]
         elif method == "match_hist":
             self.method = self.normalize_hist
-            path = kwarg["path"]
-            print("prepare transform function ...", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            source_path = "{}/sources".format(path)
-            template_path = "{}/templates".format(path)
-            sources = self._loading_hist_data(source_path)
-            templates = self._loading_hist_data(template_path)
+            target_path = "{}/data/{}".format(get_project_root(), kwarg["hist_target"])
+            source_path = "{}/data/{}".format(get_project_root(), kwarg["hist_source"])
 
-            self.LUT = []
-            self.LUT.append(self._estimate_cumulative_cdf(sources["L"], templates["L"], start=0, end=100))
-            self.LUT.append(self._estimate_cumulative_cdf(sources["A"], templates["A"], start=-128, end=127))
-            self.LUT.append(self._estimate_cumulative_cdf(sources["B"], templates["B"], start=-128, end=127))
+            hist_target = np.load(target_path).item()
+            hist_source = np.load(source_path).item()
 
-            print("produced transform function.", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            LUT = []
+            LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
+            LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
+            LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
+            self.LUT = LUT
+
         return
 
     def normalize(self, src_img):
@@ -99,14 +98,12 @@ class ImageNormalization(object):
         return rgb_result
 
     def _estimate_cumulative_cdf(self, source, template, start, end):
-        source = np.array(source)
-        template = np.array(template)
-        src_values, src_counts = np.unique(source.ravel(),  return_counts=True)
-        tmpl_values, tmpl_counts = np.unique(template.ravel(), return_counts=True)
+        src_values, src_counts = source
+        tmpl_values, tmpl_counts = template
 
         # calculate normalized quantiles for each array
-        src_quantiles = np.cumsum(src_counts) / source.size
-        tmpl_quantiles = np.cumsum(tmpl_counts) / template.size
+        src_quantiles = np.cumsum(src_counts) / np.sum(src_counts)
+        tmpl_quantiles = np.cumsum(tmpl_counts) / np.sum(tmpl_counts)
 
         interp_a_values = np.interp(src_quantiles, tmpl_quantiles, tmpl_values)
 
@@ -122,26 +119,26 @@ class ImageNormalization(object):
         # result = dict(zip(new_source, np.rint(interp_b_values))) # for debug
         # return result
         return np.rint(interp_b_values)
-
-    def _loading_hist_data(self, path):
-
-        results = {"L":[], "A":[], "B": []}
-        for root, dirs, files in os.walk(path):
-            for file in files:
-                if os.path.splitext(file)[1] == '.jpg':
-                    file_path = os.path.join(root, file)
-                    img = io.imread(file_path, as_gray=False)
-                    lab_img = color.rgb2lab(img)
-
-                    # LAB三通道分离
-                    labO_l = np.array(lab_img[:, :, 0])
-                    labO_a = np.array(lab_img[:, :, 1])
-                    labO_b = np.array(lab_img[:, :, 2])
-
-                    results["L"].append(labO_l.astype(np.int))
-                    results["A"].append(labO_a.astype(np.int))
-                    results["B"].append(labO_b.astype(np.int))
-        return results
+    #
+    # def _loading_hist_data(self, path):
+    #
+    #     results = {"L":[], "A":[], "B": []}
+    #     for root, dirs, files in os.walk(path):
+    #         for file in files:
+    #             if os.path.splitext(file)[1] == '.jpg':
+    #                 file_path = os.path.join(root, file)
+    #                 img = io.imread(file_path, as_gray=False)
+    #                 lab_img = color.rgb2lab(img)
+    #
+    #                 # LAB三通道分离
+    #                 labO_l = np.array(lab_img[:, :, 0])
+    #                 labO_a = np.array(lab_img[:, :, 1])
+    #                 labO_b = np.array(lab_img[:, :, 2])
+    #
+    #                 results["L"].append(labO_l.astype(np.int))
+    #                 results["A"].append(labO_a.astype(np.int))
+    #                 results["B"].append(labO_b.astype(np.int))
+    #     return results
 
     def normalize_hist(self, src_img):
         lab_img = color.rgb2lab(src_img)
@@ -158,7 +155,7 @@ class ImageNormalization(object):
         lab1_a = LUT_A[128 + lab0_a]
 
         LUT_B = self.LUT[2]
-        lab1_b = LUT_A[128 + lab0_b]
+        lab1_b = LUT_B[128 + lab0_b]
 
         labO = np.dstack([lab1_l, lab1_a, lab1_b])
         # LAB to RGB变换
@@ -281,6 +278,132 @@ class ImageNormalizationTool(object):
 
         return avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b
 
-    def calculate_hist(self, path):
-        pass
+    def calculate_hist(self, source_code, source_txt, template_code, template_txt):
+        root_path = self._params.PATCHS_ROOT_PATH
+        print("prepare transform function ...", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        source_path = "{}/{}".format(root_path[source_code], source_txt)
+        template_path = "{}/{}".format(root_path[template_code], template_txt)
+        source_files, _ = read_csv_file(root_path[source_code], source_path)
+        template_files, _ = read_csv_file(root_path[template_code], template_path)
+        print("Loaded the number of sources = ", len(source_files), "the number of templates = ", len(template_files))
 
+        project_root = self._params.PROJECT_ROOT
+
+        hist_sources = self._generate_histogram(source_files)
+        np.save( project_root + "/data/hist_soures", hist_sources)
+
+        hist_templates = self._generate_histogram(template_files)
+        np.save(project_root + "/data/hist_templates", hist_templates)
+
+        return #hist_sources, hist_templates
+
+        # sources = self._loading_hist_data(source_files)
+        # templates = self._loading_hist_data(template_files)
+        #
+        # print("Loaded the number of sources = ", len(sources["L"]), "the number of templates = ", len(templates["L"]))
+        #
+        # LUT = []
+        # LUT.append(self._estimate_cumulative_cdf(sources["L"], templates["L"], start=0, end=100))
+        # LUT.append(self._estimate_cumulative_cdf(sources["A"], templates["A"], start=-128, end=127))
+        # LUT.append(self._estimate_cumulative_cdf(sources["B"], templates["B"], start=-128, end=127))
+        #
+        # project_root = self._params.PROJECT_ROOT
+        # np.save( project_root + "/data/hist_match_function", LUT)
+
+
+    # def _loading_hist_data(self, filennames):
+    #
+    #     results = {"L":[], "A":[], "B": []}
+    #
+    #     for file in filennames:
+    #         img = io.imread(file, as_gray=False)
+    #         lab_img = color.rgb2lab(img)
+    #
+    #         # LAB三通道分离
+    #         labO_l = np.array(lab_img[:, :, 0])
+    #         labO_a = np.array(lab_img[:, :, 1])
+    #         labO_b = np.array(lab_img[:, :, 2])
+    #
+    #         results["L"].append(labO_l.astype(np.int))
+    #         results["A"].append(labO_a.astype(np.int))
+    #         results["B"].append(labO_b.astype(np.int))
+    #
+    #     return results
+
+    # def _estimate_cumulative_cdf(self, source, template, start, end):
+    #     source = np.array(source)
+    #     template = np.array(template)
+    #     src_values, src_counts = np.unique(source.ravel(),  return_counts=True)
+    #     tmpl_values, tmpl_counts = np.unique(template.ravel(), return_counts=True)
+    #
+    #     # calculate normalized quantiles for each array
+    #     src_quantiles = np.cumsum(src_counts) / source.size
+    #     tmpl_quantiles = np.cumsum(tmpl_counts) / template.size
+    #
+    #     interp_a_values = np.interp(src_quantiles, tmpl_quantiles, tmpl_values)
+    #
+    #     if src_values[0] > start:
+    #         src_values = np.insert(src_values, 0, start)
+    #         interp_a_values = np.insert(interp_a_values, 0, start)
+    #     if src_values[-1] < end:
+    #         src_values = np.append(src_values, end)
+    #         interp_a_values = np.append(interp_a_values, end)
+    #
+    #     new_source = np.arange(start, end + 1)
+    #     interp_b_values = np.interp(new_source, src_values, interp_a_values)
+    #     # result = dict(zip(new_source, np.rint(interp_b_values))) # for debug
+    #     # return result
+    #     return np.rint(interp_b_values)
+
+    def _generate_histogram(self, filennames):
+        Shape_L = (101, ) # 100 + 1
+        Shape_A = (256, ) # 127 + 128 + 1
+        Shape_B = (256, )
+
+        hist_l = np.zeros(Shape_L)
+        hist_a = np.zeros(Shape_A)
+        hist_b = np.zeros(Shape_B)
+        for K, file in enumerate(filennames):
+            img = io.imread(file, as_gray=False)
+            lab_img = color.rgb2lab(img)
+
+            # LAB三通道分离
+            labO_l = np.array(lab_img[:, :, 0])
+            labO_a = np.array(lab_img[:, :, 1])
+            labO_b = np.array(lab_img[:, :, 2])
+
+            labO_l = np.rint(labO_l)
+            labO_a = np.rint(labO_a)
+            labO_b = np.rint(labO_b)
+
+            values, counts = np.unique(labO_l.ravel(), return_counts=True)
+            for value, count in zip(values, counts):
+                hist_l[int(value)] += count
+
+            values, counts = np.unique(labO_a.ravel(), return_counts=True)
+            for value, count in zip(values, counts):
+                hist_a[int(value) + 128] += count
+
+            values, counts = np.unique(labO_b.ravel(), return_counts=True)
+            for value, count in zip(values, counts):
+                hist_b[int(value) + 128] += count
+
+            if (0 == K % 1000):
+                print("{} calculate histogram >>> {}".format(time.asctime(time.localtime()), K))
+
+        tag = hist_l > 0
+        values_l = np.arange(0, 101)
+        hist_l = hist_l[tag]
+        values_l = values_l[tag]
+
+        tag = hist_a > 0
+        values_a = np.arange(-128, 128)
+        hist_a = hist_a[tag]
+        values_a = values_a[tag]
+
+        tag = hist_b > 0
+        values_b = np.arange(-128, 128)
+        hist_b = hist_b[tag]
+        values_b = values_b[tag]
+
+        return {"L":(values_l, hist_l), "A":(values_a, hist_a), "B":(values_b, hist_b) }
