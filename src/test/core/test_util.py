@@ -24,3 +24,6 @@ class TestUtil(unittest.TestCase):
     def test_read_csv_file(self):
         filenames_list, labels_list = util.read_csv_file("D:/Data/Patches/P1113/", "D:/Data/Patches/P1113/T_NC_256_test.txt")
         print(len(filenames_list), len(labels_list[0]))
+
+    def test_get_project_root(self):
+        print(util.get_project_root())

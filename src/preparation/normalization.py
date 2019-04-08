@@ -119,7 +119,7 @@ class ImageNormalization(object):
 
         new_source = np.arange(start, end + 1)
         interp_b_values = np.interp(new_source, src_values, interp_a_values)
-        # result = dict(zip(new_source, np.rint(interp_b_values)))
+        # result = dict(zip(new_source, np.rint(interp_b_values))) # for debug
         # return result
         return np.rint(interp_b_values)
 
@@ -280,4 +280,7 @@ class ImageNormalizationTool(object):
         avg_std_b = np.mean(std_b)
 
         return avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b
+
+    def calculate_hist(self, path):
+        pass
 

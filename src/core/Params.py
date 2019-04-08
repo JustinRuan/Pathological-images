@@ -7,9 +7,10 @@ __mtime__ = '2018-10-13'
 """
 import os
 import json
+from core.util import get_project_root
 
-# 注意设置 项目的工作目录为src的上一级目录
-CONFIG_PATH = os.getcwd() + "\\config\\"
+# # 注意设置 项目的工作目录为src的上一级目录
+# CONFIG_PATH = os.getcwd() + "\\config\\"
 
 
 class Params(object):
@@ -28,19 +29,16 @@ class Params(object):
         # 读取数据
         with open(filename, 'r') as f:
             data = json.load(f)
-
-        # self.EXTRACT_SCALE = data[0]['EXTRACT_SCALE']
         self.GLOBAL_SCALE = data[0]['GLOBAL_SCALE']
-        # self.PATCH_SIZE_HIGH = data[0]['PATCH_SIZE_HIGH']
-        # self.AMPLIFICATION_SCALE = self.EXTRACT_SCALE / self.GLOBAL_SCALE  # when googleNet， = 16
-        # self.PATCH_SIZE_LOW = self.PATCH_SIZE_HIGH / self.AMPLIFICATION_SCALE
 
         self.KFB_SDK_PATH = data[1]['KFB_SDK_PATH']
         self.SLICES_ROOT_PATH = data[1]['SLICES_ROOT_PATH']
-        self.PATCHS_ROOT_PATH = data[1]['PATCHS_ROOT_PATH']
-        self.PROJECT_ROOT = data[1]['PROJECT_ROOT']
+        # self.PATCHS_ROOT_PATH = data[1]['PATCHS_ROOT_PATH']
+        self.PROJECT_ROOT = get_project_root()
 
-        self.NUM_WORKERS = data[2]['NUM_WORKERS']
+        self.PATCHS_ROOT_PATH = dict(data[2])
+
+        self.NUM_WORKERS = data[3]['NUM_WORKERS']
 
         return
 
@@ -50,17 +48,21 @@ class Params(object):
         :param filename: 存盘的文件名
         :return:
         '''
-        filePath = CONFIG_PATH + filename
+        filePath = get_project_root() + "\\config\\" + filename
         data = (
             {
-             'GLOBAL_SCALE' : 1.25,
-             'EXTRACT_PATCH_INTERVAL': 4,
-             'CLASSIFY_PATCH_INTERVAL': 8},
-            {'KFB_SDK_PATH': 'D:/CloudSpace/WorkSpace/lib/KFB_SDK',
-             'SLICES_ROOT_PATH': 'D:/Study/breast/3Plus',
-             'PATCHS_ROOT_PATH': 'D:/Study/breast/Patches/P1013',
-             'PROJECT_ROOT': 'D:/CloudSpace/WorkSpace/PatholImage'
-             }
+                'GLOBAL_SCALE': 1.25, },
+            {
+                'KFB_SDK_PATH': 'D:/CloudSpace/WorkSpace/lib/KFB_SDK',
+                'SLICES_ROOT_PATH': 'D:/Study/breast/3Plus',
+            },
+            {
+                "P0404": "D:/Data/Patches/P0404",
+                "P0327": "D:/Data/Patches/P0327"
+            },
+            {
+                "NUM_WORKERS": 1,
+            }
         )
 
         # 写入 JSON 数据

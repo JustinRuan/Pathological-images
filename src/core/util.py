@@ -146,3 +146,10 @@ def transform_coordinate(x1, y1, coordinate_scale, seeds_scale, target_scale, se
         results.append((xx, yy))
     # print(results)
     return results
+
+def get_project_root():
+    path = os.getcwd()
+    #约定 项目的代码在src文件夹，其它的目录与它平级
+    pos = path.find("src")
+
+    return path[:pos - 1]
