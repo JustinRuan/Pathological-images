@@ -603,10 +603,10 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
 
-        normal_func = self.get_normalization_function(extract_scale, patch_size)
-        # normal_func = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
-        #                             hist_source = "hist_soures_P0404.npy",
-        #                             image_source= None)
+        # normal_func = self.get_normalization_function(extract_scale, patch_size)
+        normal_func = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+                                    hist_source = "hist_soures_P0404.npy",
+                                    image_source= None)
 
         # normal_func = None
 
@@ -934,16 +934,35 @@ class Detector(object):
 
         return tuple(zip(x, y))
 
-    def get_normalization_function(self, extract_scale, patch_size, ):
-        rx2 = self.ImageWidth
-        ry2 = self.ImageHeight
+    # def get_normalization_function(self, extract_scale, patch_size, ):
+    #     rx2 = int(self.ImageWidth * extract_scale / self._params.GLOBAL_SCALE)
+    #     ry2 = int(self.ImageHeight * extract_scale / self._params.GLOBAL_SCALE)
+    #
+    #     N = 2000
+    #     # rx1, ry1, rx2, ry2 = self.valid_rect
+    #     x, y = self.random_gen.generate_random(N, 0, rx2, 0, ry2)
+    #
+    #     images = []
+    #     for x, y in tuple(zip(x, y)):
+    #         block = self._imgCone.get_image_block(extract_scale, x, y, patch_size, patch_size)
+    #         img = block.get_img()
+    #         images.append(img)
+    #
+    #     normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+    #                                 hist_source = None,
+    #                                 image_source= images)
+    #
+    #     return normal
 
-        N = 1000
-        # rx1, ry1, rx2, ry2 = self.valid_rect
-        x, y = self.random_gen.generate_random(N, 0, rx2, 0, ry2)
+    def get_normalization_function(self, extract_scale, patch_size, ):
+        low_scale = self._params.GLOBAL_SCALE
+        eff_region = self._imgCone.get_effective_zone(low_scale)
+
+        sampling_interval = 2000
+        seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
 
         images = []
-        for x, y in tuple(zip(x, y)):
+        for x, y in seeds:
             block = self._imgCone.get_image_block(extract_scale, x, y, patch_size, patch_size)
             img = block.get_img()
             images.append(img)

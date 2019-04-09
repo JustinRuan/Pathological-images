@@ -52,6 +52,8 @@ class ImageNormalization(object):
             LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
             LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
             self.LUT = LUT
+            self.hist_source = hist_source
+            self.hist_target = hist_target
         return
 
     def normalize(self, src_img):
@@ -176,6 +178,102 @@ class ImageNormalization(object):
         rgb_image = color.lab2rgb(labO)
 
         return rgb_image
+
+    def draw_hist(self,):
+        hist_source = self.hist_source
+        hist_target = self.hist_target
+
+        from visdom import Visdom
+        viz = Visdom(env="main")
+        pic_L = viz.line(
+            Y=hist_target["L"][1],
+            X=hist_target["L"][0],
+            opts={
+                'linecolor': np.array([
+                    [0, 0, 255],
+                ]),
+                'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
+                'showlegend': True,
+                'xlabel': 'L channel',
+                'ylabel': 'Probability',
+                'title': 'Histogram of L',
+            },
+            name='target',
+
+        )
+
+        viz.line(
+            Y=hist_source["L"][1],
+            X=hist_source["L"][0],
+            opts={
+                'linecolor': np.array([
+                    [255, 0, 0],
+                ]),
+            },
+            name='source',
+            win=pic_L,
+            update='insert',
+        )
+
+        pic_A = viz.line(
+            Y=hist_target["A"][1],
+            X=hist_target["A"][0],
+            opts={
+                'linecolor': np.array([
+                    [0, 0, 255],
+                ]),
+                'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
+                'showlegend': True,
+                'xlabel': 'A channel',
+                'ylabel': 'Probability',
+                'title': 'Histogram of A',
+            },
+            name='target',
+
+        )
+
+        viz.line(
+            Y=hist_source["A"][1],
+            X=hist_source["A"][0],
+            opts={
+                'linecolor': np.array([
+                    [255, 0, 0],
+                ]),
+            },
+            name='source',
+            win=pic_A,
+            update='insert',
+        )
+
+        pic_B = viz.line(
+            Y=hist_target["B"][1],
+            X=hist_target["B"][0],
+            opts={
+                'linecolor': np.array([
+                    [0, 0, 255],
+                ]),
+                'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
+                'showlegend': True,
+                'xlabel': 'B channel',
+                'ylabel': 'Probability',
+                'title': 'Histogram of B',
+            },
+            name='target',
+
+        )
+
+        viz.line(
+            Y=hist_source["B"][1],
+            X=hist_source["B"][0],
+            opts={
+                'linecolor': np.array([
+                    [255, 0, 0],
+                ]),
+            },
+            name='source',
+            win=pic_B,
+            update='insert',
+        )
 
 class ImageNormalizationTool(object):
     def __init__(self, params):

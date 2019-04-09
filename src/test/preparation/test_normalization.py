@@ -11,6 +11,7 @@ from core import *
 import matplotlib.pyplot as plt
 from skimage.io import imread
 import random
+import numpy as np
 
 from preparation.normalization import ImageNormalization, ImageNormalizationTool
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
@@ -122,3 +123,12 @@ class TestNormalization(unittest.TestCase):
         normal = ImageNormalizationTool(c)
         # normal.calculate_hist("P0404", "T_NC_P0404_4000_256_test.txt", "Target", "Target_T1_4000_256_test.txt")
         normal.calculate_hist("P0330", "T_NC_Simple0330_4000_256_test.txt", "Target", "Target_T1_4000_256_test.txt")
+
+    def test_draw_hist(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+                                    hist_source = "hist_soures_P0404.npy",
+                                    image_source= None)
+        normal.draw_hist()
