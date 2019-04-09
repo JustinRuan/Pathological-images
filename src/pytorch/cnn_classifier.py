@@ -269,7 +269,7 @@ class CNN_Classifier(object):
 
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
-        Xtest, Ytest = Xtest[:600], Ytest[:600]  # for debug
+        # Xtest, Ytest = Xtest[:600], Ytest[:600]  # for debug
         test_data = Image_Dataset(Xtest, Ytest, normalization=normalization)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
                                       shuffle=False, num_workers=self.NUM_WORKERS)
@@ -352,7 +352,7 @@ class CNN_Classifier(object):
         #             "msc_256":  "se_densenet_c9_22_msc_256_0030-0.2319-0.9775-0.6928.pth",
         #             }
         net_file = {
-                    "4000_256": "simple_cnn_40_256_cp-0010-0.3481-0.9637.pth",
+                    "4000_256": "simple_cnn_40_256_cp-0009-0.0923-0.9658.pth",
                     }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
@@ -436,9 +436,9 @@ class CNN_Classifier(object):
             b_x = Variable(x.to(self.device))
 
             output = self.model(b_x)
-            probs, preds = torch.max(output, 1) # simple cnn 专用
-            # output_softmax = nn.functional.softmax(output)
-            # probs, preds = torch.max(output_softmax, 1)
+            # probs, preds = torch.max(output, 1) # simple cnn 专用
+            output_softmax = nn.functional.softmax(output)
+            probs, preds = torch.max(output_softmax, 1)
             for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
                 results.append((pred, prob))
             print('predicting => %d / %d ' % (step + 1, data_len))
