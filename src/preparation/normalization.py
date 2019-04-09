@@ -34,17 +34,24 @@ class ImageNormalization(object):
         elif method == "match_hist":
             self.method = self.normalize_hist
             target_path = "{}/data/{}".format(get_project_root(), kwarg["hist_target"])
-            source_path = "{}/data/{}".format(get_project_root(), kwarg["hist_source"])
-
             hist_target = np.load(target_path).item()
-            hist_source = np.load(source_path).item()
+
+            if kwarg["hist_source"] is not None:
+                print("reading histogram file ...")
+                source_path = "{}/data/{}".format(get_project_root(), kwarg["hist_source"])
+                print("reading histogram file: ", source_path)
+                hist_source = np.load(source_path).item()
+
+            else:
+                image_source = kwarg["image_source"]
+                print("calculating histogram, the number of source: ", len(image_source))
+                hist_source = self._calculate_hist(image_source)
 
             LUT = []
             LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
             LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
             LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
             self.LUT = LUT
-
         return
 
     def normalize(self, src_img):
@@ -119,26 +126,33 @@ class ImageNormalization(object):
         # result = dict(zip(new_source, np.rint(interp_b_values))) # for debug
         # return result
         return np.rint(interp_b_values)
-    #
-    # def _loading_hist_data(self, path):
-    #
-    #     results = {"L":[], "A":[], "B": []}
-    #     for root, dirs, files in os.walk(path):
-    #         for file in files:
-    #             if os.path.splitext(file)[1] == '.jpg':
-    #                 file_path = os.path.join(root, file)
-    #                 img = io.imread(file_path, as_gray=False)
-    #                 lab_img = color.rgb2lab(img)
-    #
-    #                 # LAB三通道分离
-    #                 labO_l = np.array(lab_img[:, :, 0])
-    #                 labO_a = np.array(lab_img[:, :, 1])
-    #                 labO_b = np.array(lab_img[:, :, 2])
-    #
-    #                 results["L"].append(labO_l.astype(np.int))
-    #                 results["A"].append(labO_a.astype(np.int))
-    #                 results["B"].append(labO_b.astype(np.int))
-    #     return results
+
+    def _calculate_hist(self, image_list):
+
+        data_L = []
+        data_A = []
+        data_B = []
+        for img in image_list:
+            lab_img = color.rgb2lab(img)
+
+            # LAB三通道分离
+            labO_l = np.array(lab_img[:, :, 0])
+            labO_a = np.array(lab_img[:, :, 1])
+            labO_b = np.array(lab_img[:, :, 2])
+
+            data_L.append(labO_l.astype(np.int))
+            data_A.append(labO_a.astype(np.int))
+            data_B.append(labO_b.astype(np.int))
+
+        data_L = np.array(data_L)
+        data_A = np.array(data_A)
+        data_B = np.array(data_B)
+
+        L_values, L_counts = np.unique(data_L.ravel(), return_counts=True)
+        A_values, A_counts = np.unique(data_A.ravel(), return_counts=True)
+        B_values, B_counts = np.unique(data_B.ravel(), return_counts=True)
+
+        return {"L":(L_values, L_counts), "A":(A_values, A_counts), "B":(B_values, B_counts) }
 
     def normalize_hist(self, src_img):
         lab_img = color.rgb2lab(src_img)
@@ -158,7 +172,7 @@ class ImageNormalization(object):
         lab1_b = LUT_B[128 + lab0_b]
 
         labO = np.dstack([lab1_l, lab1_a, lab1_b])
-        # LAB to RGB变换
+        # LAB to RGB变换, 会除以255
         rgb_image = color.lab2rgb(labO)
 
         return rgb_image
@@ -239,7 +253,6 @@ class ImageNormalizationTool(object):
 
         for data_filename in data_filenames:
             data_file = "{}/{}".format(root_path, data_filename)
-
 
             f = open(data_file, "r")
             for line in f:

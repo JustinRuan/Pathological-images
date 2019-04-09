@@ -13,8 +13,8 @@ from skimage.io import imread
 import random
 
 from preparation.normalization import ImageNormalization, ImageNormalizationTool
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestNormalization(unittest.TestCase):
 
@@ -40,7 +40,19 @@ class TestNormalization(unittest.TestCase):
         #                             source_mean=(194.1, 169.3, 210.4),
         #                             source_std=(27.86, 30.92, 20.25))
 
-        normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy", hist_source = "hist_soures.npy")
+        # normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+        #                             hist_source = "hist_soures_P0404.npy",
+        #                             image_source= None)
+
+        image_list = []
+        for filename in file_list:
+            img = imread(filename)
+            image_list.append(img)
+
+        normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+                                    hist_source = None,
+                                    image_source= image_list)
+
 
         fig = plt.figure(figsize=(16, 10), dpi=100)
         for index, filename in enumerate(file_list):

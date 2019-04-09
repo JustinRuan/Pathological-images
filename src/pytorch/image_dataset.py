@@ -15,10 +15,8 @@ from skimage.io import imread
 from preparation.normalization import ImageNormalization
 from skimage.transform import resize
 
-PROJECT_ROOT = "D:/CloudSpace/WorkSpace/PatholImage"
-
 class Image_Dataset(Dataset):
-    def __init__(self, x_set, y_set, transform = None):
+    def __init__(self, x_set, y_set, transform = None, normalization = None):
         self.x, self.y = x_set, y_set
         if transform is None:
             self.transform = torchvision.transforms.ToTensor()
@@ -35,17 +33,19 @@ class Image_Dataset(Dataset):
         #                             source_mean=(72.45, 17.63, -17.77),
         #                             source_std=(10.77, 7.064, 6.50))
 
-        self.normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy", hist_source = "hist_soures.npy")
+        # self.normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy", hist_source = "hist_soures.npy")
 
-        # self.normal = None
+        self.normal_func = normalization
 
     def __getitem__(self, index):
         file_name = self.x[index]
         label = self.y[index]
 
         img = imread(file_name)
-        if self.normal is not None:
-            img = self.normal.normalize(img)
+        if self.normal_func is not None:
+            img = self.normal_func.normalize(img)
+        else:
+            img = img / 255.0
 
         img = self.transform(img).type(torch.FloatTensor)
         return img, label

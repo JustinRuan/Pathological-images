@@ -21,9 +21,7 @@ from core.util import get_seeds, transform_coordinate
 from pytorch.cnn_classifier import CNN_Classifier
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
-
-
-# N = 500
+from preparation.normalization import ImageNormalization
 
 class Detector(object):
 
@@ -605,12 +603,21 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
 
+        normal_func = self.get_normalization_function(extract_scale, patch_size)
+        # normal_func = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+        #                             hist_source = "hist_soures_P0404.npy",
+        #                             image_source= None)
+
+        # normal_func = None
+
         # model_name = "se_densenet_c9_22"
         #         # sample_name = "msc_256"
-        model_name = "se_densenet_22"
-        sample_name = "x_256"
+        # model_name = "se_densenet_22"
+        # sample_name = "x_256"
+        model_name = "simple_cnn"
+        sample_name = "4000_256"
         # cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
-        cnn = CNN_Classifier(self._params, model_name, sample_name)
+        cnn = CNN_Classifier(self._params, model_name, sample_name, normalization=normal_func)
 
         # 生成坐标网格
         grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
@@ -627,22 +634,21 @@ class Detector(object):
         pic_thresh = None
         pic_points = None
         pic_density = None
-        # mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
-        # c_mask = find_contours(np.array(mask_img).astype(int), level=0.5)
-        # for i, contour in enumerate(c_mask):
-        #     contour = np.abs(np.array(contour - [y2 - y1, 0]))
-        #     c_name = "GT {}".format(i)
-        #     if pic_points is None:
-        #         pic_points = viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name,
-        #                               opts={'linecolor': np.array([[0, 0, 0], ]), 'showlegend': True, })
-        #     else:
-        #         viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name, win=pic_points, update='append',
-        #                  opts={'linecolor': np.array([[0, 0, 0], ])})
+        mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
+        c_mask = find_contours(np.array(mask_img).astype(int), level=0.5)
+        for i, contour in enumerate(c_mask):
+            contour = np.abs(np.array(contour - [y2 - y1, 0]))
+            c_name = "GT {}".format(i)
+            if pic_points is None:
+                pic_points = viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name,
+                                      opts={'linecolor': np.array([[0, 0, 0], ]), 'showlegend': True, })
+            else:
+                viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name, win=pic_points, update='append',
+                         opts={'linecolor': np.array([[0, 0, 0], ])})
         #########################################################################################################
 
         threshold = 0.0 # 边缘区域与平坦区域的分割阈值
         total_step = 1
-        count_tresh = 0 # 达到收敛条件的累计次数
 
         rx1, ry1, rx2, ry2 = self.valid_rect
         for i in range(max_iter_nums):
@@ -668,6 +674,10 @@ class Detector(object):
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
                 predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
                 probs = self.get_cancer_probability(predictions)
+            elif model_name == "simple_cnn":
+                high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
+                predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
+                probs = self.get_cancer_probability(predictions)
             # # 多倍镜下进行检测, 效果不好啊！
             # elif mode == 2:
             #     # def predict_multi_scale(self, src_img, scale_tuple, patch_size, seeds_scale, seeds, batch_size):
@@ -678,17 +688,17 @@ class Detector(object):
                 # probs = self.get_cancer_probability(predictions)
 
             #######################################################################################
-            # t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
-            # len_seed = len(new_seeds)
-            # random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed, 1))
-            # step_name = "Round {}".format(total_step)
-            # text_labels = []
-            # for item in probs:
-            #     text_labels.append("{:.2f}".format(item))
+            t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
+            len_seed = len(new_seeds)
+            random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed, 1))
+            step_name = "Round {}".format(total_step)
+            text_labels = []
+            for item in probs:
+                text_labels.append("{:.2f}".format(item))
 
-            # viz.scatter(X=t_seeds, name=step_name, win=pic_points, update="append",
-            #             opts=dict(title='seeds', caption='seeds', showlegend=True,  #textlabels=text_labels,
-            #                       markercolor=random_color, markersize=8))
+            viz.scatter(X=t_seeds, name=step_name, win=pic_points, update="append",
+                        opts=dict(title='seeds', caption='seeds', showlegend=True,  #textlabels=text_labels,
+                                  markercolor=random_color, markersize=8))
             ########################################################################################
 
             for (x, y), pred in zip(new_seeds, probs):
@@ -923,3 +933,23 @@ class Detector(object):
                 y.extend(sy)
 
         return tuple(zip(x, y))
+
+    def get_normalization_function(self, extract_scale, patch_size, ):
+        rx2 = self.ImageWidth
+        ry2 = self.ImageHeight
+
+        N = 1000
+        # rx1, ry1, rx2, ry2 = self.valid_rect
+        x, y = self.random_gen.generate_random(N, 0, rx2, 0, ry2)
+
+        images = []
+        for x, y in tuple(zip(x, y)):
+            block = self._imgCone.get_image_block(extract_scale, x, y, patch_size, patch_size)
+            img = block.get_img()
+            images.append(img)
+
+        normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+                                    hist_source = None,
+                                    image_source= images)
+
+        return normal

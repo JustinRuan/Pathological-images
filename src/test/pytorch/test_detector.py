@@ -13,8 +13,8 @@ from pytorch.detector import Detector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class Test_detector(unittest.TestCase):
 
@@ -439,8 +439,8 @@ class Test_detector(unittest.TestCase):
 
     def test_adaptive_detect_region_test(self):
         # test test
-        test_set = {1: ("001", 100, 100, 2600, 2700),  # 检测不出
-                    2: ("001", 800, 1600, 1600, 2300),  # 同上
+        test_set = {1: ("001", 100, 100, 2600, 2700),  # 检测 dice =0.81
+                    2: ("001", 800, 1600, 1600, 2300),  # dice = 0.95
                     3: ("016", 0, 200, 3250, 2900),  # 检测不出
                     4: ("021", 0, 2400, 3000, 6500),  # 检测 dice， c3 0.9, c9 0.95
                     5: ("026", 0, 0, 0, 0),  # 检测，dice c3= 0.11
@@ -470,7 +470,7 @@ class Test_detector(unittest.TestCase):
                     30: ("073", 0, 0, 0, 0),
                     }
 
-        id = 12
+        id = 2
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -498,7 +498,7 @@ class Test_detector(unittest.TestCase):
             x1 = 0
 
         cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums=50,
-                                                              batch_size=30, limit_sampling_density=10, use_post=True)
+                                                              batch_size=10, limit_sampling_density=10, use_post=True)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)

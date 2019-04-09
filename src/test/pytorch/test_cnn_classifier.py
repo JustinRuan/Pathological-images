@@ -8,12 +8,13 @@ __mtime__ = '2018-12-13'
 
 import unittest
 import numpy as np
-from core import Params, ImageCone, Open_Slide
+from core import *
 from pytorch.cnn_classifier import CNN_Classifier
 import torch
+from preparation.normalization import ImageNormalization
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -39,7 +40,7 @@ class Test_cnn_classifier(unittest.TestCase):
         sample_name = "4000_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
-        cnn.train_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), batch_size=30, epochs = 10)
+        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)), batch_size=30, epochs = 20)
 
     def test_evaluate_model(self):
         c = Params()
@@ -50,27 +51,37 @@ class Test_cnn_classifier(unittest.TestCase):
         model_name = "simple_cnn"
         sample_name = "4000_256"
 
+        normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+                                    hist_source = "hist_soures_P0404.npy",
+                                    image_source= None)
+
         cnn = CNN_Classifier(c, model_name, sample_name)
-        cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)), model_file=None, batch_size=20)
+        # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
+        #                    model_file=None, batch_size=20,
+        #                    normalization=normal)
         # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
-        # cnn.evaluate_model(samples_name=("P0404", "T_NC_P0404_{}".format(sample_name)), model_file=None, batch_size=20)
+        cnn.evaluate_model(samples_name=("P0404", "T_NC_P0404_{}".format(sample_name)),
+                           model_file=None, batch_size=10,
+                           normalization=normal)
+        # cnn.evaluate_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)),
+        #                    model_file=None, batch_size=10, normalization=None)
 
     def test_predict_on_batch(self):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        model_name = "densenet_22"
-        sample_name = "2000_256"
+        model_name = "simple_cnn"
+        sample_name = "4000_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
 
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_004.tif",
+        tag = imgCone.open_slide("Train_Tumor/Tumor_004.tif",
                                  None, "Tumor_004")
-        seeds = [(34816, 48960), (35200, 48640), (12800, 56832)] # C, C, S,
-        result = cnn.predict_on_batch(imgCone, 20, 256, seeds, 1)
+        seeds = [(69400, 98400), (70800, 98400), (27200, 113600)] # C, C, S,
+        result = cnn.predict_on_batch(imgCone, 40, 256, seeds, 1)
         print(result)
 
     def test_Image_Dataset(self):

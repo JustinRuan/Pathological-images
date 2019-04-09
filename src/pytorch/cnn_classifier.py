@@ -25,7 +25,7 @@ from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor
 
 class CNN_Classifier(object):
 
-    def __init__(self, params, model_name, patch_type):
+    def __init__(self, params, model_name, patch_type, normalization = None):
         '''
         初始化
         :param params: 系统参数
@@ -57,6 +57,7 @@ class CNN_Classifier(object):
         self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
 
         self.model = None
+        self.normal_func = normalization
 
     def create_densenet(self, depth):
         '''
@@ -264,12 +265,12 @@ class CNN_Classifier(object):
 
         return
 
-    def evaluate_model(self, samples_name=None, model_file=None, batch_size=100):
+    def evaluate_model(self, samples_name=None, model_file=None, batch_size=100, normalization = None):
 
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
-        # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
-        test_data = Image_Dataset(Xtest, Ytest)
+        Xtest, Ytest = Xtest[:600], Ytest[:600]  # for debug
+        test_data = Image_Dataset(Xtest, Ytest, normalization=normalization)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
                                       shuffle=False, num_workers=self.NUM_WORKERS)
 
@@ -324,14 +325,16 @@ class CNN_Classifier(object):
         :param samples_name: 列表文件的代号
         :return:用于train和test的两个Sequence
         '''
-        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+        patch_root = self._params.PATCHS_ROOT_PATH[samples_name[0]]
+        sample_filename = samples_name[1]
+        train_list = "{}/{}_train.txt".format(patch_root, sample_filename)
+        test_list = "{}/{}_test.txt".format(patch_root, sample_filename)
 
-        Xtrain, Ytrain = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+        Xtrain, Ytrain = read_csv_file(patch_root, train_list)
         # Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
         train_data = Image_Dataset(Xtrain, Ytrain)
 
-        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+        Xtest, Ytest = read_csv_file(patch_root, test_list)
         # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
         test_data = Image_Dataset(Xtest, Ytest)
         return  train_data, test_data
@@ -342,11 +345,14 @@ class CNN_Classifier(object):
         :param patch_type: 分类器处理图块的类型
         :return: 网络模型
         '''
-        net_file = {"500_128":  "densenet_22_500_128_cp-0017-0.2167-0.9388.pth",
-                    "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
-                    "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
-                    "x_256" :   "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
-                    "msc_256":  "se_densenet_c9_22_msc_256_0030-0.2319-0.9775-0.6928.pth",
+        # net_file = {"500_128":  "densenet_22_500_128_cp-0017-0.2167-0.9388.pth",
+        #             "2000_256": "densenet_22_2000_256-cp-0019-0.0681-0.9762.pth",
+        #             "4000_256": "densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
+        #             "x_256" :   "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
+        #             "msc_256":  "se_densenet_c9_22_msc_256_0030-0.2319-0.9775-0.6928.pth",
+        #             }
+        net_file = {
+                    "4000_256": "simple_cnn_40_256_cp-0010-0.3481-0.9637.pth",
                     }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])
@@ -411,13 +417,11 @@ class CNN_Classifier(object):
         :param seeds: 种子点的集合
         :return: 预测结果与概率
         '''
-        seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size)
+        seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
+                                           normalization=self.normal_func)
 
         if self.model is None:
             self.model = self.load_pretrained_model_on_predict(self.patch_type)
-        # print(model)
-        #     if self.use_GPU:
-        #         self.model.cuda()
             self.model.to(self.device)
             self.model.eval()
 
@@ -429,15 +433,12 @@ class CNN_Classifier(object):
         results = []
 
         for step, x in enumerate(seeds_itor):
-            # if self.use_GPU:
-            #     b_x = Variable(x).cuda()  # batch x
-            # else:
-            #     b_x = Variable(x)  # batch x
             b_x = Variable(x.to(self.device))
 
             output = self.model(b_x)
-            output_softmax = nn.functional.softmax(output)
-            probs, preds = torch.max(output_softmax, 1)
+            probs, preds = torch.max(output, 1) # simple cnn 专用
+            # output_softmax = nn.functional.softmax(output)
+            # probs, preds = torch.max(output_softmax, 1)
             for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
                 results.append((pred, prob))
             print('predicting => %d / %d ' % (step + 1, data_len))
