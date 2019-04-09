@@ -607,7 +607,7 @@ class Detector(object):
         # normal_func = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
         #                             hist_source = "hist_soures_P0404.npy",
         #                             image_source= None)
-        normal_func.draw_hist()
+        normal_func.draw_normalization_func("Now")
 
         # normal_func = None
 

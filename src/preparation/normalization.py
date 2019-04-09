@@ -12,6 +12,7 @@ from skimage import color
 import numpy as np
 from skimage import io
 from core.util import read_csv_file, get_project_root
+from visdom import Visdom
 
 # Reinhard algorithm
 class ImageNormalization(object):
@@ -179,11 +180,10 @@ class ImageNormalization(object):
 
         return rgb_image
 
-    def draw_hist(self,):
+    def draw_hist(self,fig_name):
         hist_source = self.hist_source
         hist_target = self.hist_target
 
-        from visdom import Visdom
         viz = Visdom(env="main")
         pic_L = viz.line(
             Y=hist_target["L"][1],
@@ -196,7 +196,7 @@ class ImageNormalization(object):
                 'showlegend': True,
                 'xlabel': 'L channel',
                 'ylabel': 'Probability',
-                'title': 'Histogram of L',
+                'title': 'Histogram of L - {}'.format(fig_name),
             },
             name='target',
 
@@ -226,7 +226,7 @@ class ImageNormalization(object):
                 'showlegend': True,
                 'xlabel': 'A channel',
                 'ylabel': 'Probability',
-                'title': 'Histogram of A',
+                'title': 'Histogram of A - {}'.format(fig_name),
             },
             name='target',
 
@@ -256,7 +256,7 @@ class ImageNormalization(object):
                 'showlegend': True,
                 'xlabel': 'B channel',
                 'ylabel': 'Probability',
-                'title': 'Histogram of B',
+                'title': 'Histogram of B - {}'.format(fig_name),
             },
             name='target',
 
@@ -272,6 +272,52 @@ class ImageNormalization(object):
             },
             name='source',
             win=pic_B,
+            update='insert',
+        )
+
+    def draw_normalization_func(self, fig_name):
+
+        viz = Visdom(env="main")
+        pic_func = viz.line(
+            Y=self.LUT[0],
+            X=np.arange(0, 101),
+            opts={
+                'linecolor': np.array([
+                    [0, 0, 255],
+                ]),
+                'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
+                'showlegend': True,
+                'xlabel': 'range',
+                'ylabel': 'value',
+                'title': 'function -{}'.format(fig_name),
+            },
+            name='L',
+
+        )
+
+        viz.line(
+            Y=self.LUT[1],
+            X=np.arange(-128, 128),
+            opts={
+                'linecolor': np.array([
+                    [0, 255, 0],
+                ]),
+            },
+            name='A',
+            win=pic_func,
+            update='insert',
+        )
+
+        viz.line(
+            Y=self.LUT[2],
+            X=np.arange(-128, 128),
+            opts={
+                'linecolor': np.array([
+                    [255, 0, 0],
+                ]),
+            },
+            name='B',
+            win=pic_func,
             update='insert',
         )
 

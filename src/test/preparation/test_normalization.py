@@ -131,4 +131,5 @@ class TestNormalization(unittest.TestCase):
         normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
                                     hist_source = "hist_soures_P0404.npy",
                                     image_source= None)
-        normal.draw_hist()
+        # normal.draw_hist("Nice")
+        normal.draw_normalization_func("Nice")
