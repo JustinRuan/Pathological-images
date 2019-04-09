@@ -265,12 +265,12 @@ class CNN_Classifier(object):
 
         return
 
-    def evaluate_model(self, samples_name=None, model_file=None, batch_size=100, normalization = None):
+    def evaluate_model(self, samples_name=None, model_file=None, batch_size=100):
 
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
         # Xtest, Ytest = Xtest[:600], Ytest[:600]  # for debug
-        test_data = Image_Dataset(Xtest, Ytest, normalization=normalization)
+        test_data = Image_Dataset(Xtest, Ytest, normalization=self.normal_func)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
                                       shuffle=False, num_workers=self.NUM_WORKERS)
 
@@ -352,7 +352,7 @@ class CNN_Classifier(object):
         #             "msc_256":  "se_densenet_c9_22_msc_256_0030-0.2319-0.9775-0.6928.pth",
         #             }
         net_file = {
-                    "4000_256": "simple_cnn_40_256_cp-0009-0.0923-0.9658.pth",
+                    "4000_256": "simple_cnn_40_256_cp-0003-0.0742-0.9743.pth",
                     }
 
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[patch_type])

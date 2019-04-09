@@ -38,8 +38,8 @@ def get_seeds(MaskLow, lowScale, highScale, patch_size_high, spacingHigh, margin
 
     space_patch = spacingHigh / amp
     pos = seed_img.nonzero()
-    y = (np.rint(pos[0] / space_patch + 0.5) * spacingHigh).astype(np.int32)  # row
-    x = (np.rint(pos[1] / space_patch + 0.5) * spacingHigh).astype(np.int32)  # col
+    y = (np.rint(pos[0] / space_patch) * spacingHigh).astype(np.int32)  # row
+    x = (np.rint(pos[1] / space_patch) * spacingHigh).astype(np.int32)  # col
 
     resultHigh = set()
     for xx, yy in zip(x, y):

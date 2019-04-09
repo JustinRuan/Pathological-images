@@ -50,7 +50,7 @@ class TestNormalization(unittest.TestCase):
             img = imread(filename)
             image_list.append(img)
 
-        normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+        normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy",
                                     hist_source = None,
                                     image_source= image_list)
 
@@ -121,8 +121,9 @@ class TestNormalization(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         normal = ImageNormalizationTool(c)
-        # normal.calculate_hist("P0404", "T_NC_P0404_4000_256_test.txt", "Target", "Target_T1_4000_256_test.txt")
-        normal.calculate_hist("P0330", "T_NC_Simple0330_4000_256_test.txt", "Target", "Target_T1_4000_256_test.txt")
+        # normal.calculate_hist("P0404", "T_NC_P0404_4000_256_test.txt", is_Target=False)
+        normal.calculate_hist("Target", "Target_T1_4000_256_test.txt", is_Target=True)
+        # normal.calculate_hist("P0330", "T_NC_Simple0330_4000_256_test.txt", "Target", "Target_T1_4000_256_test.txt")
 
     def test_draw_hist(self):
         c = Params()

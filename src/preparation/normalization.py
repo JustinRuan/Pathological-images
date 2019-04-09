@@ -11,7 +11,7 @@ import os
 from skimage import color
 import numpy as np
 from skimage import io
-from core.util import read_csv_file, get_project_root
+from core.util import read_csv_file, get_project_root, get_seeds
 from visdom import Visdom
 
 # Reinhard algorithm
@@ -321,6 +321,26 @@ class ImageNormalization(object):
             update='insert',
         )
 
+    @staticmethod
+    def get_normalization_function(imgCone, params, extract_scale, patch_size, ):
+        low_scale = params.GLOBAL_SCALE
+        eff_region = imgCone.get_effective_zone(low_scale)
+
+        sampling_interval = 4000
+        seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-4)
+
+        images = []
+        for x, y in seeds:
+            block = imgCone.get_image_block(extract_scale, x, y, patch_size, patch_size)
+            img = block.get_img()
+            images.append(img)
+
+        normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy",
+                                    hist_source = None,
+                                    image_source= images)
+
+        return normal
+
 class ImageNormalizationTool(object):
     def __init__(self, params):
         self._params = params
@@ -435,38 +455,41 @@ class ImageNormalizationTool(object):
 
         return avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b
 
-    def calculate_hist(self, source_code, source_txt, template_code, template_txt):
+    # def calculate_hist(self, source_code, source_txt, template_code, template_txt):
+    #     root_path = self._params.PATCHS_ROOT_PATH
+    #     print("prepare transform function ...", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    #     source_path = "{}/{}".format(root_path[source_code], source_txt)
+    #     template_path = "{}/{}".format(root_path[template_code], template_txt)
+    #     source_files, _ = read_csv_file(root_path[source_code], source_path)
+    #     template_files, _ = read_csv_file(root_path[template_code], template_path)
+    #     print("Loaded the number of sources = ", len(source_files), "the number of templates = ", len(template_files))
+    #
+    #     project_root = self._params.PROJECT_ROOT
+    #
+    #     hist_sources = self._generate_histogram(source_files)
+    #     np.save( project_root + "/data/hist_soures", hist_sources)
+    #
+    #     hist_templates = self._generate_histogram(template_files)
+    #     np.save(project_root + "/data/hist_templates", hist_templates)
+    #
+    #     return
+
+    def calculate_hist(self, source_code, source_txt, is_Target = True):
         root_path = self._params.PATCHS_ROOT_PATH
         print("prepare transform function ...", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         source_path = "{}/{}".format(root_path[source_code], source_txt)
-        template_path = "{}/{}".format(root_path[template_code], template_txt)
         source_files, _ = read_csv_file(root_path[source_code], source_path)
-        template_files, _ = read_csv_file(root_path[template_code], template_path)
-        print("Loaded the number of sources = ", len(source_files), "the number of templates = ", len(template_files))
+        print("Loaded the number of images = ", len(source_files))
+        hist_sources = self._generate_histogram(source_files)
+
+        if is_Target:
+            file_code = "hist_templates"
+        else:
+            file_code = "hist_soures"
 
         project_root = self._params.PROJECT_ROOT
-
-        hist_sources = self._generate_histogram(source_files)
-        np.save( project_root + "/data/hist_soures", hist_sources)
-
-        hist_templates = self._generate_histogram(template_files)
-        np.save(project_root + "/data/hist_templates", hist_templates)
-
-        return #hist_sources, hist_templates
-
-        # sources = self._loading_hist_data(source_files)
-        # templates = self._loading_hist_data(template_files)
-        #
-        # print("Loaded the number of sources = ", len(sources["L"]), "the number of templates = ", len(templates["L"]))
-        #
-        # LUT = []
-        # LUT.append(self._estimate_cumulative_cdf(sources["L"], templates["L"], start=0, end=100))
-        # LUT.append(self._estimate_cumulative_cdf(sources["A"], templates["A"], start=-128, end=127))
-        # LUT.append(self._estimate_cumulative_cdf(sources["B"], templates["B"], start=-128, end=127))
-        #
-        # project_root = self._params.PROJECT_ROOT
-        # np.save( project_root + "/data/hist_match_function", LUT)
-
+        np.save("{}/data/{}".format(project_root, file_code), hist_sources)
+        return
 
     # def _loading_hist_data(self, filennames):
     #
