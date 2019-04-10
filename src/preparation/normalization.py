@@ -47,6 +47,8 @@ class ImageNormalization(object):
                 image_source = kwarg["image_source"]
                 print("calculating histogram, the number of source: ", len(image_source))
                 hist_source = self._calculate_hist(image_source)
+                source_path = "{}/data/{}".format(get_project_root(), "hist_source_tmp")
+                np.save(source_path, hist_source)
 
             LUT = []
             LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
@@ -324,10 +326,18 @@ class ImageNormalization(object):
     @staticmethod
     def get_normalization_function(imgCone, params, extract_scale, patch_size, ):
         low_scale = params.GLOBAL_SCALE
+        # 在有效检测区域内，均匀抽样
         eff_region = imgCone.get_effective_zone(low_scale)
-
-        sampling_interval = 4000
+        sampling_interval = 1000
         seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-4)
+
+        # 不受限制地随机抽样
+        #     rx2 = int(self.ImageWidth * extract_scale / params.GLOBAL_SCALE)
+        #     ry2 = int(self.ImageHeight * extract_scale / params.GLOBAL_SCALE)
+        #
+        #     N = 2000
+        #     # rx1, ry1, rx2, ry2 = self.valid_rect
+        #     x, y = self.random_gen.generate_random(N, 0, rx2, 0, ry2)
 
         images = []
         for x, y in seeds:
@@ -455,26 +465,7 @@ class ImageNormalizationTool(object):
 
         return avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b
 
-    # def calculate_hist(self, source_code, source_txt, template_code, template_txt):
-    #     root_path = self._params.PATCHS_ROOT_PATH
-    #     print("prepare transform function ...", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-    #     source_path = "{}/{}".format(root_path[source_code], source_txt)
-    #     template_path = "{}/{}".format(root_path[template_code], template_txt)
-    #     source_files, _ = read_csv_file(root_path[source_code], source_path)
-    #     template_files, _ = read_csv_file(root_path[template_code], template_path)
-    #     print("Loaded the number of sources = ", len(source_files), "the number of templates = ", len(template_files))
-    #
-    #     project_root = self._params.PROJECT_ROOT
-    #
-    #     hist_sources = self._generate_histogram(source_files)
-    #     np.save( project_root + "/data/hist_soures", hist_sources)
-    #
-    #     hist_templates = self._generate_histogram(template_files)
-    #     np.save(project_root + "/data/hist_templates", hist_templates)
-    #
-    #     return
-
-    def calculate_hist(self, source_code, source_txt, is_Target = True):
+    def calculate_hist(self, source_code, source_txt, file_code):
         root_path = self._params.PATCHS_ROOT_PATH
         print("prepare transform function ...", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         source_path = "{}/{}".format(root_path[source_code], source_txt)
@@ -482,58 +473,14 @@ class ImageNormalizationTool(object):
         print("Loaded the number of images = ", len(source_files))
         hist_sources = self._generate_histogram(source_files)
 
-        if is_Target:
-            file_code = "hist_templates"
-        else:
-            file_code = "hist_soures"
+        # if is_Target:
+        #     file_code = "hist_templates"
+        # else:
+        #     file_code = "hist_soures"
 
         project_root = self._params.PROJECT_ROOT
         np.save("{}/data/{}".format(project_root, file_code), hist_sources)
         return
-
-    # def _loading_hist_data(self, filennames):
-    #
-    #     results = {"L":[], "A":[], "B": []}
-    #
-    #     for file in filennames:
-    #         img = io.imread(file, as_gray=False)
-    #         lab_img = color.rgb2lab(img)
-    #
-    #         # LAB三通道分离
-    #         labO_l = np.array(lab_img[:, :, 0])
-    #         labO_a = np.array(lab_img[:, :, 1])
-    #         labO_b = np.array(lab_img[:, :, 2])
-    #
-    #         results["L"].append(labO_l.astype(np.int))
-    #         results["A"].append(labO_a.astype(np.int))
-    #         results["B"].append(labO_b.astype(np.int))
-    #
-    #     return results
-
-    # def _estimate_cumulative_cdf(self, source, template, start, end):
-    #     source = np.array(source)
-    #     template = np.array(template)
-    #     src_values, src_counts = np.unique(source.ravel(),  return_counts=True)
-    #     tmpl_values, tmpl_counts = np.unique(template.ravel(), return_counts=True)
-    #
-    #     # calculate normalized quantiles for each array
-    #     src_quantiles = np.cumsum(src_counts) / source.size
-    #     tmpl_quantiles = np.cumsum(tmpl_counts) / template.size
-    #
-    #     interp_a_values = np.interp(src_quantiles, tmpl_quantiles, tmpl_values)
-    #
-    #     if src_values[0] > start:
-    #         src_values = np.insert(src_values, 0, start)
-    #         interp_a_values = np.insert(interp_a_values, 0, start)
-    #     if src_values[-1] < end:
-    #         src_values = np.append(src_values, end)
-    #         interp_a_values = np.append(interp_a_values, end)
-    #
-    #     new_source = np.arange(start, end + 1)
-    #     interp_b_values = np.interp(new_source, src_values, interp_a_values)
-    #     # result = dict(zip(new_source, np.rint(interp_b_values))) # for debug
-    #     # return result
-    #     return np.rint(interp_b_values)
 
     def _generate_histogram(self, filennames):
         Shape_L = (101, ) # 100 + 1

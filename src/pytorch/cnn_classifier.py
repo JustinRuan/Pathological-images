@@ -269,7 +269,7 @@ class CNN_Classifier(object):
 
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
-        # Xtest, Ytest = Xtest[:600], Ytest[:600]  # for debug
+        Xtest, Ytest = Xtest[:600], Ytest[:600]  # for debug
         test_data = Image_Dataset(Xtest, Ytest, normalization=self.normal_func)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
                                       shuffle=False, num_workers=self.NUM_WORKERS)

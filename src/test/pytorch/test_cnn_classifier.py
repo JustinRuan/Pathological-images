@@ -79,7 +79,7 @@ class Test_cnn_classifier(unittest.TestCase):
         # 读取数字全扫描切片图像
         tag = imgCone.open_slide("Testing/images/test_001.tif",
                                  None, "test_001")
-        normal = ImageNormalization.get_normalization_function(imgCone,c, 40, 256)
+        normal = ImageNormalization.get_normalization_function(imgCone,c, 10, 256)
         cnn = CNN_Classifier(c, model_name, sample_name, normalization=normal)
         cnn.evaluate_model(samples_name=("P0404", "T_NC_P0404_{}".format(sample_name)),
                            model_file=None, batch_size=10)

@@ -604,11 +604,12 @@ class Detector(object):
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
 
         normal_func = ImageNormalization.get_normalization_function(self._imgCone, self._params,
-                                                                    extract_scale, patch_size)
+                                                                    10, patch_size)
+        normal_func.draw_normalization_func("Now")
+
         # normal_func = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
         #                             hist_source = "hist_soures_P0404.npy",
         #                             image_source= None)
-        normal_func.draw_normalization_func("Now")
 
         # normal_func = None
 
@@ -909,8 +910,18 @@ class Detector(object):
                         x.extend(sx)
                         y.extend(sy)
 
-                        # if len(x) > 2 * N:
-                        #     break
+                # 从当前的x和y的结果中只选择N个
+                m = len(x)
+                if m > N:
+                    x = np.array(x)
+                    y = np.array(y)
+
+                    selected_tag = np.arange(m)
+                    np.random.shuffle(selected_tag)
+                    selected_tag = selected_tag[:N]
+
+                    x = x[selected_tag]
+                    y = y[selected_tag]
 
             else:  # 大范围地随机搜索
                 w = 16
