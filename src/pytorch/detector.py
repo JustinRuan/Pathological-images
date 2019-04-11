@@ -603,13 +603,11 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
 
-        normal_func = ImageNormalization.get_normalization_function(self._imgCone, self._params,
-                                                                    10, patch_size)
-        normal_func.draw_normalization_func("Now")
+        # normal_func = ImageNormalization.get_normalization_function(self._imgCone, self._params,
+        #                                                             10, patch_size)
+        # normal_func.draw_normalization_func("Now")
 
-        # normal_func = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
-        #                             hist_source = "hist_soures_P0404.npy",
-        #                             image_source= None)
+        normal_func = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",hist_source = None)
 
         # normal_func = None
 

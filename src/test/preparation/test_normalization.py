@@ -51,9 +51,8 @@ class TestNormalization(unittest.TestCase):
             image_list.append(img)
 
         normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy",
-                                    hist_source = None,
-                                    image_source= image_list)
-
+                                    hist_source = None)
+        normal.prepare(image_list)
 
         fig = plt.figure(figsize=(16, 10), dpi=100)
         for index, filename in enumerate(file_list):

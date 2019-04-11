@@ -17,7 +17,7 @@ from visdom import Visdom
 # Reinhard algorithm
 class ImageNormalization(object):
     def __init__(self, method, **kwarg):
-
+        self.method_name = method
         if method == "reinhard":
             self.method = self.normalize_Reinhard
             self.source_mean = kwarg["source_mean"]
@@ -34,8 +34,10 @@ class ImageNormalization(object):
             self.target_std = kwarg["target_std"]
         elif method == "match_hist":
             self.method = self.normalize_hist
+            self.method_on_batch = self.normalize_hist_on_batch
             target_path = "{}/data/{}".format(get_project_root(), kwarg["hist_target"])
             hist_target = np.load(target_path).item()
+            self.hist_target = hist_target
 
             if kwarg["hist_source"] is not None:
                 print("reading histogram file ...")
@@ -43,24 +45,25 @@ class ImageNormalization(object):
                 print("reading histogram file: ", source_path)
                 hist_source = np.load(source_path).item()
 
+                LUT = []
+                LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
+                LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
+                LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
+                self.LUT = LUT
+                self.hist_source = hist_source
+                self.hist_target = hist_target
             else:
-                image_source = kwarg["image_source"]
-                print("calculating histogram, the number of source: ", len(image_source))
-                hist_source = self._calculate_hist(image_source)
-                source_path = "{}/data/{}".format(get_project_root(), "hist_source_tmp")
-                np.save(source_path, hist_source)
+                # 将使用Prepare过程进行初始化
+                self.LUT = None
+                self.hist_source = None
 
-            LUT = []
-            LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
-            LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
-            LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
-            self.LUT = LUT
-            self.hist_source = hist_source
-            self.hist_target = hist_target
         return
 
     def normalize(self, src_img):
        return self.method(src_img)
+
+    def normalize_on_batch(self, src_img_list):
+        return self.method_on_batch(src_img_list)
 
     def normalize_Reinhard(self, src_img):
         lab_img = color.rgb2lab(src_img)
@@ -86,7 +89,6 @@ class ImageNormalization(object):
         # LAB to RGB变换
         rgb_image = color.lab2rgb(labO)
         return rgb_image
-
 
     def normalize_rgb(self, src_img, ):
         # RGB三通道分离
@@ -181,6 +183,30 @@ class ImageNormalization(object):
         rgb_image = color.lab2rgb(labO)
 
         return rgb_image
+
+    def normalize_hist_on_batch(self, src_img_list):
+        result = []
+        for img in src_img_list:
+            result.append(self.normalize_hist(img))
+
+        return result
+
+    def prepare(self, image_list):
+        if self.method_name == "match_hist":
+            # print("calculating histogram, the number of source: ", len(image_list))
+            hist_source = self._calculate_hist(image_list)
+            # source_path = "{}/data/{}".format(get_project_root(), "hist_source_tmp")
+            # np.save(source_path, hist_source)
+            hist_target = self.hist_target
+            LUT = []
+            LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
+            LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
+            LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
+            # update
+            self.LUT = LUT
+            self.hist_source = hist_source
+        else:
+            pass
 
     def draw_hist(self,fig_name):
         hist_source = self.hist_source

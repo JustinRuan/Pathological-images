@@ -498,7 +498,7 @@ class Test_detector(unittest.TestCase):
             x1 = 0
 
         cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums=50,
-                                                              batch_size=10, limit_sampling_density=10, use_post=True)
+                                                              batch_size=20, limit_sampling_density=10, use_post=True)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)

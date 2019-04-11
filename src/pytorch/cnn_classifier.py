@@ -21,7 +21,7 @@ from pytorch.net import Simple_CNN
 from pytorch.net import DenseNet, SEDenseNet, SEDenseNet_C9
 from core.util import read_csv_file, transform_coordinate
 from pytorch.image_dataset import Image_Dataset, Image_Dataset_MSC
-from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor
+from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_image_file_batch_normalize_itor, get_image_blocks_batch_normalize_itor
 
 class CNN_Classifier(object):
 
@@ -270,9 +270,10 @@ class CNN_Classifier(object):
         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
         Xtest, Ytest = Xtest[:600], Ytest[:600]  # for debug
-        test_data = Image_Dataset(Xtest, Ytest, normalization=self.normal_func)
-        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
-                                      shuffle=False, num_workers=self.NUM_WORKERS)
+        # test_data = Image_Dataset(Xtest, Ytest, normalization=self.normal_func)
+        # test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+        #                               shuffle=False, num_workers=self.NUM_WORKERS)
+        image_itor = get_image_file_batch_normalize_itor(Xtest, Ytest, batch_size, self.normal_func)
 
         model = self.load_model(model_file=model_file)
         # 关闭求导，节约大量的显存
@@ -284,8 +285,14 @@ class CNN_Classifier(object):
         model.eval()
 
         predicted_tags = []
-        test_data_len = len(test_loader)
-        for step, (x, _) in enumerate(test_loader):
+        len_y = len(Ytest)
+        if len_y % batch_size == 0:
+            test_data_len = len_y // batch_size
+        else:
+            test_data_len = len_y // batch_size + 1
+
+        # for step, (x, _) in enumerate(test_loader):
+        for step, (x, _) in enumerate(image_itor):
             b_x = Variable(x.to(self.device))  # batch x
 
             cancer_prob = model(b_x)
@@ -417,7 +424,9 @@ class CNN_Classifier(object):
         :param seeds: 种子点的集合
         :return: 预测结果与概率
         '''
-        seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
+        # seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
+        #                                    normalization=self.normal_func)
+        seeds_itor = get_image_blocks_batch_normalize_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
                                            normalization=self.normal_func)
 
         if self.model is None:
@@ -435,8 +444,7 @@ class CNN_Classifier(object):
         for step, x in enumerate(seeds_itor):
             b_x = Variable(x.to(self.device))
 
-            output = self.model(b_x)
-            # probs, preds = torch.max(output, 1) # simple cnn 专用
+            output = self.model(b_x) # model最后不包括一个softmax层
             output_softmax = nn.functional.softmax(output)
             probs, preds = torch.max(output_softmax, 1)
             for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):

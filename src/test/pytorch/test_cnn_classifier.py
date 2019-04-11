@@ -52,16 +52,15 @@ class Test_cnn_classifier(unittest.TestCase):
         sample_name = "4000_256"
 
         normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy",
-                                    hist_source = "hist_soures_P0404.npy",
-                                    image_source= None)
+                                    hist_source = "hist_soures_P0404.npy")
 
-        cnn = CNN_Classifier(c, model_name, sample_name)
+        cnn = CNN_Classifier(c, model_name, sample_name, normalization=normal)
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
         #                    model_file=None, batch_size=20,
         #                    normalization=normal)
         # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
         cnn.evaluate_model(samples_name=("P0404", "T_NC_P0404_{}".format(sample_name)),
-                           model_file=None, batch_size=10)
+                           model_file=None, batch_size=24)
         # cnn.evaluate_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)),
         #                    model_file=None, batch_size=10, normalization=None)
 

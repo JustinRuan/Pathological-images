@@ -23,18 +23,6 @@ class Image_Dataset(Dataset):
         else:
             self.transform = transform
 
-        # self.normal = ImageNormalization("rgb_norm", target_mean=(198.9, 168.0, 206.2),
-        #                         target_std=(27.94, 31.93, 22.56),
-        #                         source_mean=(194.1, 169.3, 210.4),
-        #                         source_std=(27.86, 30.92, 20.25))
-
-        # self.normal = ImageNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
-        #                             target_std=(13.42, 5.767, 4.891),
-        #                             source_mean=(72.45, 17.63, -17.77),
-        #                             source_std=(10.77, 7.064, 6.50))
-
-        # self.normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy", hist_source = "hist_soures.npy")
-
         self.normal_func = normalization
 
     def __getitem__(self, index):
