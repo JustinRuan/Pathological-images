@@ -271,10 +271,11 @@ class CNN_Classifier(object):
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
         if max_count is not None:
             Xtest, Ytest = Xtest[:max_count], Ytest[:max_count]  # for debug
-        # test_data = Image_Dataset(Xtest, Ytest, normalization=self.normal_func)
-        # test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
-        #                               shuffle=False, num_workers=self.NUM_WORKERS)
-        image_itor = get_image_file_batch_normalize_itor(Xtest, Ytest, batch_size, self.normal_func)
+
+        test_data = Image_Dataset(Xtest, Ytest)
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+                                      shuffle=False, num_workers=self.NUM_WORKERS)
+        # image_itor = get_image_file_batch_normalize_itor(Xtest, Ytest, batch_size, self.normal_func)
 
         model = self.load_model(model_file=model_file)
         # 关闭求导，节约大量的显存
@@ -292,7 +293,8 @@ class CNN_Classifier(object):
         else:
             test_data_len = len_y // batch_size + 1
 
-        for step, (x, _) in enumerate(image_itor):
+        # for step, (x, _) in enumerate(image_itor):
+        for step, (x, _) in enumerate(test_loader):
             b_x = Variable(x.to(self.device))  # batch x
 
             output = model(b_x) # model最后不包括一个softmax层
