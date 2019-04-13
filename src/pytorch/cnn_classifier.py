@@ -175,7 +175,7 @@ class CNN_Classifier(object):
                 model = self.create_initial_model()
             return model
 
-    def train_model(self, samples_name = None, batch_size=100, epochs=20):
+    def train_model(self, samples_name = None, augment_func = None, batch_size=100, epochs=20):
         '''
         训练模型
         :param samples_name: 自制训练集的代号
@@ -186,7 +186,7 @@ class CNN_Classifier(object):
         if self.patch_type in ["cifar10", "cifar100"]:
             train_data, test_data = self.load_cifar_data(self.patch_type)
         elif self.patch_type in ["500_128", "2000_256", "4000_256"]:
-            train_data, test_data = self.load_custom_data(samples_name)
+            train_data, test_data = self.load_custom_data(samples_name, augment_func = augment_func)
 
         train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True, num_workers=self.NUM_WORKERS)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False, num_workers=self.NUM_WORKERS)
@@ -330,7 +330,7 @@ class CNN_Classifier(object):
                                                    transform=torchvision.transforms.ToTensor())
             return train_data, test_data
 
-    def load_custom_data(self, samples_name):
+    def load_custom_data(self, samples_name, augment_func = None):
         '''
         从图片的列表文件中加载数据，到Sequence中
         :param samples_name: 列表文件的代号
@@ -343,7 +343,7 @@ class CNN_Classifier(object):
 
         Xtrain, Ytrain = read_csv_file(patch_root, train_list)
         # Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
-        train_data = Image_Dataset(Xtrain, Ytrain)
+        train_data = Image_Dataset(Xtrain, Ytrain, transform = None, augm = augment_func)
 
         Xtest, Ytest = read_csv_file(patch_root, test_list)
         # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug

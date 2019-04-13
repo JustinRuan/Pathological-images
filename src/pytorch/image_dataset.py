@@ -16,22 +16,22 @@ from preparation.normalization import HistNormalization
 from skimage.transform import resize
 
 class Image_Dataset(Dataset):
-    def __init__(self, x_set, y_set, transform = None, normalization = None):
+    def __init__(self, x_set, y_set, transform = None, augm = None):
         self.x, self.y = x_set, y_set
         if transform is None:
             self.transform = torchvision.transforms.ToTensor()
         else:
             self.transform = transform
 
-        self.normal_func = normalization
+        self.augm_func = augm
 
     def __getitem__(self, index):
         file_name = self.x[index]
         label = self.y[index]
 
         img = imread(file_name)
-        if self.normal_func is not None:
-            img = self.normal_func.normalize(img)
+        if self.augm_func is not None:
+            img = self.augm_func.augment_images(img)
         else:
             img = img / 255.0
 

@@ -12,6 +12,7 @@ from core import *
 from pytorch.cnn_classifier import CNN_Classifier
 import torch
 from preparation.normalization import HistNormalization
+from preparation.augmentation import ImageAugmentation
 
 # JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
@@ -40,7 +41,10 @@ class Test_cnn_classifier(unittest.TestCase):
         sample_name = "4000_256"
 
         cnn = CNN_Classifier(c, model_name, sample_name)
-        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)), batch_size=30, epochs = 20)
+        augment = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
+                                   b_range = (0.95, 1.05), constant_range = (-10, 10))
+        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)), augment_func = augment,
+                        batch_size=30, epochs = 3)
 
     def test_evaluate_model(self):
         c = Params()
