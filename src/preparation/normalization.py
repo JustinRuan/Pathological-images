@@ -515,11 +515,6 @@ class ImageNormalizationTool(object):
         print("Loaded the number of images = ", len(source_files))
         hist_sources = self._generate_histogram(source_files)
 
-        # if is_Target:
-        #     file_code = "hist_templates"
-        # else:
-        #     file_code = "hist_soures"
-
         project_root = self._params.PROJECT_ROOT
         np.save("{}/data/{}".format(project_root, file_code), hist_sources)
         return

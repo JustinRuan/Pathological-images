@@ -31,19 +31,18 @@ class TestNormalization(unittest.TestCase):
         rnd = random.randint(0, len(all_file_list) // N)
         file_list = all_file_list[rnd:rnd + N]
 
-        normal = ReinhardNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
-                                    target_std=(13.42, 5.767, 4.891),
-                                    source_mean=(72.45, 17.63, -17.77),
-                                    source_std=(10.77, 7.064, 6.50))
+        # normal = ReinhardNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
+        #                             target_std=(13.42, 5.767, 4.891),
+        #                             source_mean=(72.45, 17.63, -17.77),
+        #                             source_std=(10.77, 7.064, 6.50))
 
         # normal = RGBNormalization("rgb_norm", target_mean=(198.9, 168.0, 206.2),
         #                             target_std=(27.94, 31.93, 22.56),
         #                             source_mean=(194.1, 169.3, 210.4),
         #                             source_std=(27.86, 30.92, 20.25))
 
-        # normal = HistNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
-        #                             hist_source = "hist_soures_P0404.npy",
-        #                             image_source= None)
+        normal = HistNormalization("match_hist", hist_target = "hist_templates.npy",
+                                    hist_source = "hist_soures.npy")
 
         # image_list = []
         # for filename in file_list:
@@ -120,7 +119,7 @@ class TestNormalization(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         normal = ImageNormalizationTool(c)
-        # normal.calculate_hist("P0404", "T_NC_P0404_4000_256_test.txt", file_code = "hist_soures")
+        normal.calculate_hist("P0404", "T_NC_P0404_4000_256_test.txt", file_code = "hist_soures")
         normal.calculate_hist("Target", "Target_T1_4000_256_test.txt", file_code = "hist_templates")
         # normal.calculate_hist("P0330", "T_NC_Simple0330_4000_256_test.txt", "Target", "Target_T1_4000_256_test.txt")
 

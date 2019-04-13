@@ -51,8 +51,10 @@ class Test_cnn_classifier(unittest.TestCase):
         model_name = "simple_cnn"
         sample_name = "4000_256"
 
-        normal = HistNormalization("match_hist", hist_target ="hist_templates.npy",
-                                   hist_source = None)
+        # normal = HistNormalization("match_hist", hist_target ="hist_templates.npy",
+        #                            hist_source = None)
+        normal = HistNormalization("match_hist", hist_target = "hist_templates.npy",
+                                    hist_source = "hist_soures.npy")
 
         cnn = CNN_Classifier(c, model_name, sample_name, normalization=normal)
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
@@ -60,7 +62,7 @@ class Test_cnn_classifier(unittest.TestCase):
         #                    normalization=normal)
         # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
         cnn.evaluate_model(samples_name=("P0404", "T_NC_P0404_{}".format(sample_name)),
-                           model_file=None, batch_size=100)
+                           model_file=None, batch_size=20, max_count=600)
         # cnn.evaluate_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)),
         #                    model_file=None, batch_size=10, normalization=None)
 
