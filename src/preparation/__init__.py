@@ -7,6 +7,6 @@ __mtime__ = '2018-05-23'
 """
 from preparation.PatchSampler import PatchSampler
 from preparation.PatchPack import PatchPack
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 
-__all__ = ["PatchSampler", "PatchPack", "ImageNormalization"]
+__all__ = ["PatchSampler", "PatchPack", "HistNormalization"]

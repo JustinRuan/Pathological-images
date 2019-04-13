@@ -14,7 +14,7 @@ from skimage.io import imread
 from skimage.transform import resize
 import numpy as np
 import math
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 
 # Here, `x_set` is list of path to the images
 # and `y_set` are the associated classes.
@@ -59,5 +59,5 @@ class ImageSequence(Sequence):
 
         # resize 太费时间，暂时先不用，提高程序调试的效率
         return np.array([
-                ImageNormalization.normalize_mean(imread(file_name))
+                HistNormalization.normalize_mean(imread(file_name))
                 for file_name in batch_x]), to_categorical(batch_y, self.num_classes)

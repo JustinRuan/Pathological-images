@@ -30,7 +30,7 @@ from sklearn.svm import LinearSVC
 from sklearn.externals import joblib
 from sklearn import metrics
 
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 from core.util import read_csv_file
 from core import *
 from cnn.image_sequence import ImageSequence
@@ -88,7 +88,7 @@ class Transfer(object):
             block= src_img.get_image_block(scale, x, y, patch_size, patch_size)
             img = block.get_img()
 
-            x = image.img_to_array(ImageNormalization.normalize_mean(img))
+            x = image.img_to_array(HistNormalization.normalize_mean(img))
             x = np.expand_dims(x, axis=0)
             # x = preprocess_input(x) //训练时没有使用预处理，这里也不能调用
 
@@ -496,7 +496,7 @@ class Transfer(object):
             block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
             img = block.get_img()
 
-            x = image.img_to_array(resize(ImageNormalization.normalize_mean(img)),
+            x = image.img_to_array(resize(HistNormalization.normalize_mean(img)),
                                    (self.input_image_size, self.input_image_size))
             x = np.expand_dims(x, axis=0)
             # x = preprocess_input(x) //训练时没有使用预处理，这里也不能调用

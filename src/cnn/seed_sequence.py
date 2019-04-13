@@ -12,7 +12,7 @@ from skimage.io import imread
 from skimage.transform import resize
 import numpy as np
 import math
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 
 # Here, `x_set` is list of seeds to the images
 class SeedSequence(Sequence):
@@ -38,5 +38,5 @@ class SeedSequence(Sequence):
             img_list.append(img)
 
         return np.array([
-                resize(ImageNormalization.normalize_mean(img),(self.output_size, self.output_size))
+                resize(HistNormalization.normalize_mean(img), (self.output_size, self.output_size))
                 for img in img_list])

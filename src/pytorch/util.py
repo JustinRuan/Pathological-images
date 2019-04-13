@@ -9,7 +9,7 @@ import torch
 import torchvision
 import numpy as np
 from skimage.io import imread
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 
 def get_image_blocks_itor(src_img, fScale, seeds, nWidth, nHeight, batch_size, normalization = None):
     '''
@@ -163,7 +163,7 @@ def get_image_file_batch_normalize_itor(image_filenames, y_set, batch_size, norm
         n = n + 1
 
         if n >= batch_size:
-            normalization.prepare(batch_images)
+            # normalization.prepare(batch_images)
             norm_images = normalization.normalize_on_batch(batch_images)
             temp = []
             for norm_img in norm_images:
@@ -180,7 +180,7 @@ def get_image_file_batch_normalize_itor(image_filenames, y_set, batch_size, norm
             n = 0
 
     if n > 0:
-        normalization.prepare(batch_images)
+        # normalization.prepare(batch_images)
         norm_images = normalization.normalize_on_batch(batch_images)
         temp = []
         for norm_img in norm_images:

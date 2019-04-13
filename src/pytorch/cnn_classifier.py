@@ -291,16 +291,19 @@ class CNN_Classifier(object):
         else:
             test_data_len = len_y // batch_size + 1
 
-        # for step, (x, _) in enumerate(test_loader):
         for step, (x, _) in enumerate(image_itor):
             b_x = Variable(x.to(self.device))  # batch x
 
-            cancer_prob = model(b_x)
-            _, cancer_preds = torch.max(cancer_prob, 1)
-            for c_pred in zip(cancer_preds.cpu().numpy()):
-                predicted_tags.append((c_pred))
+            output = model(b_x) # model最后不包括一个softmax层
+            output_softmax = nn.functional.softmax(output, dim=1)
+            probs, preds = torch.max(output_softmax, 1)
 
+            predicted_tags.extend(preds.cpu().numpy())
             print('predicting => %d / %d ' % (step + 1, test_data_len))
+            probs = probs.cpu().numpy()
+            mean = np.mean(probs)
+            std = np.std(probs)
+            print("mean of prob = ", mean, std)
 
         Ytest = np.array(Ytest)
         predicted_tags = np.array(predicted_tags)
@@ -445,11 +448,16 @@ class CNN_Classifier(object):
             b_x = Variable(x.to(self.device))
 
             output = self.model(b_x) # model最后不包括一个softmax层
-            output_softmax = nn.functional.softmax(output)
+            output_softmax = nn.functional.softmax(output, dim =1)
             probs, preds = torch.max(output_softmax, 1)
             for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
                 results.append((pred, prob))
             print('predicting => %d / %d ' % (step + 1, data_len))
+
+            probs = probs.cpu().numpy()
+            mean = np.mean(probs)
+            std = np.std(probs)
+            print("mean of prob = ", mean, std)
 
         return results
 

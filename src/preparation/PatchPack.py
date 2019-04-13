@@ -22,7 +22,7 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
 from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 from core.Block import Block
 
 class PatchPack(object):

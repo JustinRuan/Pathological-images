@@ -13,9 +13,9 @@ from skimage.io import imread
 import random
 import numpy as np
 
-from preparation.normalization import ImageNormalization, ImageNormalizationTool
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+from preparation.normalization import RGBNormalization, ReinhardNormalization, HistNormalization, ImageNormalizationTool
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestNormalization(unittest.TestCase):
 
@@ -31,28 +31,28 @@ class TestNormalization(unittest.TestCase):
         rnd = random.randint(0, len(all_file_list) // N)
         file_list = all_file_list[rnd:rnd + N]
 
-        # normal = ImageNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
-        #                             target_std=(13.42, 5.767, 4.891),
-        #                             source_mean=(72.45, 17.63, -17.77),
-        #                             source_std=(10.77, 7.064, 6.50))
+        normal = ReinhardNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
+                                    target_std=(13.42, 5.767, 4.891),
+                                    source_mean=(72.45, 17.63, -17.77),
+                                    source_std=(10.77, 7.064, 6.50))
 
-        # normal = ImageNormalization("rgb_norm", target_mean=(198.9, 168.0, 206.2),
+        # normal = RGBNormalization("rgb_norm", target_mean=(198.9, 168.0, 206.2),
         #                             target_std=(27.94, 31.93, 22.56),
         #                             source_mean=(194.1, 169.3, 210.4),
         #                             source_std=(27.86, 30.92, 20.25))
 
-        # normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
+        # normal = HistNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
         #                             hist_source = "hist_soures_P0404.npy",
         #                             image_source= None)
 
-        image_list = []
-        for filename in file_list:
-            img = imread(filename)
-            image_list.append(img)
-
-        normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy",
-                                    hist_source = None)
-        normal.prepare(image_list)
+        # image_list = []
+        # for filename in file_list:
+        #     img = imread(filename)
+        #     image_list.append(img)
+        #
+        # normal = HistNormalization("match_hist", hist_target ="hist_templates.npy",
+        #                            hist_source = None)
+        # normal.prepare(image_list)
 
         fig = plt.figure(figsize=(16, 10), dpi=100)
         for index, filename in enumerate(file_list):
@@ -128,8 +128,8 @@ class TestNormalization(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        normal = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",
-                                    hist_source = "hist_soures_P0404.npy",
-                                    image_source= None)
+        normal = HistNormalization("match_hist", hist_target ="hist_templates_P0404.npy",
+                                   hist_source = "hist_soures_P0404.npy",
+                                   image_source= None)
         # normal.draw_hist("Nice")
         normal.draw_normalization_func("Nice")

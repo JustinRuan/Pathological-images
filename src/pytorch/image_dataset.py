@@ -12,7 +12,7 @@ import torchvision
 from torch.utils.data import Dataset
 from core.util import read_csv_file
 from skimage.io import imread
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 from skimage.transform import resize
 
 class Image_Dataset(Dataset):

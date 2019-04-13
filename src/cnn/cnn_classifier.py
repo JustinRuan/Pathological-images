@@ -22,7 +22,7 @@ from core import *
 from cnn.seed_sequence import SeedSequence
 from cnn.image_sequence import ImageSequence
 from core.util import read_csv_file
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 
 from keras.datasets import cifar10
 from keras.datasets import cifar100
@@ -195,7 +195,7 @@ class CNN_Classifier(object):
             block = src_img.get_image_block(scale, x, y, patch_size, patch_size)
             img = block.get_img()
 
-            x = image.img_to_array(ImageNormalization.normalize_mean(img))
+            x = image.img_to_array(HistNormalization.normalize_mean(img))
             x = np.expand_dims(x, axis=0)
 
             predictions = model.predict(x)

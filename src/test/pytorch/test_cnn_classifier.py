@@ -11,10 +11,10 @@ import numpy as np
 from core import *
 from pytorch.cnn_classifier import CNN_Classifier
 import torch
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -51,8 +51,8 @@ class Test_cnn_classifier(unittest.TestCase):
         model_name = "simple_cnn"
         sample_name = "4000_256"
 
-        normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy",
-                                    hist_source = "hist_soures_P0404.npy")
+        normal = HistNormalization("match_hist", hist_target ="hist_templates.npy",
+                                   hist_source = None)
 
         cnn = CNN_Classifier(c, model_name, sample_name, normalization=normal)
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
@@ -60,7 +60,7 @@ class Test_cnn_classifier(unittest.TestCase):
         #                    normalization=normal)
         # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
         cnn.evaluate_model(samples_name=("P0404", "T_NC_P0404_{}".format(sample_name)),
-                           model_file=None, batch_size=24)
+                           model_file=None, batch_size=100)
         # cnn.evaluate_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)),
         #                    model_file=None, batch_size=10, normalization=None)
 
@@ -71,14 +71,12 @@ class Test_cnn_classifier(unittest.TestCase):
         model_name = "simple_cnn"
         sample_name = "4000_256"
 
-
-
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
         tag = imgCone.open_slide("Testing/images/test_001.tif",
                                  None, "test_001")
-        normal = ImageNormalization.get_normalization_function(imgCone,c, 10, 256)
+        normal = HistNormalization.get_normalization_function(imgCone, c, 40, 256)
         cnn = CNN_Classifier(c, model_name, sample_name, normalization=normal)
         cnn.evaluate_model(samples_name=("P0404", "T_NC_P0404_{}".format(sample_name)),
                            model_file=None, batch_size=10)

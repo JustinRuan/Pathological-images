@@ -21,7 +21,7 @@ from core.util import get_seeds, transform_coordinate
 from pytorch.cnn_classifier import CNN_Classifier
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 
 class Detector(object):
 
@@ -603,11 +603,11 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
 
-        # normal_func = ImageNormalization.get_normalization_function(self._imgCone, self._params,
-        #                                                             10, patch_size)
+        normal_func = HistNormalization.get_normalization_function(self._imgCone, self._params,
+                                                                    extract_scale, patch_size)
         # normal_func.draw_normalization_func("Now")
 
-        normal_func = ImageNormalization("match_hist", hist_target = "hist_templates_P0404.npy",hist_source = None)
+        # normal_func = HistNormalization("match_hist", hist_target ="hist_templates.npy", hist_source = None)
 
         # normal_func = None
 

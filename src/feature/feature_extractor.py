@@ -9,7 +9,7 @@ import time
 from skimage import feature, color, util, exposure
 import numpy as np
 from skimage import io
-from preparation.normalization import ImageNormalization
+from preparation.normalization import HistNormalization
 
 
 class FeatureExtractor(object):
@@ -122,7 +122,7 @@ class FeatureExtractor(object):
             img = io.imread(patch_file, as_gray=False)
             tag = int(items[1])
 
-            normal_img = ImageNormalization.normalize_mean(img)
+            normal_img = HistNormalization.normalize_mean(img)
             fvector = self.extract_feature(normal_img, features_name)
 
             features.append(fvector)

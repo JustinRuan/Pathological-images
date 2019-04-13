@@ -11,61 +11,71 @@ import os
 from skimage import color
 import numpy as np
 from skimage import io
+
+from core import get_project_root
 from core.util import read_csv_file, get_project_root, get_seeds
 from visdom import Visdom
+from core import Random_Gen
 
-# Reinhard algorithm
-class ImageNormalization(object):
+class AbstractNormalization(object):
     def __init__(self, method, **kwarg):
         self.method_name = method
-        if method == "reinhard":
-            self.method = self.normalize_Reinhard
-            self.source_mean = kwarg["source_mean"]
-            self.source_std = kwarg["source_std"]
-            self.target_mean = kwarg["target_mean"]
-            self.target_std = kwarg["target_std"]
-        elif method == "lab_mean":
-            pass
-        elif method == "rgb_norm":
-            self.method = self.normalize_rgb
-            self.source_mean = kwarg["source_mean"]
-            self.source_std = kwarg["source_std"]
-            self.target_mean = kwarg["target_mean"]
-            self.target_std = kwarg["target_std"]
-        elif method == "match_hist":
-            self.method = self.normalize_hist
-            self.method_on_batch = self.normalize_hist_on_batch
-            target_path = "{}/data/{}".format(get_project_root(), kwarg["hist_target"])
-            hist_target = np.load(target_path).item()
-            self.hist_target = hist_target
-
-            if kwarg["hist_source"] is not None:
-                print("reading histogram file ...")
-                source_path = "{}/data/{}".format(get_project_root(), kwarg["hist_source"])
-                print("reading histogram file: ", source_path)
-                hist_source = np.load(source_path).item()
-
-                LUT = []
-                LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
-                LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
-                LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
-                self.LUT = LUT
-                self.hist_source = hist_source
-                self.hist_target = hist_target
-            else:
-                # 将使用Prepare过程进行初始化
-                self.LUT = None
-                self.hist_source = None
-
-        return
 
     def normalize(self, src_img):
-       return self.method(src_img)
+       raise NotImplementedError
 
     def normalize_on_batch(self, src_img_list):
-        return self.method_on_batch(src_img_list)
+        result = []
+        for img in src_img_list:
+            result.append(self.normalize(img))
 
-    def normalize_Reinhard(self, src_img):
+        return result
+
+class RGBNormalization(AbstractNormalization):
+    def __init__(self, method, **kwarg):
+        super(RGBNormalization, self).__init__(method, **kwarg)
+
+        self.source_mean = kwarg["source_mean"]
+        self.source_std = kwarg["source_std"]
+        self.target_mean = kwarg["target_mean"]
+        self.target_std = kwarg["target_std"]
+
+    def normalize(self, src_img):
+        # RGB三通道分离
+        rgb_r = src_img[:, :, 0]
+        rgb_g = src_img[:, :, 1]
+        rgb_b = src_img[:, :, 2]
+
+        rgb1_r= (rgb_r - self.source_mean[0]) / self.source_std[0] * self.target_std[0] + self.target_mean[0]
+        rgb1_g = (rgb_g - self.source_mean[1]) / self.source_std[1] * self.target_std[1] + self.target_mean[1]
+        rgb1_b = (rgb_b - self.source_mean[2]) / self.source_std[2] * self.target_std[2] + self.target_mean[2]
+
+        # rgb1_r[rgb1_r > 255] = 255
+        # rgb1_r[rgb1_r < 0] = 0
+        # rgb1_g[rgb1_g > 255] = 255
+        # rgb1_g[rgb1_g < 0] = 0
+        # rgb1_b[rgb1_b > 255] = 255
+        # rgb1_b[rgb1_b < 0] = 0
+
+        rgb1_r = np.clip(rgb1_r, 0, 255)
+        rgb1_g = np.clip(rgb1_g, 0, 255)
+        rgb1_b = np.rgb1_b(rgb1_r, 0, 255)
+
+        rgb_result = np.dstack([rgb1_r.astype(np.int), rgb1_g.astype(np.int), rgb1_b.astype(np.int)])
+
+        return rgb_result
+
+# Reinhard algorithm
+class ReinhardNormalization(AbstractNormalization):
+    def __init__(self, method, **kwarg):
+        super(ReinhardNormalization, self).__init__(method, **kwarg)
+
+        self.source_mean = kwarg["source_mean"]
+        self.source_std = kwarg["source_std"]
+        self.target_mean = kwarg["target_mean"]
+        self.target_std = kwarg["target_std"]
+
+    def normalize(self, src_img):
         lab_img = color.rgb2lab(src_img)
 
         # LAB三通道分离
@@ -78,38 +88,50 @@ class ImageNormalization(object):
         labO_a = (labO_a - self.source_mean[1]) / self.source_std[1] * self.target_std[1] + self.target_mean[1]
         labO_b = (labO_b - self.source_mean[2]) / self.source_std[2] * self.target_std[2] + self.target_mean[2]
 
-        labO_l[labO_l > 100] = 100
-        labO_l[labO_l < 0] = 0
-        labO_a[labO_a > 127] = 127
-        labO_a[labO_a < -128] = -128
-        labO_b[labO_b > 127] = 127
-        labO_b[labO_b < -128] = -128
+        # labO_l[labO_l > 100] = 100
+        # labO_l[labO_l < 0] = 0
+        # labO_a[labO_a > 127] = 127
+        # labO_a[labO_a < -128] = -128
+        # labO_b[labO_b > 127] = 127
+        # labO_b[labO_b < -128] = -128
+
+        labO_l = np.clip(labO_l, 0, 100)
+        labO_a = np.clip(labO_a, -128, 127)
+        labO_b = np.clip(labO_b, -128, 127)
 
         labO = np.dstack([labO_l, labO_a, labO_b])
         # LAB to RGB变换
         rgb_image = color.lab2rgb(labO)
         return rgb_image
 
-    def normalize_rgb(self, src_img, ):
-        # RGB三通道分离
-        rgb_r = src_img[:, :, 0]
-        rgb_g = src_img[:, :, 1]
-        rgb_b = src_img[:, :, 2]
+class HistNormalization(AbstractNormalization):
+    def __init__(self, method, **kwarg):
+        super(HistNormalization, self).__init__(method, **kwarg)
 
-        rgb1_r= (rgb_r - self.source_mean[0]) / self.source_std[0] * self.target_std[0] + self.target_mean[0]
-        rgb1_g = (rgb_g - self.source_mean[1]) / self.source_std[1] * self.target_std[1] + self.target_mean[1]
-        rgb1_b = (rgb_b - self.source_mean[2]) / self.source_std[2] * self.target_std[2] + self.target_mean[2]
+        target_path = "{}/data/{}".format(get_project_root(), kwarg["hist_target"])
+        hist_target = np.load(target_path).item()
+        self.hist_target = hist_target
 
-        rgb1_r[rgb1_r > 255] = 255
-        rgb1_r[rgb1_r < 0] = 0
-        rgb1_g[rgb1_g > 255] = 255
-        rgb1_g[rgb1_g < 0] = 0
-        rgb1_b[rgb1_b > 255] = 255
-        rgb1_b[rgb1_b < 0] = 0
+        self._history = []
+        self.enable_update = True
 
-        rgb_result = np.dstack([rgb1_r.astype(np.int), rgb1_g.astype(np.int), rgb1_b.astype(np.int)])
+        if kwarg["hist_source"] is not None:
+            print("reading histogram file ...")
+            source_path = "{}/data/{}".format(get_project_root(), kwarg["hist_source"])
+            print("reading histogram file: ", source_path)
+            hist_source = np.load(source_path).item()
 
-        return rgb_result
+            LUT = []
+            LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
+            LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
+            LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
+            self.LUT = LUT
+            self.hist_source = hist_source
+            self.hist_target = hist_target
+        else:
+            # 将使用Prepare过程进行初始化
+            self.LUT = None
+            self.hist_source = None
 
     def _estimate_cumulative_cdf(self, source, template, start, end):
         src_values, src_counts = source
@@ -161,7 +183,7 @@ class ImageNormalization(object):
 
         return {"L":(L_values, L_counts), "A":(A_values, A_counts), "B":(B_values, B_counts) }
 
-    def normalize_hist(self, src_img):
+    def normalize(self, src_img):
         lab_img = color.rgb2lab(src_img)
 
         # LAB三通道分离
@@ -184,29 +206,22 @@ class ImageNormalization(object):
 
         return rgb_image
 
-    def normalize_hist_on_batch(self, src_img_list):
-        result = []
-        for img in src_img_list:
-            result.append(self.normalize_hist(img))
-
-        return result
-
     def prepare(self, image_list):
-        if self.method_name == "match_hist":
-            # print("calculating histogram, the number of source: ", len(image_list))
-            hist_source = self._calculate_hist(image_list)
-            # source_path = "{}/data/{}".format(get_project_root(), "hist_source_tmp")
-            # np.save(source_path, hist_source)
-            hist_target = self.hist_target
-            LUT = []
-            LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
-            LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
-            LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
-            # update
-            self.LUT = LUT
-            self.hist_source = hist_source
-        else:
-            pass
+        if not self.enable_update:
+            return
+
+        # print("calculating histogram, the number of source: ", len(image_list))
+        hist_source = self._calculate_hist(image_list)
+        # source_path = "{}/data/{}".format(get_project_root(), "hist_source_tmp")
+        # np.save(source_path, hist_source)
+        hist_target = self.hist_target
+        LUT = []
+        LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
+        LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
+        LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
+        # update
+        self.LUT = LUT
+        self.hist_source = hist_source
 
     def draw_hist(self,fig_name):
         hist_source = self.hist_source
@@ -357,13 +372,14 @@ class ImageNormalization(object):
         sampling_interval = 1000
         seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-4)
 
-        # 不受限制地随机抽样
-        #     rx2 = int(self.ImageWidth * extract_scale / params.GLOBAL_SCALE)
-        #     ry2 = int(self.ImageHeight * extract_scale / params.GLOBAL_SCALE)
+        # #不受限制地随机抽样
+        # rx2 = int(imgCone.ImageWidth * extract_scale / params.GLOBAL_SCALE)
+        # ry2 = int(imgCone.ImageHeight * extract_scale / params.GLOBAL_SCALE)
+        # random_gen = Random_Gen("halton")
         #
-        #     N = 2000
-        #     # rx1, ry1, rx2, ry2 = self.valid_rect
-        #     x, y = self.random_gen.generate_random(N, 0, rx2, 0, ry2)
+        # N = 2000
+        # # rx1, ry1, rx2, ry2 = self.valid_rect
+        # x, y = self.random_gen.generate_random(N, 0, rx2, 0, ry2)
 
         images = []
         for x, y in seeds:
@@ -371,9 +387,9 @@ class ImageNormalization(object):
             img = block.get_img()
             images.append(img)
 
-        normal = ImageNormalization("match_hist", hist_target = "hist_templates.npy",
-                                    hist_source = None,
-                                    image_source= images)
+        normal = HistNormalization("match_hist", hist_target ="hist_templates.npy",
+                                   hist_source = None)
+        normal.prepare(images)
 
         return normal
 
