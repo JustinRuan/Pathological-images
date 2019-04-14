@@ -143,8 +143,8 @@ class TestPatchSampler(unittest.TestCase):
         patch_spacing_cancer = 400
         patch_spacing_normal = 2000
 
-        slice_IDs = [1, 16, 26, 61, 4, 8, 10, 11, 13]
-
+        slice_IDs = [16, 26, 61, 4, 8, 10, 11, 13]  # [1, 16, 26, 61, 4, 8, 10, 11, 13]
+        # slice_IDs = [1]
         for i in slice_IDs:
             code = "{:0>3d}".format(i)
             print("processing ", code, " ... ...")
@@ -162,19 +162,29 @@ class TestPatchSampler(unittest.TestCase):
                       ", inner edge_seeds = ", len(ei_seeds), ", outer edge_seeds = ", len(eo_seeds))
 
                 seeds_dict = ps.get_multi_scale_seeds([10, 20], c_seeds, extract_scale)
-                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "cancer")
+                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "cancer", "P0330")
 
                 seeds_dict2 = ps.get_multi_scale_seeds([10, 20], ei_seeds, extract_scale)
-                ps.extract_patches_multi_scale(imgCone, seeds_dict2, patch_size, "edgeinner")
+                ps.extract_patches_multi_scale(imgCone, seeds_dict2, patch_size, "edgeinner", "P0330")
 
                 seeds_dict3 = ps.get_multi_scale_seeds([10, 20], eo_seeds, extract_scale)
-                ps.extract_patches_multi_scale(imgCone, seeds_dict3, patch_size, "edgeouter")
+                ps.extract_patches_multi_scale(imgCone, seeds_dict3, patch_size, "edgeouter", "P0330")
 
-                n_seeds = ps.detect_normal_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing_normal)
-                print("slide code = ", code, ", normal_seeds = ", len(n_seeds))
+                mask = imgCone.create_mask_image(c.GLOBAL_SCALE, 8)
 
-                seeds_dict = ps.get_multi_scale_seeds([10, 20], n_seeds, extract_scale)
-                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal")
+                C_mask = mask["C"]
+                n_seeds = ps.detect_normal_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing_normal,
+                                                              c_mask=C_mask)
+                c_seeds = set(c_seeds)
+                n_seeds = set(n_seeds)
+                c_and_n = c_seeds & n_seeds
+
+                result_n = list(n_seeds - c_and_n)
+
+                print("slide code = ", code, ", normal_seeds = ", len(result_n))
+
+                seeds_dict = ps.get_multi_scale_seeds([10, 20], result_n, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal", "P0330")
 
                 print("%s 完成" % code)
         return

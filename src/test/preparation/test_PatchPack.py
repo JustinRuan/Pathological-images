@@ -56,12 +56,14 @@ class TestPatchPack(unittest.TestCase):
 
         pack = PatchPack(c)
         # data_tag = pack.initialize_sample_tags("Target", {"S4000_256_cancer": 1, "S4000_256_normal": 0})
-        # # pack.create_data_txt(data_tag, "T_NC_P0404_4000_256")
         # # pack.create_train_test_data(data_tag, 0.9, 0.1, "T_NC_Simple0327_2_4000_256")
         # pack.create_train_test_data(data_tag, 0, 1, "Target_T1_4000_256")
 
-        data_tag = pack.initialize_sample_tags("P0327", {"Aug_LAB_cancer": 1, "Aug_LAB_noraml": 0})
-        pack.create_train_test_data(data_tag, 0.95, 0.05, "Aug_LAB_4000_256")
+        # data_tag = pack.initialize_sample_tags("P0327", {"Aug_LAB_cancer": 1, "Aug_LAB_noraml": 0})
+        # pack.create_train_test_data(data_tag, 0.95, 0.05, "Aug_LAB_4000_256")
+
+        data_tag = pack.initialize_sample_tags("P0330", {"S4000_256_cancer": 1, "S4000_256_normal": 0})
+        pack.create_train_test_data(data_tag, 0, 1, "T_NC_Simple0330_4000_256")
 
 
     #################################################################################################################

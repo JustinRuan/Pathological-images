@@ -33,7 +33,7 @@ class PatchSampler(object):
 
         return new_seeds
 
-    def extract_patches(self, sourceCone, extract_scale, patch_size, seeds, seeds_name):
+    def extract_patches(self, sourceCone, extract_scale, patch_size, seeds, seeds_name, samples_dir):
         '''
         从给定的中心点集合提取图块，并存到对应目录
         :param sourceCone: 切片
@@ -43,7 +43,7 @@ class PatchSampler(object):
         :param seeds_name: 当前中心点集合的编码或代号（cancer, edge, noraml, 三个之一）
         :return: 某个文件夹中的图块文件
         '''
-        Root_path = self._params.PATCHS_ROOT_PATH
+        Root_path = self._params.PATCHS_ROOT_PATH[samples_dir]
         intScale = np.rint(extract_scale * 100).astype(np.int)
 
         pathPatch = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size, seeds_name)
@@ -93,14 +93,18 @@ class PatchSampler(object):
 
         return seeds_dict
 
-    def detect_normal_patches_with_scale(self, sourceCone, extract_scale, patch_size, sampling_interval):
+    def detect_normal_patches_with_scale(self, sourceCone, extract_scale, patch_size, sampling_interval, c_mask = None):
         low_scale = self._params.GLOBAL_SCALE
         eff_region = sourceCone.get_effective_zone(low_scale)
+
+        if c_mask is not None:
+            eff_region = np.bitwise_and(eff_region, np.bitwise_not(c_mask))
+
         n_seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
 
         return n_seeds
 
-    def extract_patches_multi_scale(self, sourceCone, seeds_dict, patch_size, seeds_name):
+    def extract_patches_multi_scale(self, sourceCone, seeds_dict, patch_size, seeds_name, samples_dir):
         for scale, seeds in seeds_dict.items():
-            self.extract_patches(sourceCone, scale, patch_size, seeds, seeds_name)
+            self.extract_patches(sourceCone, scale, patch_size, seeds, seeds_name, samples_dir)
 
