@@ -15,8 +15,8 @@ import numpy as np
 
 from preparation.augmentation import ImageAugmentation
 
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 
 class TestAugmentation(unittest.TestCase):
 
@@ -60,4 +60,4 @@ class TestAugmentation(unittest.TestCase):
         augment = ImageAugmentation(l_range=(0.9, 1.1), a_range=(0.95, 1.05),
                                     b_range=(0.95, 1.05), constant_range=(-10, 10))
 
-        augment.augment_dataset(c, samples_name, "Aug_LAB", max_count=50000)
+        augment.augment_dataset(c, samples_name, "Aug_LAB", range=(0, 100))

@@ -104,15 +104,15 @@ class ImageAugmentation(object):
         rgb_image = color.lab2rgb(labO)
         return rgb_image
 
-    def augment_dataset(self, params, source_samples, tagrget_dir, max_count = None):
+    def augment_dataset(self, params, source_samples, tagrget_dir, range = None):
         patch_root = params.PATCHS_ROOT_PATH[source_samples[0]]
         sample_filename = source_samples[1]
         train_list = "{}/{}".format(patch_root, sample_filename)
 
         Xtrain, Ytrain = read_csv_file(patch_root, train_list)
-        if max_count is not None:
-            Xtrain = Xtrain[:max_count]
-            Ytrain = Ytrain[:max_count]
+        if range is not None:
+            Xtrain = Xtrain[range[0]:range[1]]
+            Ytrain = Ytrain[range[0]:range[1]]
 
         target_cancer_path = "{}/{}_cancer".format(patch_root, tagrget_dir)
         target_normal_path = "{}/{}_noraml".format(patch_root, tagrget_dir)
@@ -122,7 +122,7 @@ class ImageAugmentation(object):
         if (not os.path.exists(target_normal_path)):
             os.makedirs(target_normal_path)
 
-        for x, y in zip(Xtrain, Ytrain):
+        for K, (x, y) in enumerate(zip(Xtrain, Ytrain)):
             block = Block()
             block.load_img(x)
             img = block.get_img()
@@ -135,6 +135,9 @@ class ImageAugmentation(object):
                 block.save_img(target_normal_path)
             else:
                 block.save_img(target_cancer_path)
+
+            if (0 == K % 1000):
+                print("{} augmenting >>> {}".format(time.asctime(time.localtime()), K))
 
 
 
