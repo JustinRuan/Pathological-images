@@ -24,7 +24,7 @@ class TestAugmentation(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         # filename = "T_NC_Simple0330_4000_256_test.txt"
-        filename = "T_NC_P0404_4000_256_test.txt"
+        filename = "T_NC_Simple0404_4000_256_test.txt"
         patch_path = c.PATCHS_ROOT_PATH["P0404"]
         all_file_list, _ = util.read_csv_file(patch_path, "{}/{}".format(patch_path, filename))
 

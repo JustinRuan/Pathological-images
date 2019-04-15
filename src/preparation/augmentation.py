@@ -7,15 +7,58 @@ __mtime__ = '2019-04-13'
 """
 import time
 import os
+
 from skimage import color
 import numpy as np
-from skimage import io
 import random
 from core.util import read_csv_file
-from skimage.io import imread
-from core import Block
+from core import Block, read_csv_file
 
-class ImageAugmentation(object):
+
+class AbstractAugmentation(object):
+    def augment_images(self, src_img):
+        raise NotImplementedError
+
+    def process(self, src_img):
+        return self.augment_images(src_img)
+
+    def augment_dataset(self, params, source_samples, tagrget_dir, range = None):
+        patch_root = params.PATCHS_ROOT_PATH[source_samples[0]]
+        sample_filename = source_samples[1]
+        train_list = "{}/{}".format(patch_root, sample_filename)
+
+        Xtrain, Ytrain = read_csv_file(patch_root, train_list)
+        if range is not None:
+            Xtrain = Xtrain[range[0]:range[1]]
+            Ytrain = Ytrain[range[0]:range[1]]
+
+        target_cancer_path = "{}/{}_cancer".format(patch_root, tagrget_dir)
+        target_normal_path = "{}/{}_noraml".format(patch_root, tagrget_dir)
+
+        if (not os.path.exists(target_cancer_path)):
+            os.makedirs(target_cancer_path)
+        if (not os.path.exists(target_normal_path)):
+            os.makedirs(target_normal_path)
+
+        for K, (x, y) in enumerate(zip(Xtrain, Ytrain)):
+            block = Block()
+            block.load_img(x)
+            img = block.get_img()
+
+            aug_img = self.augment_images(img) * 255
+            block.set_img(aug_img)
+            block.opcode = 9
+
+            if y == 0:
+                block.save_img(target_normal_path)
+            else:
+                block.save_img(target_cancer_path)
+
+            if (0 == K % 1000):
+                print("{} augmenting >>> {}".format(time.asctime(time.localtime()), K))
+
+
+class ImageAugmentation(AbstractAugmentation):
 
     def __init__(self, **kwarg):
         # 实验2用：l_range = (0.9, 1.1), a_range = (0.95, 1.05), b_range = (0.95, 1.05), constant_range = (-10, 10)
@@ -65,8 +108,6 @@ class ImageAugmentation(object):
     #     # LAB to RGB变换
     #     rgb_image = color.lab2rgb(labO)
     #     return rgb_image
-    def process(self, src_img):
-        return self.augment_images(src_img)
 
     def augment_images(self, src_img):
         lab_img = color.rgb2lab(src_img)
@@ -105,41 +146,6 @@ class ImageAugmentation(object):
         # LAB to RGB变换
         rgb_image = color.lab2rgb(labO)
         return rgb_image
-
-    def augment_dataset(self, params, source_samples, tagrget_dir, range = None):
-        patch_root = params.PATCHS_ROOT_PATH[source_samples[0]]
-        sample_filename = source_samples[1]
-        train_list = "{}/{}".format(patch_root, sample_filename)
-
-        Xtrain, Ytrain = read_csv_file(patch_root, train_list)
-        if range is not None:
-            Xtrain = Xtrain[range[0]:range[1]]
-            Ytrain = Ytrain[range[0]:range[1]]
-
-        target_cancer_path = "{}/{}_cancer".format(patch_root, tagrget_dir)
-        target_normal_path = "{}/{}_noraml".format(patch_root, tagrget_dir)
-
-        if (not os.path.exists(target_cancer_path)):
-            os.makedirs(target_cancer_path)
-        if (not os.path.exists(target_normal_path)):
-            os.makedirs(target_normal_path)
-
-        for K, (x, y) in enumerate(zip(Xtrain, Ytrain)):
-            block = Block()
-            block.load_img(x)
-            img = block.get_img()
-
-            aug_img = self.augment_images(img) * 255
-            block.set_img(aug_img)
-            block.opcode = 9
-
-            if y == 0:
-                block.save_img(target_normal_path)
-            else:
-                block.save_img(target_cancer_path)
-
-            if (0 == K % 1000):
-                print("{} augmenting >>> {}".format(time.asctime(time.localtime()), K))
 
 
 
