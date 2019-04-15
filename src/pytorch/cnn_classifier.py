@@ -336,7 +336,10 @@ class BaseClassifier(object, metaclass=ABCMeta):
     def load_pretrained_model_on_predict(self):
         pass
 
-
+# 输入为RGB三通道图像，单输出的分类器
+######################################################################################################################
+############       single task            #########
+######################################################################################################################
 class Simple_Classifier(BaseClassifier):
     def __init__(self, params, model_name, patch_type, **kwargs):
         super(Simple_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
@@ -352,8 +355,62 @@ class Simple_Classifier(BaseClassifier):
             self.image_size = 32
 
     def create_initial_model(self):
+        def create_densenet(self, depth):
+            '''
+            生成指定深度的Densenet
+            :param depth: 深度
+            :return: 网络模型
+            '''
+            # Get densenet configuration
+            if (depth - 4) % 3:
+                raise Exception('Invalid depth')
+            block_config = [(depth - 4) // 6 for _ in range(3)]
+
+            if self.patch_type in ["cifar10", "cifar100"]:  # 32x32
+                # Models
+                model = DenseNet(
+                    growth_rate=12,
+                    block_config=block_config,
+                    num_classes=self.num_classes,
+                    small_inputs=True,  # 32 x 32的图片为True
+                    gvp_out_size=1,
+                    efficient=True,
+                )
+            elif self.patch_type in ["500_128", "2000_256", "4000_256", "x_256"]:  # 256 x 256
+                # Models
+                model = DenseNet(
+                    growth_rate=12,
+                    block_config=block_config,
+                    num_classes=self.num_classes,
+                    small_inputs=False,  # 32 x 32的图片为True
+                    gvp_out_size=1,
+                    efficient=True,
+                )
+            return model
+
+        def create_se_densenet(self, depth):
+            # Get densenet configuration
+            if (depth - 4) % 3:
+                raise Exception('Invalid depth')
+            block_config = [(depth - 4) // 6 for _ in range(3)]
+
+            # Models
+            model = SEDenseNet(
+                growth_rate=12,
+                block_config=block_config,
+                num_classes=self.num_classes,
+                gvp_out_size=1,
+            )
+            return model
+
         if self.model_name == "simple_cnn":
             model = Simple_CNN(self.num_classes, self.image_size)
+        elif self.model_name == "densenet_22":
+            model = create_densenet(depth=22)
+        elif self.model_name == "se_densenet_22":
+            model = create_se_densenet(depth=22)
+        elif self.model_name =="se_densenet_40":
+            model= create_se_densenet(depth=40)
 
         return model
 
@@ -364,10 +421,11 @@ class Simple_Classifier(BaseClassifier):
         :return: 网络模型
         '''
         net_file = {
-            "4000_256": "simple_cnn_40_256_cp-0003-0.0742-0.9743.pth",
+            "simple_cnn_4000_256": "simple_cnn_40_256_cp-0003-0.0742-0.9743.pth",
         }
 
-        model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[self.patch_type])
+        model_code = "{}_{}".format(self.model_name, self.patch_type)
+        model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[model_code])
         model = self.load_model(model_file=model_file)
 
         # 关闭求导，节约大量的显存
@@ -439,16 +497,6 @@ class CNN_Classifier(BaseClassifier):
                 gvp_out_size=1,
                 efficient=True,
             )
-        # elif self.patch_type == "500_128": # 128 x 128
-        #     # Models
-        #     model = DenseNet(
-        #         growth_rate=12,
-        #         block_config=block_config,
-        #         num_classes=self.num_classes,
-        #         small_inputs=False, # 32 x 32的图片为True
-        #         avgpool_size=7,
-        #         efficient=True,
-        #     )
         elif self.patch_type in ["500_128", "2000_256", "4000_256", "x_256"]: # 256 x 256
             # Models
             model = DenseNet(
