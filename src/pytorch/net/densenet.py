@@ -190,12 +190,23 @@ class SEDenseNet(nn.Module):
     """
 
     def __init__(self, growth_rate=12, block_config=(6, 12, 24, 16),
-                 num_init_features=24, bn_size=4, drop_rate=0, num_classes=2, gvp_out_size=1, MultiTask=True):
+                 num_init_features=24, bn_size=4, drop_rate=0, num_classes=2, gvp_out_size=1):
 
         super(SEDenseNet, self).__init__()
 
         self.gvp_out_size = gvp_out_size
-        self.MultiTask = MultiTask
+
+        if isinstance(num_classes, int):
+            self.MultiTask = False
+        else:
+            if len(num_classes) > 1:
+                self.MultiTask = True
+                num_classes = num_classes[0]
+                num_classes2 = num_classes[1]
+            else:
+                self.MultiTask = False
+                num_classes = num_classes[0]
+
         # First convolution
         self.features = nn.Sequential(OrderedDict([
             ('conv0', nn.Conv2d(3, num_init_features, kernel_size=7, stride=2, padding=3, bias=False)),
@@ -243,7 +254,7 @@ class SEDenseNet(nn.Module):
         if self.MultiTask:
             self.out = nn.ModuleList()
             self.classifier = nn.Linear(num_features, num_classes)
-            self.classifier2 = nn.Linear(num_features, 3)
+            self.classifier2 = nn.Linear(num_features, num_classes2)
             self.out.append(self.classifier)
             self.out.append(self.classifier2)
         else:
