@@ -437,11 +437,13 @@ class Simple_Classifier(BaseClassifier):
 ############       multi task            #########
 ######################################################################################################################
 class MultiTask_Classifier(BaseClassifier):
+    def __init__(self, params, model_name, patch_type, **kwargs):
+        super(MultiTask_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
+
+        self.num_classes = (2, 3)
+        self.image_size = 256
 
     def create_initial_model(self):
-        pass
-
-    def load_model(self, model_file):
         pass
 
     def train_model(self, samples_name, augment_func, batch_size, epochs):
@@ -453,10 +455,13 @@ class MultiTask_Classifier(BaseClassifier):
     def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
         pass
 
+    def load_pretrained_model_on_predict(self):
+        pass
+
     ###############################################################################################################
     # Multiple scale combination (MSC)
     ###############################################################################################################
-class MSE_Classifier(BaseClassifier):
+class MSC_Classifier(BaseClassifier):
 
     def create_initial_model(self):
         pass
