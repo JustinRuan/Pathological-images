@@ -839,14 +839,15 @@ class MSC_Classifier(BaseClassifier):
               % (metrics.classification_report(Ytest[:, 1], predicted_tags[:, 1], digits=4)))
 
     def evaluate_model(self, samples_name, model_file, batch_size, max_count):
+        assert isinstance(samples_name, dict), "samples_name maust be a dict."
 
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name[10])
         Xtest10, Ytest10 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
 
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name[20])
         Xtest20, Ytest20 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
 
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name[40])
         Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
 
         # Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
