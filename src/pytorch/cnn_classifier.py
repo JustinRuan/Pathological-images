@@ -7,6 +7,8 @@ __mtime__ = '2018-12-13'
 """
 
 import os
+from abc import ABCMeta, abstractmethod
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -21,11 +23,12 @@ from pytorch.net import Simple_CNN
 from pytorch.net import DenseNet, SEDenseNet, SEDenseNet_C9
 from core.util import read_csv_file, transform_coordinate
 from pytorch.image_dataset import Image_Dataset, Image_Dataset_MSC
-from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_image_file_batch_normalize_itor, get_image_blocks_batch_normalize_itor
+from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_image_blocks_batch_normalize_itor, \
+    get_image_file_batch_normalize_itor
 
-class CNN_Classifier(object):
 
-    def __init__(self, params, model_name, patch_type, normalization = None):
+class BaseClassifier(object, metaclass=ABCMeta):
+    def __init__(self, params, model_name, patch_type, **kwargs):
         '''
         初始化
         :param params: 系统参数
@@ -33,14 +36,312 @@ class CNN_Classifier(object):
         :param patch_type: 分类器处理的图块类型的代号
         '''
         self._params = params
-        self.model_name = model_name
         self.patch_type = patch_type
         self.NUM_WORKERS = params.NUM_WORKERS
 
-        if self.patch_type == "500_128":
-            self.num_classes = 2
-            self.image_size = 128
-        elif self.patch_type in ["2000_256", "4000_256", "x_256", "msc_256"]:
+        # if self.patch_type in ["1000_256", "2000_256", "4000_256", "x_256", "msc_256"]:
+        #     self.num_classes = 2
+        #     self.image_size = 256
+        # elif self.patch_type == "cifar10":
+        #     self.num_classes = 10
+        #     self.image_size = 32
+        # elif self.patch_type == "cifar100":
+        #     self.num_classes = 100
+        #     self.image_size = 32
+
+        # 在子类构造时初始化
+        self.model_name = model_name
+        self.num_classes = 0
+        self.image_size = 0
+
+        self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+
+        self.use_GPU = True
+        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
+
+        self.model = model_name
+        if 'normalization' in kwargs:
+            self.normal_func = kwargs["normalization"]
+        else:
+            self.normal_func = None
+
+        if 'augmentation' in kwargs:
+            self.augment_func = kwargs["augmentation"]
+        else:
+            self.augment_func = None
+
+        if 'special_norm' in kwargs:
+            self.special_norm_mode = kwargs["special_norm"]
+        else:
+            self.special_norm_mode = False
+
+    @abstractmethod
+    def create_initial_model(self):
+        '''
+        生成初始化的模型
+        :return:网络模型
+        '''
+        pass
+
+    def load_model(self, model_file):
+        '''
+        加载模型
+        :param model_file: 模型文件
+        :return: 网络模型
+        '''
+        if model_file is not None:
+            print("loading >>> ", model_file, " ...")
+            model = torch.load(model_file)
+            return model
+        else:
+            checkpoint_dir = self.model_root
+            if (not os.path.exists(checkpoint_dir)):
+                os.makedirs(checkpoint_dir)
+
+            latest = latest_checkpoint(checkpoint_dir)
+            if latest is not None:
+                print("loading >>> ", latest, " ...")
+                model = torch.load(latest)
+            else:
+                model = self.create_initial_model()
+            return model
+
+    def train_model(self, samples_name, augment_func, batch_size, epochs):
+        '''
+        训练模型
+        :param samples_name: 自制训练集的代号
+        :param batch_size: 每批的图片数量
+        :param epochs:epoch数量
+        :return:
+        '''
+        if self.patch_type in ["cifar10", "cifar100"]:
+            train_data, test_data = self.load_cifar_data(self.patch_type)
+        else:
+            train_data, test_data = self.load_custom_data(samples_name, augment_func=augment_func)
+
+        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
+                                       num_workers=self.NUM_WORKERS)
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
+                                      num_workers=self.NUM_WORKERS)
+
+        model = self.load_model(model_file=None)
+        print(model)
+        if self.use_GPU:
+            model.to(self.device)
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) #学习率为0.01的学习器
+        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-2, alpha=0.99)
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
+                                                               factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
+        loss_func = nn.CrossEntropyLoss()
+
+        # training and testing
+        for epoch in range(epochs):
+            print('Epoch {}/{}'.format(epoch + 1, epochs))
+            print('-' * 80)
+
+            model.train()
+            # 开始训练
+            train_data_len = len(train_loader)
+            total_loss = 0
+            for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
+                b_x = Variable(x.to(self.device))
+                b_y = Variable(y.to(self.device))
+
+                output = model(b_x)  # cnn output
+                loss = loss_func(output, b_y)  # cross entropy loss
+                optimizer.zero_grad()  # clear gradients for this training step
+                loss.backward()  # backpropagation, compute gradients
+                optimizer.step()
+
+                # 数据统计
+                _, preds = torch.max(output, 1)
+
+                running_loss = loss.item()
+                running_corrects = torch.sum(preds == b_y.data)
+                total_loss += running_loss
+                print('%d / %d ==> Loss: %.4f | Acc: %.4f '
+                      % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0)))
+
+            scheduler.step(total_loss)
+
+            running_loss=0.0
+            running_corrects=0
+            model.eval()
+            # 开始评估
+            for x, y in test_loader:
+                b_x = Variable(x.to(self.device))
+                b_y = Variable(y.to(self.device))
+
+                output = model(b_x)
+                loss = loss_func(output, b_y)
+
+                _, preds = torch.max(output, 1)
+                running_loss += loss.item() * b_x.size(0)
+                running_corrects += torch.sum(preds == b_y.data)
+
+            test_data_len = test_data.__len__()
+            epoch_loss=running_loss / test_data_len
+            epoch_acc=running_corrects.double() / test_data_len
+
+            torch.save(model, self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch+1, epoch_loss, epoch_acc))
+
+        return
+
+    def load_cifar_data(self, patch_type):
+        '''
+        加载cifar数量
+        :param patch_type: cifar 数据的代号
+        :return:
+        '''
+        data_root = os.path.join(os.path.expanduser('~'), '.keras/datasets/') # 共用Keras下载的数据
+
+        if patch_type == "cifar10":
+            train_data = torchvision.datasets.cifar.CIFAR10(
+                root=data_root,  # 保存或者提取位置
+                train=True,  # this is training data
+                transform=torchvision.transforms.ToTensor(),
+                download = False
+            )
+            test_data = torchvision.datasets.cifar.CIFAR10(root=data_root, train=False,
+                                                   transform=torchvision.transforms.ToTensor())
+            return train_data, test_data
+
+    def load_custom_data(self, samples_name, augment_func = None):
+        '''
+        从图片的列表文件中加载数据，到Sequence中
+        :param samples_name: 列表文件的代号
+        :return:用于train和test的两个Sequence
+        '''
+        patch_root = self._params.PATCHS_ROOT_PATH[samples_name[0]]
+        sample_filename = samples_name[1]
+        train_list = "{}/{}_train.txt".format(patch_root, sample_filename)
+        test_list = "{}/{}_test.txt".format(patch_root, sample_filename)
+
+        Xtrain, Ytrain = read_csv_file(patch_root, train_list)
+        # Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
+        train_data = Image_Dataset(Xtrain, Ytrain, transform = None, augm = augment_func)
+
+        Xtest, Ytest = read_csv_file(patch_root, test_list)
+        # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
+        test_data = Image_Dataset(Xtest, Ytest)
+        return  train_data, test_data
+
+    def loading_test_dataset(self, samples_name, batch_size, max_count, special_norm_mode = False):
+        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
+
+        if max_count is not None:
+            Xtest, Ytest = Xtest[:max_count], Ytest[:max_count]  # for debug
+
+        if special_norm_mode:
+            # 自定义的数据加载方式
+            test_loader = get_image_file_batch_normalize_itor(Xtest, Ytest, batch_size, self.normal_func)
+        else:
+            test_data = Image_Dataset(Xtest, Ytest, norm = self.normal_func)
+            test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+                                          shuffle=False, num_workers=self.NUM_WORKERS)
+
+        return test_loader, Ytest
+
+    def evaluate_model(self, samples_name, model_file, batch_size, max_count):
+        test_loader, Ytest  = self.loading_test_dataset(samples_name, batch_size, max_count, self.special_norm_mode)
+
+        model = self.load_model(model_file=model_file)
+        # 关闭求导，节约大量的显存
+        for param in model.parameters():
+            param.requires_grad = False
+        print(model)
+
+        model.to(self.device)
+        model.eval()
+
+        predicted_tags = []
+        len_y = len(Ytest)
+        if len_y % batch_size == 0:
+            test_data_len = len_y // batch_size
+        else:
+            test_data_len = len_y // batch_size + 1
+
+        for step, (x, _) in enumerate(test_loader):
+            b_x = Variable(x.to(self.device))  # batch x
+
+            output = model(b_x)  # model最后不包括一个softmax层
+            output_softmax = nn.functional.softmax(output, dim=1)
+            probs, preds = torch.max(output_softmax, 1)
+
+            predicted_tags.extend(preds.cpu().numpy())
+            print('predicting => %d / %d ' % (step + 1, test_data_len))
+            probs = probs.cpu().numpy()
+            mean = np.mean(probs)
+            std = np.std(probs)
+            print("mean of prob = ", mean, std)
+
+        Ytest = np.array(Ytest)
+        predicted_tags = np.array(predicted_tags)
+        print("Classification report for classifier :\n%s\n"
+              % (metrics.classification_report(Ytest, predicted_tags, digits=4)))
+
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return: 预测结果与概率
+        '''
+        if self.special_norm_mode:
+            seeds_itor = get_image_blocks_batch_normalize_itor(src_img, scale, seeds, patch_size, patch_size,
+                                                               batch_size,
+                                                               normalization=self.normal_func)
+        else:
+            seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
+                                               normalization=self.normal_func)
+
+
+        if self.model is None:
+            self.model = self.load_pretrained_model_on_predict(self.patch_type)
+            self.model.to(self.device)
+            self.model.eval()
+
+        len_seeds = len(seeds)
+        data_len = len(seeds) // batch_size
+        if len_seeds % batch_size > 0:
+            data_len += 1
+
+        results = []
+
+        for step, x in enumerate(seeds_itor):
+            b_x = Variable(x.to(self.device))
+
+            output = self.model(b_x) # model最后不包括一个softmax层
+            output_softmax = nn.functional.softmax(output, dim =1)
+            probs, preds = torch.max(output_softmax, 1)
+            for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
+                results.append((pred, prob))
+            print('predicting => %d / %d ' % (step + 1, data_len))
+
+            probs = probs.cpu().numpy()
+            mean = np.mean(probs)
+            std = np.std(probs)
+            print("mean of prob = ", mean, std)
+
+        return results
+
+    @abstractmethod
+    def load_pretrained_model_on_predict(self):
+        pass
+
+
+class Simple_Classifier(BaseClassifier):
+    def __init__(self, params, model_name, patch_type, **kwargs):
+        super(Simple_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
+
+        if self.patch_type in ["1000_256", "2000_256", "4000_256", "x_256", "msc_256"]:
             self.num_classes = 2
             self.image_size = 256
         elif self.patch_type == "cifar10":
@@ -50,14 +351,72 @@ class CNN_Classifier(object):
             self.num_classes = 100
             self.image_size = 32
 
-        self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+    def create_initial_model(self):
+        if self.model_name == "simple_cnn":
+            model = Simple_CNN(self.num_classes, self.image_size)
 
-        self.use_GPU = True
-        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
+        return model
 
-        self.model = None
-        self.normal_func = normalization
+    def load_pretrained_model_on_predict(self):
+        '''
+        加载已经训练好的存盘网络文件
+        :param patch_type: 分类器处理图块的类型
+        :return: 网络模型
+        '''
+        net_file = {
+            "4000_256": "simple_cnn_40_256_cp-0003-0.0742-0.9743.pth",
+        }
+
+        model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[self.patch_type])
+        model = self.load_model(model_file=model_file)
+
+        # 关闭求导，节约大量的显存
+        for param in model.parameters():
+            param.requires_grad = False
+        return model
+
+######################################################################################################################
+############       multi task            #########
+######################################################################################################################
+class MultiTask_Classifier(BaseClassifier):
+
+    def create_initial_model(self):
+        pass
+
+    def load_model(self, model_file):
+        pass
+
+    def train_model(self, samples_name, augment_func, batch_size, epochs):
+        pass
+
+    def evaluate_model(self, samples_name, model_file, batch_size, max_count):
+        pass
+
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        pass
+
+    ###############################################################################################################
+    # Multiple scale combination (MSC)
+    ###############################################################################################################
+class MSE_Classifier(BaseClassifier):
+
+    def create_initial_model(self):
+        pass
+
+    def load_model(self, model_file):
+        pass
+
+    def train_model(self, samples_name, augment_func, batch_size, epochs):
+        pass
+
+    def evaluate_model(self, samples_name, model_file, batch_size, max_count):
+        pass
+
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        pass
+
+
+class CNN_Classifier(BaseClassifier):
 
     def create_densenet(self, depth):
         '''
@@ -272,7 +631,7 @@ class CNN_Classifier(object):
         if max_count is not None:
             Xtest, Ytest = Xtest[:max_count], Ytest[:max_count]  # for debug
 
-        test_data = Image_Dataset(Xtest, Ytest)
+        test_data = Image_Dataset(Xtest, Ytest, norm = self.normal_func)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
                                       shuffle=False, num_workers=self.NUM_WORKERS)
         # image_itor = get_image_file_batch_normalize_itor(Xtest, Ytest, batch_size, self.normal_func)

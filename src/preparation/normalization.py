@@ -21,6 +21,9 @@ class AbstractNormalization(object):
     def __init__(self, method, **kwarg):
         self.method_name = method
 
+    def process(self, src_img):
+        return self.normalize(src_img)
+
     def normalize(self, src_img):
        raise NotImplementedError
 

@@ -65,6 +65,8 @@ class ImageAugmentation(object):
     #     # LAB to RGB变换
     #     rgb_image = color.lab2rgb(labO)
     #     return rgb_image
+    def process(self, src_img):
+        return self.augment_images(src_img)
 
     def augment_images(self, src_img):
         lab_img = color.rgb2lab(src_img)
