@@ -658,6 +658,11 @@ class MultiTask_Classifier(BaseClassifier):
     # Multiple scale combination (MSC)
     ###############################################################################################################
 class MSC_Classifier(BaseClassifier):
+    def __init__(self, params, model_name, patch_type, **kwargs):
+        super(MSC_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
+
+        self.num_classes = (2, 3)
+        self.image_size = 256
 
     def load_msc_data(self, samples_name_dict):
         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
