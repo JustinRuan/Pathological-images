@@ -13,9 +13,10 @@ from skimage.io import imread
 import random
 import numpy as np
 
-from preparation.normalization import RGBNormalization, ReinhardNormalization, HistNormalization, ImageNormalizationTool
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+from preparation.normalization import RGBNormalization, ReinhardNormalization, HistNormalization, \
+    ImageNormalizationTool, HSDNormalization
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestNormalization(unittest.TestCase):
 
@@ -23,7 +24,7 @@ class TestNormalization(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         # filename = "T_NC_Simple0330_4000_256_test.txt"
-        filename = "T_NC_P0404_4000_256_test.txt"
+        filename = "T_NC_Simple0404_4000_256_test.txt"
         patch_path = c.PATCHS_ROOT_PATH["P0404"]
         all_file_list, _ = util.read_csv_file(patch_path, "{}/{}".format(patch_path, filename))
 
@@ -41,8 +42,11 @@ class TestNormalization(unittest.TestCase):
         #                             source_mean=(194.1, 169.3, 210.4),
         #                             source_std=(27.86, 30.92, 20.25))
 
-        normal = HistNormalization("match_hist", hist_target = "hist_templates.npy",
-                                    hist_source = "hist_soures.npy")
+        # normal = HistNormalization("match_hist", hist_target = "hist_templates.npy",
+        #                             hist_source = "hist_soures.npy")
+
+        normal = HSDNormalization("hsd_norm", target_mean=( -0.2574, 0.2353, 0.3893),
+                                  source_mean=(-0.0676, 0.4088, 0.3710),)
 
         # image_list = []
         # for filename in file_list:
@@ -129,9 +133,11 @@ class TestNormalization(unittest.TestCase):
         print(avg_mean_h, avg_mean_s, avg_mean_d, avg_std_h, avg_std_s, avg_std_d)
         # "T_NC_Simple0327_2_4000_256_test.txt"
         # -0.257421384092 0.235364054717 0.389308679108 0.18601853328 0.188481962243 0.248231192375
+        # ( -0.2574, 0.2353, 0.3893)
 
         # T_NC_Simple0404_4000_256_test.txt
         # -0.0676884085515 0.408808235442 0.371045973718 0.125415498138 0.124773051469 0.19882963109
+        # (-0.0676, 0.4088, 0.3710)
 
         # T_NC_Simple0330_4000_256_test.txt
         # -0.163529218718 0.35086233971 0.375252081355 0.151278120093 0.15350647589 0.209511975401
