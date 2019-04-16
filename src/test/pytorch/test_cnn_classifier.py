@@ -15,8 +15,8 @@ from preparation.normalization import HistNormalization
 from preparation.augmentation import ImageAugmentation
 from pytorch.image_dataset import Image_Dataset
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -42,12 +42,12 @@ class Test_cnn_classifier(unittest.TestCase):
         cnn = Simple_Classifier(c, model_name, sample_name)
         # augment = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
-        # cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)), augment_func = None,
-        #                 batch_size=10, epochs = 3)
+        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)), augment_func = None,
+                        batch_size=60, epochs = 3)
         # cnn.train_model(samples_name=("P0327", "Aug_LAB_4000_256"), augment_func=None,
         #                 batch_size=30, epochs = 10)
-        cnn.train_model(samples_name=("P0327", "Aug_HIST_4000_256"), augment_func=None,
-                        batch_size=60, epochs = 10)
+        # cnn.train_model(samples_name=("P0327", "Aug_HIST_4000_256"), augment_func=None,
+        #                 batch_size=60, epochs = 10)
 
     def test_evaluate_model(self):
         c = Params()
@@ -66,7 +66,7 @@ class Test_cnn_classifier(unittest.TestCase):
 
         cnn = Simple_Classifier(c, model_name, sample_name, normalization=None, )
         cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
-                           model_file=None, batch_size=20, max_count=None)
+                           model_file=None, batch_size=40, max_count=None)
         # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256"),
         #                    model_file=None, batch_size=20, max_count=None)

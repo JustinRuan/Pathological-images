@@ -47,7 +47,7 @@ class AbstractAugmentation(object):
 
             aug_img = self.augment_images(img) * 255
             block.set_img(aug_img)
-            block.opcode = 9
+            block.opcode = self.opcode
 
             if y == 0:
                 block.save_img(target_normal_path)
@@ -68,13 +68,14 @@ class ImageAugmentation(AbstractAugmentation):
         b_range = kwarg["b_range"]
         constant_range = kwarg["constant_range"]
 
-        K = 4
+        K = 10
         self.l_candidates = np.arange(l_range[0], 1.01 * l_range[1], (l_range[1] - l_range[0]) / K)
         self.a_candidates = np.arange(a_range[0], 1.01 * a_range[1], (a_range[1] - a_range[0]) / K)
         self.b_candidates = np.arange(b_range[0], 1.01 * b_range[1], (b_range[1] - b_range[0]) / K)
         self.constant_candidates = np.arange(constant_range[0], 1.01 * constant_range[1],
                                              (constant_range[1] - constant_range[0]) / K)
         self.K = K
+        self.opcode = 9
 
     # def augment_images(self, src_img):
     #     lab_img = color.rgb2lab(src_img)
@@ -154,6 +155,7 @@ class HistAugmentation(AbstractAugmentation):
         target_path = "{}/data/{}".format(get_project_root(), kwarg["hist_target"])
         hist_target = np.load(target_path).item()
         self.hist_target = hist_target
+        self.opcode = 10
 
         if kwarg["hist_source"] is not None:
             print("reading histogram file ...")
