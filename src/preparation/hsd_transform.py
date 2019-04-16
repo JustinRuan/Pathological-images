@@ -27,10 +27,12 @@ def rgb2hsd(rgb):
     Cx = DR / D - 1
     Cy = (DG - DB) / (D * math.sqrt(3))
 
-    hsd = np.zeros(np.shape(rgb))
-    hsd[:, :, 0] = Cx
-    hsd[:, :, 1] = Cy
-    hsd[:, :, 2] = D
+    # hsd = np.zeros(np.shape(rgb))
+    # hsd[:, :, 0] = Cx
+    # hsd[:, :, 1] = Cy
+    # hsd[:, :, 2] = D
+
+    hsd = np.dstack([Cx, Cy, D])
     return hsd
 
 
@@ -50,15 +52,15 @@ def hsd2rgb(hsd):
     g = np.exp(-Dg) * 257.0 - 1
     r = np.exp(-Dr) * 257.0 - 1
 
-    rgb = np.zeros(np.shape(hsd), dtype=np.int)
-
     r = np.clip(r, 0, 255).astype(np.int)
     g = np.clip(g, 0, 255).astype(np.int)
     b = np.clip(b, 0, 255).astype(np.int)
 
-    rgb[:, :, 0] = r
-    rgb[:, :, 1] = g
-    rgb[:, :, 2] = b
+    # rgb = np.zeros(np.shape(hsd), dtype=np.int)
+    # rgb[:, :, 0] = r
+    # rgb[:, :, 1] = g
+    # rgb[:, :, 2] = b
+    rgb = np.dstack([r, g, b])
 
     return rgb
 

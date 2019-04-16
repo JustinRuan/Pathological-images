@@ -114,6 +114,28 @@ class TestNormalization(unittest.TestCase):
         # 194.179581005 169.338380381 210.455308373 27.8654252516 30.9280496823 20.2526431351
         # (194.1, 169.3, 210.4) (27.86, 30.92, 20.25)
 
+    def test_calculate_mean_std_HSD(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        normal = ImageNormalizationTool(c)
+
+        # avg_mean_h, avg_mean_s, avg_mean_d, avg_std_h, avg_std_s, avg_std_d = \
+        #     normal.calculate_avg_mean_std_HSD("P0327", ["T_NC_Simple0327_2_4000_256_test.txt"])
+
+        avg_mean_h, avg_mean_s, avg_mean_d, avg_std_h, avg_std_s, avg_std_d = \
+            normal.calculate_avg_mean_std_HSD("P0330", ["T_NC_Simple0330_4000_256_test.txt"])
+
+        print(avg_mean_h, avg_mean_s, avg_mean_d, avg_std_h, avg_std_s, avg_std_d)
+        # "T_NC_Simple0327_2_4000_256_test.txt"
+        # -0.257421384092 0.235364054717 0.389308679108 0.18601853328 0.188481962243 0.248231192375
+
+        # T_NC_Simple0404_4000_256_test.txt
+        # -0.0676884085515 0.408808235442 0.371045973718 0.125415498138 0.124773051469 0.19882963109
+
+        # T_NC_Simple0330_4000_256_test.txt
+        # -0.163529218718 0.35086233971 0.375252081355 0.151278120093 0.15350647589 0.209511975401
+
     def test_calc_hist(self):
         c = Params()
         c.load_config_file(JSON_PATH)

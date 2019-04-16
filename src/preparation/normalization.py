@@ -13,6 +13,7 @@ import numpy as np
 from skimage import io
 
 from core.util import read_csv_file, get_project_root, get_seeds
+from preparation.hsd_transform import hsd2rgb, rgb2hsd
 from visdom import Visdom
 from core import Random_Gen
 
@@ -104,6 +105,31 @@ class ReinhardNormalization(AbstractNormalization):
         labO = np.dstack([labO_l, labO_a, labO_b])
         # LAB to RGB变换
         rgb_image = color.lab2rgb(labO)
+        return rgb_image
+
+class HSDNormalization(AbstractNormalization):
+    def __init__(self, method, **kwarg):
+        super(HSDNormalization, self).__init__(method, **kwarg)
+
+        self.source_mean = kwarg["source_mean"]
+        self.target_mean = kwarg["target_mean"]
+
+    def normalize(self, src_img):
+        hsd_img = rgb2hsd(src_img)
+
+        # LAB三通道分离
+        hsdO_h = hsd_img[:, :, 0]
+        hsdO_s = hsd_img[:, :, 1]
+        hsdO_d = hsd_img[:, :, 2]
+
+        # # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
+        hsdO_h = (hsdO_h - self.source_mean[0]) + self.target_mean[0]
+        hsdO_s = (hsdO_s - self.source_mean[1]) + self.target_mean[1]
+        hsdO_d = (hsdO_d - self.source_mean[2]) + self.target_mean[2]
+
+        hsd1 = np.dstack([hsdO_h, hsdO_s, hsdO_d])
+        # LAB to RGB变换
+        rgb_image = hsd2rgb(hsd1)
         return rgb_image
 
 class HistNormalization(AbstractNormalization):
@@ -401,8 +427,8 @@ class ImageNormalizationTool(object):
         # 归一化时，使用的参数
         return
 
-    def calculate_avg_mean_std_RGB(self, data_filenames):
-        root_path = self._params.PATCHS_ROOT_PATH
+    def calculate_avg_mean_std_RGB(self, source_code, data_filenames):
+        root_path = self._params.PATCHS_ROOT_PATH[source_code]
 
         count = 0
         mean_r = []
@@ -458,8 +484,8 @@ class ImageNormalizationTool(object):
     a表示从红色到绿色的范围，取值范围是[127,-128]；
     b表示从黄色到蓝色的范围，取值范围是[127,-128]。
     '''
-    def calculate_avg_mean_std(self, data_filenames):
-        root_path = self._params.PATCHS_ROOT_PATH
+    def calculate_avg_mean_std(self, source_code, data_filenames):
+        root_path = self._params.PATCHS_ROOT_PATH[source_code]
 
         count = 0
         mean_l = []
@@ -510,66 +536,118 @@ class ImageNormalizationTool(object):
         return avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b
 
     def calculate_hist(self, source_code, source_txt, file_code):
+        def _generate_histogram(self, filennames):
+            Shape_L = (101,)  # 100 + 1
+            Shape_A = (256,)  # 127 + 128 + 1
+            Shape_B = (256,)
+
+            hist_l = np.zeros(Shape_L)
+            hist_a = np.zeros(Shape_A)
+            hist_b = np.zeros(Shape_B)
+            for K, file in enumerate(filennames):
+                img = io.imread(file, as_gray=False)
+                lab_img = color.rgb2lab(img)
+
+                # LAB三通道分离
+                labO_l = np.array(lab_img[:, :, 0])
+                labO_a = np.array(lab_img[:, :, 1])
+                labO_b = np.array(lab_img[:, :, 2])
+
+                labO_l = np.rint(labO_l)
+                labO_a = np.rint(labO_a)
+                labO_b = np.rint(labO_b)
+
+                values, counts = np.unique(labO_l.ravel(), return_counts=True)
+                for value, count in zip(values, counts):
+                    hist_l[int(value)] += count
+
+                values, counts = np.unique(labO_a.ravel(), return_counts=True)
+                for value, count in zip(values, counts):
+                    hist_a[int(value) + 128] += count
+
+                values, counts = np.unique(labO_b.ravel(), return_counts=True)
+                for value, count in zip(values, counts):
+                    hist_b[int(value) + 128] += count
+
+                if (0 == K % 1000):
+                    print("{} calculate histogram >>> {}".format(time.asctime(time.localtime()), K))
+
+            tag = hist_l > 0
+            values_l = np.arange(0, 101)
+            hist_l = hist_l[tag]
+            values_l = values_l[tag]
+
+            tag = hist_a > 0
+            values_a = np.arange(-128, 128)
+            hist_a = hist_a[tag]
+            values_a = values_a[tag]
+
+            tag = hist_b > 0
+            values_b = np.arange(-128, 128)
+            hist_b = hist_b[tag]
+            values_b = values_b[tag]
+
+            return {"L": (values_l, hist_l), "A": (values_a, hist_a), "B": (values_b, hist_b)}
+
         root_path = self._params.PATCHS_ROOT_PATH
         print("prepare transform function ...", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         source_path = "{}/{}".format(root_path[source_code], source_txt)
         source_files, _ = read_csv_file(root_path[source_code], source_path)
         print("Loaded the number of images = ", len(source_files))
-        hist_sources = self._generate_histogram(source_files)
+        hist_sources = _generate_histogram(source_files)
 
         project_root = self._params.PROJECT_ROOT
         np.save("{}/data/{}".format(project_root, file_code), hist_sources)
         return
 
-    def _generate_histogram(self, filennames):
-        Shape_L = (101, ) # 100 + 1
-        Shape_A = (256, ) # 127 + 128 + 1
-        Shape_B = (256, )
 
-        hist_l = np.zeros(Shape_L)
-        hist_a = np.zeros(Shape_A)
-        hist_b = np.zeros(Shape_B)
-        for K, file in enumerate(filennames):
-            img = io.imread(file, as_gray=False)
-            lab_img = color.rgb2lab(img)
+    def calculate_avg_mean_std_HSD(self, source_code, data_filenames):
+        root_path = self._params.PATCHS_ROOT_PATH[source_code]
 
-            # LAB三通道分离
-            labO_l = np.array(lab_img[:, :, 0])
-            labO_a = np.array(lab_img[:, :, 1])
-            labO_b = np.array(lab_img[:, :, 2])
+        count = 0
+        mean_h = []
+        mean_s = []
+        mean_d = []
+        std_h = []
+        std_s = []
+        std_d = []
 
-            labO_l = np.rint(labO_l)
-            labO_a = np.rint(labO_a)
-            labO_b = np.rint(labO_b)
+        for data_filename in data_filenames:
+            data_file = "{}/{}".format(root_path, data_filename)
 
-            values, counts = np.unique(labO_l.ravel(), return_counts=True)
-            for value, count in zip(values, counts):
-                hist_l[int(value)] += count
+            f = open(data_file, "r")
+            for line in f:
+                items = line.split(" ")
+                patch_file = "{}/{}".format(root_path, items[0])
+                img = io.imread(patch_file, as_gray=False)
 
-            values, counts = np.unique(labO_a.ravel(), return_counts=True)
-            for value, count in zip(values, counts):
-                hist_a[int(value) + 128] += count
+                hsd_img = rgb2hsd(img)
 
-            values, counts = np.unique(labO_b.ravel(), return_counts=True)
-            for value, count in zip(values, counts):
-                hist_b[int(value) + 128] += count
+                # HSD三通道分离
+                hsdO_h = hsd_img[:, :, 0]
+                hsdO_s = hsd_img[:, :, 1]
+                hsdO_d = hsd_img[:, :, 2]
 
-            if (0 == K % 1000):
-                print("{} calculate histogram >>> {}".format(time.asctime(time.localtime()), K))
+                # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
+                std_h.append(np.std(hsdO_h))
+                std_s.append(np.std(hsdO_s))
+                std_d.append(np.std(hsdO_d))
 
-        tag = hist_l > 0
-        values_l = np.arange(0, 101)
-        hist_l = hist_l[tag]
-        values_l = values_l[tag]
+                mean_h.append(np.mean(hsdO_h))
+                mean_s.append(np.mean(hsdO_s))
+                mean_d.append(np.mean(hsdO_d))
 
-        tag = hist_a > 0
-        values_a = np.arange(-128, 128)
-        hist_a = hist_a[tag]
-        values_a = values_a[tag]
+                if (0 == count%1000):
+                    print("{} calculate mean and std >>> {}".format(time.asctime( time.localtime()), count))
+                count += 1
 
-        tag = hist_b > 0
-        values_b = np.arange(-128, 128)
-        hist_b = hist_b[tag]
-        values_b = values_b[tag]
+            f.close()
 
-        return {"L":(values_l, hist_l), "A":(values_a, hist_a), "B":(values_b, hist_b) }
+        avg_mean_h = np.mean(mean_h)
+        avg_mean_s = np.mean(mean_s)
+        avg_mean_d = np.mean(mean_d)
+        avg_std_h = np.mean(std_h)
+        avg_std_s = np.mean(std_s)
+        avg_std_d = np.mean(std_d)
+
+        return avg_mean_h, avg_mean_s, avg_mean_d, avg_std_h, avg_std_s, avg_std_d
