@@ -213,11 +213,11 @@ class BaseClassifier(object, metaclass=ABCMeta):
         test_list = "{}/{}_test.txt".format(patch_root, sample_filename)
 
         Xtrain, Ytrain = read_csv_file(patch_root, train_list)
-        Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
+        # Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
         train_data = Image_Dataset(Xtrain, Ytrain,) # transform = None,
 
         Xtest, Ytest = read_csv_file(patch_root, test_list)
-        Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
+        # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
         test_data = Image_Dataset(Xtest, Ytest)
         return  train_data, test_data
 

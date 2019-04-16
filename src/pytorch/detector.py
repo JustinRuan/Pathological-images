@@ -18,7 +18,7 @@ from visdom import Visdom
 
 from core import Random_Gen
 from core.util import get_seeds, transform_coordinate
-from pytorch.cnn_classifier import CNN_Classifier
+from pytorch.cnn_classifier import Simple_Classifier, MultiTask_Classifier, MSC_Classifier
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
@@ -109,7 +109,7 @@ class Detector(object):
             ########################################################################################################\
             #    DenseNet 22
             #########################################################################################################
-            cnn = CNN_Classifier(self._params, "densenet_22", "500_128")
+            cnn = Simple_Classifier(self._params, "densenet_22", "500_128")
         #########################################################################################################
         predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, seeds, 32)
 
@@ -133,9 +133,9 @@ class Detector(object):
             #    DenseNet 22
             #########################################################################################################
             if (new_scale == 20):
-                cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
+                cnn = Simple_Classifier(self._params, "densenet_22", "2000_256")
             else:  # (new_scale == 40):
-                cnn = CNN_Classifier(self._params, "densenet_22", "4000_256")
+                cnn = Simple_Classifier(self._params, "densenet_22", "4000_256")
         #########################################################################################################
         predictions = cnn.predict_on_batch(self._imgCone, new_scale, new_patch_size, new_seeds, 32)
         return new_seeds, predictions
@@ -618,7 +618,7 @@ class Detector(object):
         model_name = "simple_cnn"
         sample_name = "4000_256"
         # cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
-        cnn = CNN_Classifier(self._params, model_name, sample_name, normalization=normal_func)
+        cnn = Simple_Classifier(self._params, model_name, sample_name, normalization=normal_func)
 
         # 生成坐标网格
         grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]

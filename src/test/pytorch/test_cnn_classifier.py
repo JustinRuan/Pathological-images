@@ -13,6 +13,7 @@ from pytorch.cnn_classifier import Simple_Classifier
 import torch
 from preparation.normalization import HistNormalization
 from preparation.augmentation import ImageAugmentation
+from pytorch.image_dataset import Image_Dataset
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
@@ -46,7 +47,7 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.train_model(samples_name=("P0327", "Aug_LAB_4000_256"), augment_func=None,
         #                 batch_size=30, epochs = 10)
         cnn.train_model(samples_name=("P0327", "Aug_HIST_4000_256"), augment_func=None,
-                        batch_size=30, epochs = 3)
+                        batch_size=60, epochs = 10)
 
     def test_evaluate_model(self):
         c = Params()
@@ -116,9 +117,15 @@ class Test_cnn_classifier(unittest.TestCase):
         # sample_name = "500_128"
         sample_name = "4000_256"
 
-        cnn = Simple_Classifier(c, model_name, sample_name)
+        patch_root = c.PATCHS_ROOT_PATH["P0327"]
+        sample_filename = "T_NC_Simple0327_2_{}".format(sample_name)
+        train_list = "{}/{}_train.txt".format(patch_root, sample_filename)
 
-        train_data, test_data = cnn.load_custom_data(samples_name=("P0327", "T_NC_Simple0327_2_{}".format(sample_name)))
+        Xtrain, Ytrain = util.read_csv_file(patch_root, train_list)
+        Xtrain, Ytrain = Xtrain[:40], Ytrain[:40]  # for debug
+
+        train_data = Image_Dataset(Xtrain, Ytrain, )  # transform = None,
+
         print(train_data.__len__())
         train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=False, num_workers=2)
         print(train_loader)

@@ -10,10 +10,27 @@ import numpy as np
 import torch
 import torchvision
 from torch.utils.data import Dataset
-from core.util import read_csv_file
 from skimage.io import imread
-from preparation.normalization import HistNormalization
-from skimage.transform import resize
+
+
+# class Image_Dataset(Dataset):
+#     def __init__(self, x_set, y_set, transform = None):
+#         self.x, self.y = x_set, y_set
+#         if transform is None:
+#             self.transform = torchvision.transforms.ToTensor()
+#         else:
+#             self.transform = transform
+#
+#     def __getitem__(self, index):
+#         file_name = self.x[index]
+#         label = self.y[index]
+#         # img = ImageNormalization.normalize_mean(imread(file_name)) / 255
+#         img = imread(file_name) / 255.0
+#         img = self.transform(img).type(torch.FloatTensor)
+#         return img, label
+#
+#     def __len__(self):
+#         return len(self.x)
 
 class Image_Dataset(Dataset):
     def __init__(self, x_set, y_set, transform = None, augm = None, norm = None):
