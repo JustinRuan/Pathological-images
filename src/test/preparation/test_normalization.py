@@ -119,8 +119,8 @@ class TestNormalization(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         normal = ImageNormalizationTool(c)
-        normal.calculate_hist("P0404", "T_NC_P0404_4000_256_test.txt", file_code = "hist_soures")
-        normal.calculate_hist("Target", "Target_T1_4000_256_test.txt", file_code = "hist_templates")
+        normal.calculate_hist("P0327", "T_NC_Simple0327_2_4000_256_test.txt", file_code = "hist_soures_P0327")
+        # normal.calculate_hist("Target", "Target_T1_4000_256_test.txt", file_code = "hist_templates")
         # normal.calculate_hist("P0330", "T_NC_Simple0330_4000_256_test.txt", "Target", "Target_T1_4000_256_test.txt")
 
     def test_draw_hist(self):

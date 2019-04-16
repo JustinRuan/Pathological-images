@@ -12,7 +12,6 @@ from skimage import color
 import numpy as np
 from skimage import io
 
-from core import get_project_root
 from core.util import read_csv_file, get_project_root, get_seeds
 from visdom import Visdom
 from core import Random_Gen

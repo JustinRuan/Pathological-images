@@ -41,11 +41,12 @@ class Test_cnn_classifier(unittest.TestCase):
         cnn = Simple_Classifier(c, model_name, sample_name)
         # augment = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
-        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)), augment_func = None,
-                        batch_size=10, epochs = 3)
+        # cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)), augment_func = None,
+        #                 batch_size=10, epochs = 3)
         # cnn.train_model(samples_name=("P0327", "Aug_LAB_4000_256"), augment_func=None,
         #                 batch_size=30, epochs = 10)
-
+        cnn.train_model(samples_name=("P0327", "Aug_HIST_4000_256"), augment_func=None,
+                        batch_size=30, epochs = 3)
 
     def test_evaluate_model(self):
         c = Params()
@@ -62,7 +63,7 @@ class Test_cnn_classifier(unittest.TestCase):
         #                             hist_source = "hist_soures.npy")
         normal = None
 
-        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal)
+        cnn = Simple_Classifier(c, model_name, sample_name, normalization=None, )
         cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
                            model_file=None, batch_size=20, max_count=None)
         # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
@@ -110,21 +111,22 @@ class Test_cnn_classifier(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        # model_name = "simple_cnn"
-        model_name = "densenet_22"
+        model_name = "simple_cnn"
+        # model_name = "densenet_22"
         # sample_name = "500_128"
-        sample_name = "2000_256"
+        sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name)
 
-        train_data, test_data = cnn.load_custom_data("T_NC_{}".format(sample_name))
+        train_data, test_data = cnn.load_custom_data(samples_name=("P0327", "T_NC_Simple0327_2_{}".format(sample_name)))
         print(train_data.__len__())
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, num_workers=2)
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=False, num_workers=2)
         print(train_loader)
 
         for index, (x, y) in enumerate(train_loader):
             print(x.shape, y)
             if index > 10: break
+
 
     # def test_train_model_multi_task(self):
     #     c = Params()

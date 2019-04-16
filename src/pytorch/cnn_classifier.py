@@ -12,17 +12,17 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 import torch.utils.data as Data
-import torchvision      # 数据库模块
-from torchsummary import summary
+import torchvision  # 数据库模块
 from sklearn import metrics
+from torch.autograd import Variable
+from torchsummary import summary
 
 from core.util import latest_checkpoint
-from pytorch.net import Simple_CNN
-from pytorch.net import DenseNet, SEDenseNet, SEDenseNet_C9
-from core.util import read_csv_file, transform_coordinate
+from core.util import read_csv_file
 from pytorch.image_dataset import Image_Dataset, Image_Dataset_MSC
+from pytorch.net import DenseNet, SEDenseNet
+from pytorch.net import Simple_CNN
 from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_image_blocks_batch_normalize_itor, \
     get_image_file_batch_normalize_itor
 
@@ -38,16 +38,6 @@ class BaseClassifier(object, metaclass=ABCMeta):
         self._params = params
         self.patch_type = patch_type
         self.NUM_WORKERS = params.NUM_WORKERS
-
-        # if self.patch_type in ["1000_256", "2000_256", "4000_256", "x_256", "msc_256"]:
-        #     self.num_classes = 2
-        #     self.image_size = 256
-        # elif self.patch_type == "cifar10":
-        #     self.num_classes = 10
-        #     self.image_size = 32
-        # elif self.patch_type == "cifar100":
-        #     self.num_classes = 100
-        #     self.image_size = 32
 
         # 在子类构造时初始化
         self.model_name = model_name
@@ -187,7 +177,8 @@ class BaseClassifier(object, metaclass=ABCMeta):
             epoch_loss=running_loss / test_data_len
             epoch_acc=running_corrects.double() / test_data_len
 
-            torch.save(model, self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch+1, epoch_loss, epoch_acc))
+            torch.save(model, self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch+1, epoch_loss, epoch_acc),
+                       )
 
         return
 
@@ -222,11 +213,11 @@ class BaseClassifier(object, metaclass=ABCMeta):
         test_list = "{}/{}_test.txt".format(patch_root, sample_filename)
 
         Xtrain, Ytrain = read_csv_file(patch_root, train_list)
-        # Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
-        train_data = Image_Dataset(Xtrain, Ytrain, transform = None, augm = augment_func)
+        Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
+        train_data = Image_Dataset(Xtrain, Ytrain,) # transform = None,
 
         Xtest, Ytest = read_csv_file(patch_root, test_list)
-        # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
+        Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
         test_data = Image_Dataset(Xtest, Ytest)
         return  train_data, test_data
 
@@ -374,7 +365,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
 ######################################################################################################################
 class Simple_Classifier(BaseClassifier):
     def __init__(self, params, model_name, patch_type, **kwargs):
-        super(Simple_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
+        super(Simple_Classifier, self).__init__(params, model_name, patch_type,**kwargs)
 
         if self.patch_type in ["1000_256", "2000_256", "4000_256", "x_256", "msc_256"]:
             self.num_classes = 2

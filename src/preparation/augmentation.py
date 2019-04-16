@@ -11,8 +11,8 @@ import os
 from skimage import color
 import numpy as np
 import random
-from core.util import read_csv_file
-from core import Block, read_csv_file
+from core.util import read_csv_file, get_project_root
+from core import Block
 
 
 class AbstractAugmentation(object):
@@ -148,4 +148,75 @@ class ImageAugmentation(AbstractAugmentation):
         return rgb_image
 
 
+class HistAugmentation(AbstractAugmentation):
+
+    def __init__(self, **kwarg):
+        target_path = "{}/data/{}".format(get_project_root(), kwarg["hist_target"])
+        hist_target = np.load(target_path).item()
+        self.hist_target = hist_target
+
+        if kwarg["hist_source"] is not None:
+            print("reading histogram file ...")
+            source_path = "{}/data/{}".format(get_project_root(), kwarg["hist_source"])
+            print("reading histogram file: ", source_path)
+            hist_source = np.load(source_path).item()
+
+            LUT = []
+            LUT.append(self._estimate_cumulative_cdf(hist_source["L"], hist_target["L"], start=0, end=100))
+            LUT.append(self._estimate_cumulative_cdf(hist_source["A"], hist_target["A"], start=-128, end=127))
+            LUT.append(self._estimate_cumulative_cdf(hist_source["B"], hist_target["B"], start=-128, end=127))
+            self.LUT = LUT
+            self.hist_source = hist_source
+            self.hist_target = hist_target
+        else:
+            # 将使用Prepare过程进行初始化
+            self.LUT = None
+            self.hist_source = None
+
+
+    def augment_images(self, src_img):
+        lab_img = color.rgb2lab(src_img)
+
+        # LAB三通道分离
+        lab0_l = np.array(lab_img[:, :, 0]).astype(np.int)
+        lab0_a = np.array(lab_img[:, :, 1]).astype(np.int)
+        lab0_b = np.array(lab_img[:, :, 2]).astype(np.int)
+
+        LUT_L = self.LUT[0]
+        lab1_l = LUT_L[lab0_l]
+
+        LUT_A = self.LUT[1]
+        lab1_a = LUT_A[128 + lab0_a]
+
+        LUT_B = self.LUT[2]
+        lab1_b = LUT_B[128 + lab0_b]
+
+        labO = np.dstack([lab1_l, lab1_a, lab1_b])
+        # LAB to RGB变换, 会除以255
+        rgb_image = color.lab2rgb(labO)
+
+        return rgb_image
+
+    def _estimate_cumulative_cdf(self, source, template, start, end):
+        src_values, src_counts = source
+        tmpl_values, tmpl_counts = template
+
+        # calculate normalized quantiles for each array
+        src_quantiles = np.cumsum(src_counts) / np.sum(src_counts)
+        tmpl_quantiles = np.cumsum(tmpl_counts) / np.sum(tmpl_counts)
+
+        interp_a_values = np.interp(src_quantiles, tmpl_quantiles, tmpl_values)
+
+        if src_values[0] > start:
+            src_values = np.insert(src_values, 0, start)
+            interp_a_values = np.insert(interp_a_values, 0, start)
+        if src_values[-1] < end:
+            src_values = np.append(src_values, end)
+            interp_a_values = np.append(interp_a_values, end)
+
+        new_source = np.arange(start, end + 1)
+        interp_b_values = np.interp(new_source, src_values, interp_a_values)
+        # result = dict(zip(new_source, np.rint(interp_b_values))) # for debug
+        # return result
+        return np.rint(interp_b_values)
 
