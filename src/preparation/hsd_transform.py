@@ -52,9 +52,9 @@ def hsd2rgb(hsd):
     g = np.exp(-Dg) * 257.0 - 1
     r = np.exp(-Dr) * 257.0 - 1
 
-    r = np.clip(r, 0, 255).astype(np.int)
-    g = np.clip(g, 0, 255).astype(np.int)
-    b = np.clip(b, 0, 255).astype(np.int)
+    r = np.clip(r / 255, 0, 1).astype(np.float)
+    g = np.clip(g / 255, 0, 1).astype(np.float)
+    b = np.clip(b / 255, 0, 1).astype(np.float)
 
     # rgb = np.zeros(np.shape(hsd), dtype=np.int)
     # rgb[:, :, 0] = r

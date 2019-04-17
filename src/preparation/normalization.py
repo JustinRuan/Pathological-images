@@ -112,7 +112,9 @@ class HSDNormalization(AbstractNormalization):
         super(HSDNormalization, self).__init__(method, **kwarg)
 
         self.source_mean = kwarg["source_mean"]
+        self.source_std = kwarg["source_std"]
         self.target_mean = kwarg["target_mean"]
+        self.target_std = kwarg["target_std"]
 
     def normalize(self, src_img):
         hsd_img = rgb2hsd(src_img)
@@ -123,9 +125,9 @@ class HSDNormalization(AbstractNormalization):
         hsdO_d = hsd_img[:, :, 2]
 
         # # 按通道进行归一化整个图像, 经过缩放后的数据具有零均值以及标准方差
-        hsdO_h = (hsdO_h - self.source_mean[0]) + self.target_mean[0]
-        hsdO_s = (hsdO_s - self.source_mean[1]) + self.target_mean[1]
-        hsdO_d = (hsdO_d - self.source_mean[2]) + self.target_mean[2]
+        hsdO_h = (hsdO_h - self.source_mean[0]) / self.source_std[0] * self.target_std[0] + self.target_mean[0]
+        hsdO_s = (hsdO_s - self.source_mean[1]) / self.source_std[1] * self.target_std[1] + self.target_mean[1]
+        hsdO_d = (hsdO_d - self.source_mean[2]) / self.source_std[2] * self.target_std[2] + self.target_mean[2]
 
         hsd1 = np.dstack([hsdO_h, hsdO_s, hsdO_d])
         # LAB to RGB变换

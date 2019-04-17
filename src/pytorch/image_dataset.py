@@ -53,12 +53,12 @@ class Image_Dataset(Dataset):
 
         img = imread(file_name)
         if self.augm_norm_func is not None:
-            img = self.augm_norm_func.process(img)
+            img2 = self.augm_norm_func.process(img)
         else:
-            img = img / 255.0
+            img2 = img / 255.0
 
-        img = self.transform(img).type(torch.FloatTensor)
-        return img, label
+        img_tensor = self.transform(img2).type(torch.FloatTensor)
+        return img_tensor, label
 
     def __len__(self):
         return len(self.x)

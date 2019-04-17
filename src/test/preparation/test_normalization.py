@@ -46,7 +46,9 @@ class TestNormalization(unittest.TestCase):
         #                             hist_source = "hist_soures.npy")
 
         normal = HSDNormalization("hsd_norm", target_mean=( -0.2574, 0.2353, 0.3893),
-                                  source_mean=(-0.0676, 0.4088, 0.3710),)
+                                  target_std=(0.1860, 0.1884, 0.2482),
+                                  source_mean=(-0.0676, 0.4088, 0.3710),
+                                  source_std=(0.1254, 0.1247, 0.1988))
 
         # image_list = []
         # for filename in file_list:
@@ -133,14 +135,15 @@ class TestNormalization(unittest.TestCase):
         print(avg_mean_h, avg_mean_s, avg_mean_d, avg_std_h, avg_std_s, avg_std_d)
         # "T_NC_Simple0327_2_4000_256_test.txt"
         # -0.257421384092 0.235364054717 0.389308679108 0.18601853328 0.188481962243 0.248231192375
-        # ( -0.2574, 0.2353, 0.3893)
+        # ( -0.2574, 0.2353, 0.3893)  (0.1860, 0.1884, 0.2482)
 
         # T_NC_Simple0404_4000_256_test.txt
         # -0.0676884085515 0.408808235442 0.371045973718 0.125415498138 0.124773051469 0.19882963109
-        # (-0.0676, 0.4088, 0.3710)
+        # (-0.0676, 0.4088, 0.3710)  (0.1254, 0.1247, 0.1988)
 
         # T_NC_Simple0330_4000_256_test.txt
         # -0.163529218718 0.35086233971 0.375252081355 0.151278120093 0.15350647589 0.209511975401
+        # (-0.1635, 0.3508, 0.3752)
 
     def test_calc_hist(self):
         c = Params()
