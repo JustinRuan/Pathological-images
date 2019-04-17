@@ -50,7 +50,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cuda:0" if self.use_GPU else "cpu")
 
-        self.model = model_name
+        self.model = None
         if 'normalization' in kwargs:
             self.normal_func = kwargs["normalization"]
         else:
@@ -295,7 +295,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
 
 
         if self.model is None:
-            self.model = self.load_pretrained_model_on_predict(self.patch_type)
+            self.model = self.load_pretrained_model_on_predict()
             self.model.to(self.device)
             self.model.eval()
 
@@ -444,7 +444,7 @@ class Simple_Classifier(BaseClassifier):
         :return: 网络模型
         '''
         net_file = {
-            "simple_cnn_4000_256": "simple_cnn_40_256_cp-0003-0.0742-0.9743.pth",
+            "simple_cnn_4000_256": "simple_cnn_40_256_cp-0002-0.0650-0.9779.pth",
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)
