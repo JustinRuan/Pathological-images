@@ -13,7 +13,7 @@ from skimage.io import imread
 import random
 import numpy as np
 
-from preparation.augmentation import ImageAugmentation, HistAugmentation
+from preparation.augmentation import ImageAugmentation, HistAugmentation, RndAugmentation
 
 # JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
@@ -32,8 +32,9 @@ class TestAugmentation(unittest.TestCase):
         rnd = random.randint(0, len(all_file_list) // N)
         file_list = all_file_list[rnd:rnd + N]
 
-        augment = ImageAugmentation(l_range = (0.9, 1.1), a_range = (0.95, 1.05),
-                                   b_range = (0.95, 1.05), constant_range = (-10, 10))
+        # augment = ImageAugmentation(l_range = (0.9, 1.1), a_range = (0.95, 1.05),
+        #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
+        augment = RndAugmentation()
 
         fig = plt.figure(figsize=(16, 10), dpi=100)
         for index, filename in enumerate(file_list):

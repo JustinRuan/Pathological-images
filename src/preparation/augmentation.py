@@ -13,7 +13,7 @@ import numpy as np
 import random
 from core.util import read_csv_file, get_project_root
 from core import Block
-
+import random
 
 class AbstractAugmentation(object):
     def augment_images(self, src_img):
@@ -228,4 +228,19 @@ class RndAugmentation(AbstractAugmentation):
         self.opcode = 11
 
     def augment_images(self, src_img):
-        lab_img = color.rgb2lab(src_img)
+        rnd_index = [0, 1, 2]
+        random.shuffle(rnd_index)
+
+        # RGB三通道分离
+        if random.random() > 0.8:
+            rgb_r = 255 - src_img[:, :, rnd_index[0]]
+            rgb_g = 255 - src_img[:, :, rnd_index[1]]
+            rgb_b = 255 - src_img[:, :, rnd_index[2]]
+        else:
+            rgb_r = src_img[:, :, rnd_index[0]]
+            rgb_g = src_img[:, :, rnd_index[1]]
+            rgb_b = src_img[:, :, rnd_index[2]]
+
+        rgb = np.dstack([rgb_r, rgb_g, rgb_b])
+
+        return rgb
