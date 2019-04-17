@@ -222,3 +222,10 @@ class HistAugmentation(AbstractAugmentation):
         # return result
         return np.rint(interp_b_values)
 
+class RndAugmentation(AbstractAugmentation):
+
+    def __init__(self, **kwarg):
+        self.opcode = 11
+
+    def augment_images(self, src_img):
+        lab_img = color.rgb2lab(src_img)

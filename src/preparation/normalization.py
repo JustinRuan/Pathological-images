@@ -62,7 +62,7 @@ class RGBNormalization(AbstractNormalization):
 
         rgb1_r = np.clip(rgb1_r, 0, 255)
         rgb1_g = np.clip(rgb1_g, 0, 255)
-        rgb1_b = np.clip(rgb1_r, 0, 255)
+        rgb1_b = np.clip(rgb1_b, 0, 255)
 
         rgb_result = np.dstack([rgb1_r.astype(np.int), rgb1_g.astype(np.int), rgb1_b.astype(np.int)])
 
