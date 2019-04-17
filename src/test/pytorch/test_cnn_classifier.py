@@ -72,8 +72,10 @@ class Test_cnn_classifier(unittest.TestCase):
         #                           target_std=(0.1860, 0.1884, 0.2482),
         #                           source_mean=(-0.1635, 0.3508, 0.3752),
         #                           source_std=(0.1860, 0.1884, 0.2482))
-        normal = RndAugmentation()
-        # normal = None
+        # normal = RndAugmentation()
+        normal = None
+        # normal = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
+        #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
 
         cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, )
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
@@ -81,8 +83,12 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256"),
         #                    model_file=None, batch_size=20, max_count=None)
-        cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256"),
+        # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256"),
+        #                    model_file=None, batch_size=20, max_count=600)
+        cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
                            model_file=None, batch_size=20, max_count=None)
+
+
 
     def test_evaluate_model_with_sampling(self):
         c = Params()

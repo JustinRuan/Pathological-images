@@ -64,12 +64,47 @@ def hsd2rgb(hsd):
 
     return rgb
 
+
+def RGB2HSD2(X):
+    XX = X / 255.0
+    eps = np.finfo(float).eps
+    XX[np.where(XX == 0.0)] = eps
+
+    OD = -np.log(XX / 1.0)
+    D = np.mean(OD, axis=2)
+    D[np.where(D == 0.0)] = eps
+
+    cx = OD[:, :, 0] / (D) - 1.0
+    cy = (OD[ :, :, 1] - OD[ :, :, 2]) / (np.sqrt(3.0) * D)
+
+    D = np.expand_dims(D, 2)
+    cx = np.expand_dims(cx, 2)
+    cy = np.expand_dims(cy, 2)
+
+    X_HSD = np.concatenate((cx, cy, D), 2)
+    return X_HSD
+
+def HSD2RGB2(X_HSD):
+    X_HSD_0 = X_HSD[..., 2]
+    X_HSD_1 = X_HSD[..., 0]
+    X_HSD_2 = X_HSD[..., 1]
+    D_R = np.expand_dims(np.multiply(X_HSD_1 + 1, X_HSD_0), 2)
+    D_G = np.expand_dims(np.multiply(0.5 * X_HSD_0, 2 - X_HSD_1 + np.sqrt(3.0) * X_HSD_2), 2)
+    D_B = np.expand_dims(np.multiply(0.5 * X_HSD_0, 2 - X_HSD_1 - np.sqrt(3.0) * X_HSD_2), 2)
+
+    X_OD = np.concatenate((D_R, D_G, D_B), axis=2)
+    X_RGB = 1.0 * np.exp(-X_OD)
+
+    return X_RGB
+
 if __name__ == '__main__':
     from skimage import data, io
 
     image = data.astronaut() # RGB image
     hsd_img = rgb2hsd(image)
     rgb_img = hsd2rgb(hsd_img)
-    # io.imshow(rgb_img)
-    io.imshow_collection([image, hsd_img, rgb_img, rgb_img])
+    hsd_img2 = RGB2HSD2(image)
+    rgb_img2 = HSD2RGB2(hsd_img2)
+    io.imshow_collection([image, hsd_img, rgb_img, hsd_img2, rgb_img2])
     io.show()
+

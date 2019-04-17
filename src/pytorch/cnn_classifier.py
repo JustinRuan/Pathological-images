@@ -222,7 +222,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
         return  train_data, test_data
 
     def loading_test_dataset(self, samples_name, batch_size, max_count, special_norm_mode = False):
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
+        test_list = "{}/{}".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
 
         if max_count is not None:
