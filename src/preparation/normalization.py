@@ -12,6 +12,9 @@ from skimage import color
 import numpy as np
 from skimage import io
 
+import cv2
+import torch
+
 from core.util import read_csv_file, get_project_root, get_seeds
 from preparation.hsd_transform import hsd2rgb, rgb2hsd
 from visdom import Visdom
@@ -425,9 +428,6 @@ class HistNormalization(AbstractNormalization):
 
         return normal
 
-import cv2
-import torch
-
 class ACDNormalization(AbstractNormalization):
     def __init__(self, method, **kwarg):
         super(ACDNormalization, self).__init__(method, **kwarg)
@@ -440,9 +440,11 @@ class ACDNormalization(AbstractNormalization):
         self.template_path = "{}/data/{}".format(get_project_root(), kwarg["template_path"])
         self._template_dc_mat = None
         self._template_w_mat = None
-        # if(not os.path.exists(self.dc_txt) or not os.path.exists(self.w_txt)):
-        #     self.generate()
-        self.generate()
+        if(not os.path.exists(self.dc_txt) or not os.path.exists(self.w_txt)):
+            self.generate()
+        # self.generate()
+        self._template_dc_mat = np.loadtxt(self.dc_txt)
+        self._template_w_mat = np.loadtxt(self.w_txt)
 
     def normalize(self, src_img):
         img = self.transform(src_img)
@@ -509,7 +511,8 @@ class ACDNormalization(AbstractNormalization):
                 print('(%d) %d / %d ==> Loss: %.4f ' % (ep, step, self._step_per_epoch, running_loss))
 
         opt_cd = model.cd_mat.data.numpy()
-        opt_w = model.w.data.numpy()
+        # opt_w = model.w.data.numpy()
+        opt_w = np.append(model.w.data.numpy(), [1.0])
         return opt_cd, opt_w
 
         # input_od = tf.placeholder(dtype=tf.float32, shape=[None, 3])
@@ -525,8 +528,34 @@ class ACDNormalization(AbstractNormalization):
         #     opt_w = sess.run(self.w)
         # return opt_cd, opt_w
 
+        # self._template_dc_mat = np.loadtxt(self.dc_txt)
+        # self._template_w_mat = np.loadtxt(self.w_txt)
+        # if self._template_dc_mat is None:
+        #     raise AssertionError('Run fit function first')
+        #
+        # opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
+        # transform_mat = np.matmul(opt_cd_mat * opt_w_mat, self.inv)
+        #                           # np.linalg.inv(self._template_dc_mat * self._template_w_mat))
+        #
+        # od = -np.log((np.asarray(images, np.float) + 1) / 256.0)
+        # normed_od = np.matmul(od, transform_mat)
+        # normed_images = np.exp(-normed_od) * 256 - 1
+
     def transform(self, images):
-        pass
+        # self._template_dc_mat = np.loadtxt(self.dc_txt)
+        # self._template_w_mat = np.loadtxt(self.w_txt)
+
+        if self._template_dc_mat is None:
+            raise AssertionError('Run fit function first')
+
+        opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
+        transform_mat = np.matmul(opt_cd_mat * opt_w_mat, np.linalg.inv(self._template_dc_mat * self._template_w_mat))
+
+        od = -np.log((np.asarray(images, np.float) + 1) / 256.0)
+        normed_od = np.matmul(od, transform_mat)
+        normed_images = np.exp(-normed_od) * 256 - 1
+
+        return np.maximum(np.minimum(normed_images, 255), 0) / 255
 
 class ImageNormalizationTool(object):
     def __init__(self, params):

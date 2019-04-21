@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from skimage.io import imread
 import random
 import numpy as np
+import cv2
 
 from preparation.normalization import RGBNormalization, ReinhardNormalization, HistNormalization, \
     ImageNormalizationTool, HSDNormalization, ACDNormalization
@@ -170,4 +171,35 @@ class TestNormalization(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+
+        filename = "T_NC_Simple0404_4000_256_test.txt"
+        patch_path = c.PATCHS_ROOT_PATH["P0404"]
+        all_file_list, _ = util.read_csv_file(patch_path, "{}/{}".format(patch_path, filename))
+
+        N = 20
+        rnd = random.randint(0, len(all_file_list) // N)
+        file_list = all_file_list[rnd:rnd + N]
+
+        images = []
+        for index, filename in enumerate(file_list):
+            # img = imread(filename)
+            img = cv2.imread(filename)
+            images.append(img)
+
+        results = normal.transform(images)
+
+        fig = plt.figure(figsize=(16, 10), dpi=100)
+        for index, (result, img) in enumerate(zip(results, images)):
+            plt.subplot(5, 2 * N / 5, 2 * index + 1)
+            plt.imshow(img)
+
+            plt.axis("off")
+            plt.subplot(5, 2 * N / 5, 2 * index + 2)
+            plt.axis("off")
+            plt.imshow(result)
+
+        fig.tight_layout()  # 调整整体空白
+        plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
+        plt.show()
+
 
