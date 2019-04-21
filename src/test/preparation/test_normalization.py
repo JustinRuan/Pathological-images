@@ -14,7 +14,7 @@ import random
 import numpy as np
 
 from preparation.normalization import RGBNormalization, ReinhardNormalization, HistNormalization, \
-    ImageNormalizationTool, HSDNormalization
+    ImageNormalizationTool, HSDNormalization, ACDNormalization
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
@@ -164,3 +164,10 @@ class TestNormalization(unittest.TestCase):
                                    image_source= None)
         # normal.draw_hist("Nice")
         normal.draw_normalization_func("Nice")
+
+    def test_acd_method(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+

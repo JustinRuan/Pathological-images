@@ -16,6 +16,8 @@ from core.util import read_csv_file, get_project_root, get_seeds
 from preparation.hsd_transform import hsd2rgb, rgb2hsd
 from visdom import Visdom
 from core import Random_Gen
+from preparation.acd_model import ACD_Model
+from torch.autograd import Variable
 
 class AbstractNormalization(object):
     def __init__(self, method, **kwarg):
@@ -422,6 +424,109 @@ class HistNormalization(AbstractNormalization):
         normal.prepare(images)
 
         return normal
+
+import cv2
+import torch
+
+class ACDNormalization(AbstractNormalization):
+    def __init__(self, method, **kwarg):
+        super(ACDNormalization, self).__init__(method, **kwarg)
+        self._pn = 100000
+        self._bs = 500
+        self._step_per_epoch = 20
+        self._epoch = 15
+        self.dc_txt = "{}/data/{}".format(get_project_root(), kwarg["dc_txt"])
+        self.w_txt = "{}/data/{}".format(get_project_root(), kwarg["w_txt"])
+        self.template_path = "{}/data/{}".format(get_project_root(), kwarg["template_path"])
+        self._template_dc_mat = None
+        self._template_w_mat = None
+        # if(not os.path.exists(self.dc_txt) or not os.path.exists(self.w_txt)):
+        #     self.generate()
+        self.generate()
+
+    def normalize(self, src_img):
+        img = self.transform(src_img)
+        return img
+
+    def generate(self):
+        template_list = os.listdir(self.template_path)
+        temp_images = np.zeros((template_list.__len__(), 2048, 2048, 3), np.uint8)
+
+        for i, name in enumerate(template_list):
+            temp_images[i] = cv2.imread(os.path.join(self.template_path, name))
+
+        # fit
+        st = time.time()
+        self.fit(temp_images)
+        print('fit time', time.time() - st)
+
+    def fit(self, images):
+        opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
+        np.savetxt(self.dc_txt, opt_cd_mat)
+        np.savetxt(self.w_txt, opt_w_mat)
+
+    def sampling_data(self, images):
+        pixels = np.reshape(images, (-1, 3))
+        pixels = pixels[np.random.choice(pixels.shape[0], min(self._pn * 20, pixels.shape[0]))]
+        od = -np.log((np.asarray(pixels, np.float) + 1) / 256.0)
+        tmp = np.mean(od, axis=1)
+
+        # filter the background pixels (white or black)
+        od = od[(tmp > 0.3) & (tmp < -np.log(30 / 256))]
+        od = od[np.random.choice(od.shape[0], min(self._pn, od.shape[0]))]
+
+        return od
+
+    def extract_adaptive_cd_params(self, images):
+        """
+        :param images: RGB uint8 format in shape of [k, m, n, 3], where
+                       k is the number of ROIs sampled from a WSI, [m, n] is
+                       the size of ROI.
+        """
+        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
+
+        od_data = self.sampling_data(images)
+
+        model = ACD_Model()
+        model.to(self.device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.05)
+        model.train()
+
+        for ep in range(self._epoch):
+            for step in range(self._step_per_epoch):
+                batch_data = od_data[step * self._bs:(step + 1) * self._bs]
+                x = torch.from_numpy(batch_data).float()
+                b_x = Variable(x.to(self.device))
+                out = model(b_x)
+                loss = model.loss_function(out)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                running_loss = loss.item()
+                print('(%d) %d / %d ==> Loss: %.4f ' % (ep, step, self._step_per_epoch, running_loss))
+
+        opt_cd = model.cd_mat.data.numpy()
+        opt_w = model.w.data.numpy()
+        return opt_cd, opt_w
+
+        # input_od = tf.placeholder(dtype=tf.float32, shape=[None, 3])
+        # target, cd, w = self.acd_model(input_od)
+        # init = tf.global_variables_initializer()
+
+        # with tf.Session() as sess:
+        #     sess.run(self.init)
+        #     for ep in range(self._epoch):
+        #         for step in range(self._step_per_epoch):
+        #             sess.run(self.target, {self.input_od: od_data[step * self._bs:(step + 1) * self._bs]})
+        #     opt_cd = sess.run(self.cd)
+        #     opt_w = sess.run(self.w)
+        # return opt_cd, opt_w
+
+    def transform(self, images):
+        pass
 
 class ImageNormalizationTool(object):
     def __init__(self, params):
