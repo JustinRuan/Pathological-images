@@ -44,6 +44,7 @@ class Test_detector(unittest.TestCase):
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
+        effi_seeds = detector.get_effective_seeds(x1, y1, x2, y2, 1.25, 1.25)
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 6), dpi=200)
         ax = axes.ravel()
@@ -302,7 +303,7 @@ class Test_detector(unittest.TestCase):
         #             ("021", 0, 2400, 3000, 6500),
         #             ("001", 800, 1600, 1600, 2300),]
 
-        id = 3
+        id = 2
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -325,7 +326,7 @@ class Test_detector(unittest.TestCase):
         # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
         #                            iter_nums, batch_size, threshold):
         cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums=50,
-                                                              batch_size=30, limit_sampling_density=10, use_post=True)
+                                                              batch_size=10, limit_sampling_density=10, use_post=True)
         # label_map = np.load("label_map.npy")
         # cancer_map2 = detector.create_cancer_map_superpixels(cancer_map, label_map)
 

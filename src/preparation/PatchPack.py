@@ -62,7 +62,7 @@ class PatchPack(object):
         L = []
         for root, dirs, files in os.walk(full_dir):
             for file in files:
-                if os.path.splitext(file)[1] == '.jpg':
+                if os.path.splitext(file)[1] in ['.jpg', '.png'] :
                     file_path = os.path.join(root, file)
                     rfile = file_path.replace('\\', '/')[right_len:]
                     L.append((rfile, tag))

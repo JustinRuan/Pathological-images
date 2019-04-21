@@ -11,6 +11,7 @@ from core import *
 import matplotlib.pyplot as plt
 import numpy as np
 
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 
 class TestImageCone(unittest.TestCase):
 
@@ -55,7 +56,7 @@ class TestImageCone(unittest.TestCase):
 
     def test_load2(self):
         c = Params()
-        c.load_config_file("D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json")
+        c.load_config_file(JSON_PATH)
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
@@ -72,7 +73,7 @@ class TestImageCone(unittest.TestCase):
             masks = imgCone.create_mask_image(scale,8)
             eff_region = imgCone.get_effective_zone(scale)
 
-            fig, axes = plt.subplots(1, 6, figsize=(8, 3), dpi=200)
+            fig, axes = plt.subplots(2, 3, figsize=(8, 3), dpi=200)
             ax = axes.ravel()
 
             ax[0].imshow(fullImage)
@@ -84,8 +85,8 @@ class TestImageCone(unittest.TestCase):
             ax[2].set_title("S_mask")
             ax[3].imshow(masks["EI"])
             ax[3].set_title("EI_mask")
-            # ax[4].imshow(masks["EO"])
-            ax[4].imshow(np.bitwise_and(masks["EI"], masks["EO"]))
+            ax[4].imshow(masks["EO"])
+            # ax[4].imshow(np.bitwise_and(masks["EI"], masks["EO"]))
             ax[4].set_title("EO_mask")
             ax[5].imshow(eff_region)
             ax[5].set_title("eff_region")

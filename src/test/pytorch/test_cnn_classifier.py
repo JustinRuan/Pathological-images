@@ -12,7 +12,7 @@ from core import *
 from pytorch.cnn_classifier import Simple_Classifier
 import torch
 from preparation.normalization import HistNormalization, HSDNormalization
-from preparation.augmentation import ImageAugmentation, RndAugmentation
+from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
@@ -42,10 +42,10 @@ class Test_cnn_classifier(unittest.TestCase):
         cnn = Simple_Classifier(c, model_name, sample_name)
         # augment = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
-        augment = RndAugmentation()
+        augment = HRndAugmentation()
 
-        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_{}".format(sample_name)), augment_func = augment,
-                        batch_size=10, epochs = 3)
+        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_4000_256"), augment_func = augment,
+                        batch_size=40, epochs = 3)
         # cnn.train_model(samples_name=("P0327", "Aug_LAB_4000_256"), augment_func=None,
         #                 batch_size=30, epochs = 10)
         # cnn.train_model(samples_name=("P0327", "Aug_HIST_4000_256"), augment_func=None,
@@ -60,10 +60,10 @@ class Test_cnn_classifier(unittest.TestCase):
         model_name = "simple_cnn"
         sample_name = "4000_256"
 
-        # normal = HistNormalization("match_hist", hist_target ="hist_templates.npy",
-        #                            hist_source = None)
-        # normal = HistNormalization("match_hist", hist_target = "hist_templates.npy",
-        #                             hist_source = "hist_soures.npy")
+        normal = HistNormalization("match_hist", hist_target ="hist_templates_2048.npy",
+                                   hist_source = "hist_source_P0404.npy")
+        # normal = HistNormalization("match_hist", hist_target = "hist_soures_P0327.npy",
+        #                             hist_source = "hist_soures_P0330.npy")
         # normal = HSDNormalization("hsd_norm", target_mean=( -0.2574, 0.2353, 0.3893),
         #                           target_std=(0.1860, 0.1884, 0.2482),
         #                           source_mean=(-0.0676, 0.4088, 0.3710),
@@ -73,7 +73,7 @@ class Test_cnn_classifier(unittest.TestCase):
         #                           source_mean=(-0.1635, 0.3508, 0.3752),
         #                           source_std=(0.1860, 0.1884, 0.2482))
         # normal = RndAugmentation()
-        normal = None
+        # normal = None
         # normal = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
 
@@ -81,12 +81,12 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
         #                    model_file=None, batch_size=20, max_count=None)
         # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
-        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256"),
+        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
-        # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256"),
-        #                    model_file=None, batch_size=20, max_count=600)
-        cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
+        cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
                            model_file=None, batch_size=20, max_count=None)
+        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
+        #                    model_file=None, batch_size=20, max_count=None)
 
 
 

@@ -538,7 +538,7 @@ class ImageNormalizationTool(object):
         return avg_mean_l, avg_mean_a, avg_mean_b, avg_std_l, avg_std_a, avg_std_b
 
     def calculate_hist(self, source_code, source_txt, file_code):
-        def _generate_histogram(self, filennames):
+        def _generate_histogram(filennames):
             Shape_L = (101,)  # 100 + 1
             Shape_A = (256,)  # 127 + 128 + 1
             Shape_B = (256,)

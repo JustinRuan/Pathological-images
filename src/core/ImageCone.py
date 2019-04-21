@@ -121,13 +121,13 @@ class ImageCone(object):
 
         img = color.rgb2hsv(fullImg)
         # mask = np.ones(img.Shape, dtype=np.uint8)
-        mask1 = (img[:, :, 2] < 0.90) & (img[:, :, 2] > 0.15)
-        mask2 = (img[:, :, 1] > 0.15)
+        mask1 = (img[:, :, 2] < 0.85) & (img[:, :, 2] > 0.15)
+        mask2 = (img[:, :, 1] > 0.1)
         # mask3 = (img[:, :, 0] < 0.95) & (img[:, :, 0] > 0.05)
         # result = mask1 & mask2 & mask3
         result = mask1 & mask2
 
-        result = morphology.binary_closing(result, square(10))
-        # result = morphology.binary_opening(result, square(20))
-        result = morphology.binary_dilation(result, square(10))
+        result = morphology.binary_closing(result, square(4))
+        # result = morphology.binary_erosion(result, square(4))
+        result = morphology.binary_dilation(result, square(8))
         return result

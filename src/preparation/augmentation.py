@@ -244,3 +244,37 @@ class RndAugmentation(AbstractAugmentation):
         rgb = np.dstack([rgb_r, rgb_g, rgb_b])
 
         return rgb
+
+class HRndAugmentation(AbstractAugmentation):
+
+    def __init__(self, **kwarg):
+        self.opcode = 12
+
+    def augment_images(self, src_img):
+        img_hsv = color.rgb2hsv(src_img)
+
+        h = img_hsv[:, :, 0]
+        rnd = 2 * random.random() - 1
+        h_new = h + rnd
+        h_new[h_new > 1] = h_new[h_new > 1] - 1
+        h_new[h_new < 0] = h_new[h_new < 0] + 1
+        img_hsv[:,:,0] = h_new
+        rgb = color.hsv2rgb(img_hsv)
+
+        return rgb
+
+if __name__ == '__main__':
+    from skimage import data,io
+
+    img = data.astronaut()
+    img_hsv = color.rgb2hsv(img)
+    h = img_hsv[:, :, 0]
+    rnd = 2 * random.random() - 1
+    print(rnd)
+    h_new = h + rnd
+    h_new[h_new > 1] = h_new[h_new > 1] - 1
+    h_new[h_new < 0] = h_new[h_new < 0] + 1
+    img_hsv[:,:,0] = h_new
+    rgb = color.hsv2rgb(img_hsv)
+    io.imshow(rgb)
+    io.show()

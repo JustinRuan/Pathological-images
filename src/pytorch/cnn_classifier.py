@@ -214,7 +214,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
 
         Xtrain, Ytrain = read_csv_file(patch_root, train_list)
         # Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
-        train_data = Image_Dataset(Xtrain, Ytrain,) # transform = None,
+        train_data = Image_Dataset(Xtrain, Ytrain,transform = None, augm = augment_func, norm = None)
 
         Xtest, Ytest = read_csv_file(patch_root, test_list)
         # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
@@ -316,6 +316,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
                 results.append((pred, prob))
             print('predicting => %d / %d ' % (step + 1, data_len))
 
+            # for debug
             probs = probs.cpu().numpy()
             mean = np.mean(probs)
             std = np.std(probs)
@@ -445,6 +446,7 @@ class Simple_Classifier(BaseClassifier):
         '''
         net_file = {
             "simple_cnn_4000_256": "simple_cnn_40_256_cp-0002-0.0650-0.9779.pth",
+            "se_densenet_22_4000_256":"densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)

@@ -162,9 +162,9 @@ class Open_Slide(object):
             EO_img = np.bitwise_xor(C_outer, C_img)
             EO_img = morphology.binary_erosion(EO_img, selem=square(edge_width))
 
-            common_E = np.bitwise_not(np.bitwise_and(EO_img, EI_img))
-            EI_img = np.bitwise_and(np.bitwise_and(EI_img, common_E), C_img)
-            EO_img = np.bitwise_and(np.bitwise_and(EO_img, common_E), N_img)
+            common_E = np.bitwise_or(EO_img, EI_img)
+            EI_img = np.bitwise_and(common_E, C_img)
+            EO_img = np.bitwise_and(common_E, N_img)
         else:
             EI_img = np.zeros((h, w), dtype=np.bool)
             EO_img = np.zeros((h, w), dtype=np.bool)
