@@ -485,8 +485,8 @@ class ACDNormalization(AbstractNormalization):
                        k is the number of ROIs sampled from a WSI, [m, n] is
                        the size of ROI.
         """
-        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.device = torch.device("cpu")
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # self.device = torch.device("cpu")
 
         od_data = self.sampling_data(images)
 
@@ -510,9 +510,9 @@ class ACDNormalization(AbstractNormalization):
                 running_loss = loss.item()
                 print('(%d) %d / %d ==> Loss: %.4f ' % (ep, step, self._step_per_epoch, running_loss))
 
-        opt_cd = model.cd_mat.data.numpy()
+        opt_cd = model.cd_mat.data.cpu().numpy()
         # opt_w = model.w.data.numpy()
-        opt_w = np.append(model.w.data.numpy(), [1.0])
+        opt_w = np.append(model.w.data.cpu().numpy(), [1.0])
         return opt_cd, opt_w
 
         # input_od = tf.placeholder(dtype=tf.float32, shape=[None, 3])

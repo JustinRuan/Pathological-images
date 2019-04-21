@@ -38,7 +38,9 @@ class ACD_Model(nn.Module):
         # s = tf.matmul(input_od, cd_mat) * w
 
         s1 = torch.matmul(x, self.cd_mat)
-        s2 = torch.cat((self.w, torch.FloatTensor([1.0])))
+        one = torch.FloatTensor([1.0])
+        one = one.to(x.device)
+        s2 = torch.cat((self.w, one))
         out = s1 * s2
 
         return out
@@ -49,6 +51,13 @@ class ACD_Model(nn.Module):
         lambda_e=torch.FloatTensor([1])
         eta=torch.FloatTensor([0.6])
         gamma=torch.FloatTensor([0.5])
+
+        lambda_p = lambda_p.to(out.device)
+        lambda_b = lambda_b.to(out.device)
+        lambda_e = lambda_e.to(out.device)
+        eta = eta.to(out.device)
+        gamma = gamma.to(out.device)
+
 
         # h, e, b = tf.split(s, (1, 1, 1), axis=1)
         h, e, b = torch.split(out, 1, dim=1)
