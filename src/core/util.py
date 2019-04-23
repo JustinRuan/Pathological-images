@@ -55,6 +55,7 @@ def read_csv_file(root_path, csv_path):
     f = open(csv_path, "r")
     lines = f.readlines()
     for line in lines:
+
         items = line.split(" ")
         if len(items) == 2: # 单标签
             tag = int(items[1])

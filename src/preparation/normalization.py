@@ -18,7 +18,7 @@ import torch
 from core.util import read_csv_file, get_project_root, get_seeds
 from preparation.hsd_transform import hsd2rgb, rgb2hsd
 from visdom import Visdom
-from core import Random_Gen
+from core import Random_Gen, Params
 from preparation.acd_model import ACD_Model
 from torch.autograd import Variable
 
@@ -556,6 +556,196 @@ class ACDNormalization(AbstractNormalization):
         normed_images = np.exp(-normed_od) * 256 - 1
 
         return np.maximum(np.minimum(normed_images, 255), 0) / 255
+
+import tensorflow as tf
+from preparation.dcgmm_model import DCGMM
+import scipy.misc as misc
+# JSON_PATH = "H:\zhoujingfan\Pathological-images-4.21\config\justin.json"
+class DCGMMNormalization(AbstractNormalization):
+    def __init__(self, method, **kwarg):
+        super(DCGMMNormalization, self).__init__(method, **kwarg)
+        self.mode = "prediction"
+
+        self.logs_dir="H:\zhoujingfan\Pathological-images-4.21\models/logs_DGMM_HSD5/"
+
+        self.tmpl_dir="H:\zhoujingfan/dataset/p0327/wcc_template/"
+        self.data_dir="H:\zhoujingfan/dataset/p0327/train_image/"
+        self.out_dir="H:\zhoujingfan/dataset/p0404/111wcc/"
+
+        self.lr = 1e-4
+        self.iteration = 10e6
+        self.ReportInterval = 50
+        self.SavingInterval = 500
+
+        self.ClusterNo = 4
+        self.batch_size = 1
+        self.im_size = 256
+        self.temp_im_size=2048
+        self.image_train_options = {'resize': False, 'resize_size': self.im_size, 'crop': False, 'flip': True,
+                                    'rotate_stepwise': True}
+        self.image_options = {'resize': False, 'resize_size': self.im_size, 'crop': False, 'flip': False,
+                                'rotate_stepwise': False}
+        self.fileformat = 'jpg'
+
+        self.config={'batch_size':self.batch_size,'im_size':self.im_size,'ClusterNo':self.ClusterNo,'logs_dir':self.logs_dir}
+        self.config_temp = {'batch_size': self.batch_size, 'im_size': self.temp_im_size, 'ClusterNo': self.ClusterNo,
+                       'logs_dir': self.logs_dir}
+        if not os.path.exists(self.logs_dir):
+            os.makedirs(self.logs_dir)
+
+
+        self.sess = tf.Session()
+        if self.mode == "train":
+            self.is_train = True
+        else:
+            self.is_train = False
+
+        self.dist = DCGMM(self.sess, self.config, "DCGMM", self.is_train)  ## 建立一个DCGMM类
+
+    def RGB2HSD(self,X):
+        eps = np.finfo(float).eps
+        X[np.where(X == 0.0)] = eps
+
+        OD = -np.log(X / 1.0)
+        D = np.mean(OD, 3)
+        D[np.where(D == 0.0)] = eps
+
+        cx = OD[:, :, :, 0] / (D) - 1.0
+        cy = (OD[:, :, :, 1] - OD[:, :, :, 2]) / (np.sqrt(3.0) * D)
+
+        D = np.expand_dims(D, 3)
+        cx = np.expand_dims(cx, 3)
+        cy = np.expand_dims(cy, 3)
+
+        X_HSD = np.concatenate((D, cx, cy), 3)
+        return X_HSD
+
+    def HSD2RGB_Numpy(self,X_HSD):
+
+        X_HSD_0 = X_HSD[..., 0]
+        X_HSD_1 = X_HSD[..., 1]
+        X_HSD_2 = X_HSD[..., 2]
+        D_R = np.expand_dims(np.multiply(X_HSD_1 + 1, X_HSD_0), 2)
+        D_G = np.expand_dims(np.multiply(0.5 * X_HSD_0, 2 - X_HSD_1 + np.sqrt(3.0) * X_HSD_2), 2)
+        D_B = np.expand_dims(np.multiply(0.5 * X_HSD_0, 2 - X_HSD_1 - np.sqrt(3.0) * X_HSD_2), 2)
+
+        X_OD = np.concatenate((D_R, D_G, D_B), axis=2)
+        X_RGB = 1.0 * np.exp(-X_OD)
+        return X_RGB
+
+    def image_dist_transform(self,X, mu, std, pi, Mu_tmpl, Std_tmpl, IMAGE_SIZE, ClusterNo):
+        X_conv = np.empty((IMAGE_SIZE, IMAGE_SIZE, 3, ClusterNo))
+        for c in range(0, ClusterNo):
+            X_norm = np.divide(np.subtract(np.squeeze(X), mu[c, ...]), std[c, ...])
+            X_univar = np.add(np.multiply(X_norm, Std_tmpl[c, ...]), Mu_tmpl[c, ...])
+            # X_univar = np.add(np.zeros_like(X_norm), mu[c,...])
+            X_conv[..., c] = np.multiply(X_univar, np.tile(np.expand_dims(np.squeeze(pi[..., c]), axis=2), (1, 1, 3)))
+
+        X_conv = np.sum(X_conv, axis=3)
+
+        ## Apply the triangular restriction to cxcy plane in HSD color coordinates
+        # tf.clip_by_value  ???
+        X_conv = np.split(X_conv, 3, axis=2)
+        X_conv[1] = np.maximum(np.minimum(X_conv[1], 2.0), -1.0)
+        X_conv = np.squeeze(np.swapaxes(np.asarray(X_conv), 0, 3))
+
+        ## Transfer from HSD to RGB color coordinates
+        X_conv = self.HSD2RGB_Numpy(X_conv)
+        X_conv = np.minimum(X_conv, 1.0)
+        X_conv = np.maximum(X_conv, 0.0)
+
+        return X_conv
+
+    def normalize(self, src_img):
+        ####img = self.transform(src_img)
+
+        if self.mode == "train":
+            pass
+            # db = SampleProvider("Train_dataset", self.data_dir, self.fileformat, self.image_train_options,
+            #                     self.is_train)  ## 建立一个样本提供的类
+            #
+            # for i in range(int(self.iteration)):
+            #     X = db.DrawSample(self.batch_size)  ## 提供一个batch的图片数据
+            #     X_hsd = self.RGB2HSD(X[0] / 255.0)  ## 将RGB图像转化为HSD图像， X[0]是一个batch的图片数据
+            #     loss, summary_str, summary_writer = self.dist.fit(X_hsd)  ## 训练网络
+            #
+            #     if i % self.ReportInterval == 0:
+            #         summary_writer.add_summary(summary_str, i)
+            #         print("iter {:>6d} : {}".format(i + 1, loss))
+            #
+            #     if i % self.SavingInterval == 0:
+            #         self.dist.saver.save(self.sess, self.logs_dir + "model.ckpt", i)
+            # print('训练模型/迭代完成!')
+        elif self.mode == "prediction":
+            # if not os.path.exists(self.out_dir):
+            #     os.makedirs(self.out_dir)
+
+            # print("Estimated Mu for template(s):")
+            mu_tmpl = np.array([[[1.6211365, - 0.1972022, 0.35664558]], [[0.21491599, - 0.41082314, 0.18000902]],
+                                [[0.05162158, - 0.5370194, 0.11948807]], [[0.85988057, - 0.27413765, 0.2791221]]])
+
+            # print("Estimated Sigma for template(s):")
+            std_tmpl = np.array([[[0.30730647, 0.05124921, 0.06485689]], [[0.1439307, 0.2500184, 0.205745]],
+                                 [[0.04363299, 0.44403875, 0.5889885]], [[0.4187314, 0.11739796, 0.08804789]]])
+
+            src_img = src_img[np.newaxis,:, :,:]
+
+            X_hsd = self.RGB2HSD(src_img/ 255.0)  ## 将RGB图像转化为HSD图像， X[0]是一个batch的图片数据
+            mu, std, pi = self.dist.deploy(X_hsd)  ## pi即gama图
+            mu = np.asarray(mu)
+            mu = np.swapaxes(mu, 1, 2)  # -> dim: [ClustrNo x 1 x 3]
+            std = np.asarray(std)
+            std = np.swapaxes(std, 1, 2)  # -> dim: [ClustrNo x 1 x 3]
+
+            ### 实现图片的归一化(把图像的每一类的hsd的值向标准图像相同类的hsd的值的mu、std变化，并将hsd图像转回RGB图像)
+            X_conv = self.image_dist_transform(X_hsd, mu, std, pi, mu_tmpl, std_tmpl, self.im_size, self.ClusterNo)
+
+            # filename = X[1]
+            # filename = filename[0].split('/')[-1]
+            # print(filename)
+            # self.filename+=1
+            # if not os.path.exists(self.out_dir):
+            #     os.makedirs(self.out_dir)
+            # misc.imsave(self.out_dir + str(self.filename)+".jpg",np.squeeze(X_conv))  # np.squeeze()函数：从数组的形状中删除单维度条目，即把shape中为1的维度去掉
+            return np.squeeze(X_conv)
+        elif self.mode == "caculateTemp":
+            pass
+            # sess = tf.Session()
+            # dist = DCGMM(sess, self.config_temp, "DCGMM", self.is_train)  ## 建立一个DCGMM类
+            # db_tmpl = SampleProvider("Template_dataset", self.tmpl_dir, self.fileformat, self.image_options,
+            #                          self.is_train)  ## 建立一个样本提供的类
+            # mu_tmpl = 0
+            # std_tmpl = 0
+            # N = 0
+            # while True:
+            #     X = db_tmpl.DrawSample(self.batch_size)   ## 提供一个batch的图片数据X[0]
+            #
+            #     if len(X) ==0:
+            #         break
+            #
+            #     X_hsd = self.RGB2HSD(X[0]/255.0)   ## 将RGB图像转化为HSD图像， X[0]是一个batch的图片数据
+            #
+            #     mu, std, gamma = dist.deploy(X_hsd)
+            #     mu = np.asarray(mu)
+            #     mu  = np.swapaxes(mu,1,2)   # -> dim: [ClustrNo x 1 x 3]
+            #     std = np.asarray(std)
+            #     std  = np.swapaxes(std,1,2)   # -> dim: [ClustrNo x 1 x 3]
+            #
+            #     N = N+1
+            #     mu_tmpl  = (N-1)/N * mu_tmpl + 1/N* mu
+            #     std_tmpl  = (N-1)/N * std_tmpl + 1/N* std
+            # print("Estimated Mu for template(s):")
+            # print(mu_tmpl)
+            # print("Estimated Sigma for template(s):")
+            # print(std_tmpl)
+        else:
+            print('Invalid "mode" string!')
+            return
+
+
+
+
+
 
 class ImageNormalizationTool(object):
     def __init__(self, params):

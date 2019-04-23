@@ -21,7 +21,7 @@ from core.util import get_seeds, transform_coordinate
 from pytorch.cnn_classifier import Simple_Classifier, MultiTask_Classifier, MSC_Classifier
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
-from preparation.normalization import HistNormalization
+from preparation.normalization import HistNormalization, DCGMMNormalization
 
 class Detector(object):
 
@@ -622,13 +622,16 @@ class Detector(object):
         # normal_func = HistNormalization.get_normalization_function(self._imgCone, self._params,
         #                                                             extract_scale, patch_size)
         # normal_func.draw_normalization_func("Now")
-        normal_func = None
+        # normal_func = None
+        ############################
+        normal_func = DCGMMNormalization("hsd_norm")
         # normal_func = HistNormalization("match_hist", hist_target ="hist_templates.npy", hist_source = None)
 
         # normal_func = None
 
-        model_name = "se_densenet_22"
-        sample_name = "x_256"
+        ############################
+        model_name = "simple_cnn"
+        sample_name = "4000_256"
         cnn = MultiTask_Classifier(self._params, model_name, sample_name, normalization=normal_func)
 
         #         # sample_name = "msc_256"
@@ -674,8 +677,8 @@ class Detector(object):
         for i in range(max_iter_nums):
 
             print("iter {}, {}, {}".format(i + 1, (rx1, ry1), (rx2, ry2)))
-            # seeds = self.get_random_seeds(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
-            seeds = self.get_random_seeds_ex3(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
+            seeds = self.get_random_seeds(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
+            # seeds = self.get_random_seeds_ex3(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
 
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
             print("the number of new seeds: ", len(new_seeds), ', the number of seeds in history:', len(history))

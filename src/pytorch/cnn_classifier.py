@@ -632,10 +632,11 @@ class MultiTask_Classifier(BaseClassifier):
     def load_pretrained_model_on_predict(self):
         net_file = {
             "se_densenet_22_x_256": "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
+            "simple_cnn_4000_256": "cp-0003-0.3863-0.9229.pth",
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)
-        model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[model_code])
+        model_file = "{}/models/pytorch/simple_cnn_4000_256/{}".format(self._params.PROJECT_ROOT, net_file[model_code])
         model = self.load_model(model_file=model_file)
 
         if self.patch_type in ["x_256", "msc_256"]:

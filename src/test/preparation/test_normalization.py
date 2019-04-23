@@ -15,9 +15,10 @@ import numpy as np
 import cv2
 
 from preparation.normalization import RGBNormalization, ReinhardNormalization, HistNormalization, \
-    ImageNormalizationTool, HSDNormalization, ACDNormalization
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+    ImageNormalizationTool, HSDNormalization, ACDNormalization,DCGMMNormalization
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "H:\zhoujingfan\Pathological-images-4.21\config\justin.json"
 
 class TestNormalization(unittest.TestCase):
 
@@ -46,10 +47,12 @@ class TestNormalization(unittest.TestCase):
         # normal = HistNormalization("match_hist", hist_target = "hist_templates.npy",
         #                             hist_source = "hist_soures.npy")
 
-        normal = HSDNormalization("hsd_norm", target_mean=( -0.2574, 0.2353, 0.3893),
-                                  target_std=(0.1860, 0.1884, 0.2482),
-                                  source_mean=(-0.0676, 0.4088, 0.3710),
-                                  source_std=(0.1254, 0.1247, 0.1988))
+        # normal = HSDNormalization("hsd_norm", target_mean=( -0.2574, 0.2353, 0.3893),
+        #                           target_std=(0.1860, 0.1884, 0.2482),
+        #                           source_mean=(-0.0676, 0.4088, 0.3710),
+        #                           source_std=(0.1254, 0.1247, 0.1988)
+
+        normal = DCGMMNormalization("hsd_norm")
 
         # image_list = []
         # for filename in file_list:
@@ -202,4 +205,57 @@ class TestNormalization(unittest.TestCase):
         plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
         plt.show()
 
+    def test_DCGMMnormalization(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        normal = DCGMMNormalization("hsd_norm")
+        # filename = "T_NC_Simple0330_4000_256_test.txt"
+        filename = "T_NC_Simple0404_4000_256_test.txt"
+        patch_path = c.PATCHS_ROOT_PATH["P0404"]
+        all_file_list, _ = util.read_csv_file(patch_path, "{}/{}".format(patch_path, filename))
+
+        N = 20
+        rnd = random.randint(0, len(all_file_list) // N)
+        file_list = all_file_list[rnd:rnd + N]
+
+        # images = []
+        # for filename in file_list:
+        #     # img = imread(filename)
+        #     img = cv2.imread(filename)
+        #     images.append(img)
+        #
+        # # normal = HistNormalization("match_hist", hist_target ="hist_templates.npy",
+        # #                            hist_source = None)
+        # results=normal.normalize(images)
+
+        fig = plt.figure(figsize=(16, 10), dpi=100)
+        for index, filename in enumerate(file_list):
+            img = imread(filename)
+            result = normal.normalize(img)
+            plt.subplot(5, 2 * N / 5, 2 * index + 1)
+            plt.imshow(img)
+
+            plt.axis("off")
+            plt.subplot(5, 2 * N / 5, 2 * index + 2)
+            plt.axis("off")
+            plt.imshow(result)
+
+        fig.tight_layout()  # 调整整体空白
+        plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
+        plt.show()
+
+        # fig = plt.figure(figsize=(16, 10), dpi=100)
+        # for index, (result, img) in enumerate(zip(results, images)):
+        #     plt.subplot(5, 2 * N / 5, 2 * index + 1)
+        #     plt.imshow(img)
+        #
+        #     plt.axis("off")
+        #     plt.subplot(5, 2 * N / 5, 2 * index + 2)
+        #     plt.axis("off")
+        #     plt.imshow(result)
+        #
+        # fig.tight_layout()  # 调整整体空白
+        # plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
+        # plt.show()
 

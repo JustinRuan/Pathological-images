@@ -13,8 +13,9 @@ from pytorch.detector import Detector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "H:\zhoujingfan\Pathological-images-4.21\config\justin.json"
 
 class Test_detector(unittest.TestCase):
 
@@ -486,8 +487,8 @@ class Test_detector(unittest.TestCase):
         # 读取数字全扫描切片图像
         # tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
         #                          'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
-        tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
-                                 'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
+        tag = imgCone.open_slide("testing/images/test_%s.tif" % slice_id,
+                                 'testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
 
         detector = Detector(c, imgCone)
 
