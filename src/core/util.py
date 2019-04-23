@@ -124,6 +124,7 @@ def clean_checkpoint(search_dir, best_number = 10):
     #     # os.remove(path
     #     print("best -> ",path)
 
+
 def transform_coordinate(x1, y1, coordinate_scale, seeds_scale, target_scale, seeds):
     '''
     将图块中心坐标变换到新的坐标系中。 新坐标系的原点为检测区域的左上角，所处的倍镜为target_scale
