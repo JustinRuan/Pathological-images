@@ -638,12 +638,13 @@ class ACDNormalization_tf(AbstractNormalization):
             self.init = tf.global_variables_initializer()
 
         with tf.Session() as sess:
-            sess.run(self.init)
-            for ep in range(self._epoch):
-                for step in range(self._step_per_epoch):
-                    sess.run(self.target, {self.input_od: od_data[step * self._bs:(step + 1) * self._bs]})
-            opt_cd = sess.run(self.cd)
-            opt_w = sess.run(self.w)
+            with tf.device('/cpu:0'):
+                sess.run(self.init)
+                for ep in range(self._epoch):
+                    for step in range(self._step_per_epoch):
+                        sess.run(self.target, {self.input_od: od_data[step * self._bs:(step + 1) * self._bs]})
+                opt_cd = sess.run(self.cd)
+                opt_w = sess.run(self.w)
         return opt_cd, opt_w
 
     @staticmethod

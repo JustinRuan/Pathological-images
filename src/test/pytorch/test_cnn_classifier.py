@@ -90,8 +90,8 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
 
-        cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
-                           model_file=None, batch_size=20, max_count=None)
+        cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
+                           model_file=None, batch_size=60, max_count=None)
         # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=600, )
 
