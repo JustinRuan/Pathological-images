@@ -552,9 +552,9 @@ class ACDNormalization_tf(AbstractNormalization):
     def __init__(self, method, **kwarg):
         super(ACDNormalization_tf, self).__init__(method, **kwarg)
         self._pn = 100000
-        self._bs = 500
-        self._step_per_epoch = 20
-        self._epoch = 15
+        self._bs = 1500
+        self._step_per_epoch = int(self._pn / self._bs)
+        self._epoch = int(300 / self._step_per_epoch)
         # self.dc_txt = kwarg["dc_txt"]
         # self.w_txt = kwarg["w_txt"]
         # self.template_path = kwarg["template_path"]
@@ -661,7 +661,6 @@ class ACDNormalization_tf(AbstractNormalization):
         sca_mat = tf.stack((tf.cos(alpha) * tf.sin(beta), tf.cos(alpha) * tf.cos(beta), tf.sin(alpha)), axis=1)
         cd_mat = tf.matrix_inverse(sca_mat)
 
-        print_op = tf.print(['cd_mat: ', cd_mat])
         s = tf.matmul(input_od, cd_mat) * w
         h, e, b = tf.split(s, (1, 1, 1), axis=1)
 
@@ -671,8 +670,14 @@ class ACDNormalization_tf(AbstractNormalization):
         l_e = tf.square(gamma - tf.reduce_mean(s))
 
         objective = l_p1 + lambda_p * l_p2 + lambda_b * l_b + lambda_e * l_e
-        print_op2 = tf.print("objective", objective, ['l_p1: ', l_p1], ['l_p2: ', l_p2], ['l_b: ', l_b], ['l_p1: ', l_e])
-        with tf.control_dependencies([print_op, print_op2]):
+
+        tag_dubeg = False
+        if tag_dubeg:
+            print_op = tf.print(['cd_mat: ', cd_mat])
+            print_op2 = tf.print("objective", objective, ['l_p1: ', l_p1], ['l_p2: ', l_p2], ['l_b: ', l_b], ['l_p1: ', l_e])
+            with tf.control_dependencies([print_op, print_op2]):
+                target = tf.train.AdagradOptimizer(learning_rate=0.05).minimize(objective)
+        else:
             target = tf.train.AdagradOptimizer(learning_rate=0.05).minimize(objective)
 
         return target, cd_mat, w
