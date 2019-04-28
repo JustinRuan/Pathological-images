@@ -444,9 +444,9 @@ class ACDNormalization(AbstractNormalization):
         self.template_path = "{}/data/{}".format(get_project_root(), kwarg["template_path"])
         self._template_dc_mat = None
         self._template_w_mat = None
-        if(not os.path.exists(self.dc_txt) or not os.path.exists(self.w_txt)):
-            self.generate()
-        # self.generate()
+        # if(not os.path.exists(self.dc_txt) or not os.path.exists(self.w_txt)):
+        #     self.generate()
+        self.generate()
         self._template_dc_mat = np.loadtxt(self.dc_txt)
         self._template_w_mat = np.loadtxt(self.w_txt)
 
@@ -459,11 +459,14 @@ class ACDNormalization(AbstractNormalization):
 
     def generate(self):
         template_list = os.listdir(self.template_path)
-        temp_images = np.zeros((template_list.__len__(), 2048, 2048, 3), np.uint8)
+        # temp_images = np.zeros((template_list.__len__(), 2048, 2048, 3), np.uint8)
+        temp_images = []
 
         for i, name in enumerate(template_list):
-            temp_images[i] = cv2.imread(os.path.join(self.template_path, name))
+            if name.endswith(".jpg"):
+                temp_images.append(cv2.imread(os.path.join(self.template_path, name)))
 
+        temp_images = np.array(temp_images)
         # fit
         st = time.time()
         self.fit(temp_images)
@@ -685,7 +688,7 @@ class ACDNormalization_tf(AbstractNormalization):
 
         objective = l_p1 + lambda_p * l_p2 + lambda_b * l_b + lambda_e * l_e
 
-        tag_dubeg = False
+        tag_dubeg = True
         if tag_dubeg:
             print_op = tf.print(['cd_mat: ', cd_mat])
             print_op2 = tf.print("objective", objective, ['l_p1: ', l_p1], ['l_p2: ', l_p2], ['l_b: ', l_b], ['l_p1: ', l_e])

@@ -170,7 +170,7 @@ class TestNormalization(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template2")
 
         # filename = "T_NC_Simple0404_4000_256_test.txt"
         # patch_path = c.PATCHS_ROOT_PATH["P0404"]
