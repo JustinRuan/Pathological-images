@@ -5,33 +5,31 @@ __author__ = 'Justin'
 __mtime__ = '2019-04-19'
 
 """
-from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter
-import numpy as np
 
-if __name__ == "__main__":
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-
-    # Make data.
-    X = np.arange(0, 1, 0.01)
-    Y = np.arange(0, 1, 0.01)
-    X, Y = np.meshgrid(X, Y)
-    Z = 2* X* Y/(X**2 + Y**2)
+import tensorflow as tf
 
 
-    # Plot the surface.
-    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
-                           linewidth=0, antialiased=False)
+def test():
+    a = tf.Variable([1])
+    print_op = tf.print(a)
+    for i in range(10):
+        with tf.control_dependencies([print_op]):
+            # a_print = tf.Print(a, ['a_value: ', a])
+            a = a + 1
+            # print_op = tf.print(a)
+    return a
 
-    # Customize the z axis.
-    ax.set_zlim(-1.01, 1.01)
-    ax.zaxis.set_major_locator(LinearLocator(10))
-    ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+def test():
+    a = tf.Variable([1])
+    print_op = tf.print(a)
+    for i in range(10):
+        with tf.control_dependencies([print_op]):
+            # a_print = tf.Print(a, ['a_value: ', a])
+            a = a + 1
+            # print_op = tf.print(a)
+    return a
 
-    # Add a color bar which maps values to colors.
-    fig.colorbar(surf, shrink=0.5, aspect=5)
 
-    plt.show()
+if __name__ == '__main__':
+    with tf.Session() as sess:
+        sess.run(test())

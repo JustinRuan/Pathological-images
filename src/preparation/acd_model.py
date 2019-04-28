@@ -26,7 +26,7 @@ class ACD_Model(nn.Module):
 
         # sca_mat = tf.stack((tf.cos(alpha) * tf.sin(beta), tf.cos(alpha) * tf.cos(beta), tf.sin(alpha)), axis=1)
         # cd_mat = tf.matrix_inverse(sca_mat)
-        sca_mat = torch.stack([torch.cos(alpha) * torch.sin(beta), torch.cos(alpha) * torch.cos(beta), torch.sin(alpha)],)
+        sca_mat = torch.stack([torch.cos(alpha) * torch.sin(beta), torch.cos(alpha) * torch.cos(beta), torch.sin(alpha)],dim = 1)
         cd_mat = torch.nn.Parameter(torch.inverse(sca_mat), requires_grad=True)
 
         self.w = w
@@ -46,18 +46,23 @@ class ACD_Model(nn.Module):
         return out
 
     def loss_function(self, out):
-        lambda_p=torch.FloatTensor([0.002])
-        lambda_b=torch.FloatTensor([10])
-        lambda_e=torch.FloatTensor([1])
-        eta=torch.FloatTensor([0.6])
-        gamma=torch.FloatTensor([0.5])
+        # lambda_p=torch.FloatTensor([0.002])
+        # lambda_b=torch.FloatTensor([10])
+        # lambda_e=torch.FloatTensor([1])
+        # eta=torch.FloatTensor([0.6])
+        # gamma=torch.FloatTensor([0.5])
+        #
+        # lambda_p = lambda_p.to(out.device)
+        # lambda_b = lambda_b.to(out.device)
+        # lambda_e = lambda_e.to(out.device)
+        # eta = eta.to(out.device)
+        # gamma = gamma.to(out.device)
 
-        lambda_p = lambda_p.to(out.device)
-        lambda_b = lambda_b.to(out.device)
-        lambda_e = lambda_e.to(out.device)
-        eta = eta.to(out.device)
-        gamma = gamma.to(out.device)
-
+        lambda_p=0.002
+        lambda_b=10
+        lambda_e=1
+        eta=0.6
+        gamma=0.5
 
         # h, e, b = tf.split(s, (1, 1, 1), axis=1)
         h, e, b = torch.split(out, 1, dim=1)

@@ -11,7 +11,7 @@ import numpy as np
 from core import *
 from pytorch.cnn_classifier import Simple_Classifier
 import torch
-from preparation.normalization import HistNormalization, HSDNormalization
+from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization,ACDNormalization_tf
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
 
@@ -60,8 +60,8 @@ class Test_cnn_classifier(unittest.TestCase):
         model_name = "simple_cnn"
         sample_name = "4000_256"
 
-        normal = HistNormalization("match_hist", hist_target ="hist_templates_2048.npy",
-                                   hist_source = "hist_source_P0404.npy")
+        # normal = HistNormalization("match_hist", hist_target ="hist_templates_2048.npy",
+        #                            hist_source = "hist_source_P0404.npy")
         # normal = HistNormalization("match_hist", hist_target = "hist_soures_P0327.npy",
         #                             hist_source = "hist_soures_P0330.npy")
         # normal = HSDNormalization("hsd_norm", target_mean=( -0.2574, 0.2353, 0.3893),
@@ -77,17 +77,23 @@ class Test_cnn_classifier(unittest.TestCase):
         # normal = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
 
-        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, )
+        normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+
+        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= True)
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
         #                    model_file=None, batch_size=20, max_count=None)
         # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
-        cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
-                           model_file=None, batch_size=20, max_count=None)
+        # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
+        #                    model_file=None, batch_size=20, max_count=None)
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
 
+        cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
+                           model_file=None, batch_size=20, max_count=None)
+        # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
+        #                    model_file=None, batch_size=20, max_count=600, )
 
 
     def test_evaluate_model_with_sampling(self):
