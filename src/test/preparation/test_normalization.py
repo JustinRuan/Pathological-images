@@ -247,3 +247,12 @@ class TestNormalization(unittest.TestCase):
         plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
         plt.show()
 
+    def test_normalize_dataset(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        samples_name = ("P0327", "T_NC_Simple0327_2_4000_256_train.txt")
+        normal = ImageNormalizationTool(c)
+        normal.normalize_dataset(samples_name, "Norm_ACD", range=(0, 50), batch_size=20)
+
+

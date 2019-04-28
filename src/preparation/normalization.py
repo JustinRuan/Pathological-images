@@ -21,6 +21,7 @@ from visdom import Visdom
 from core import Random_Gen
 from preparation.acd_model import ACD_Model
 from torch.autograd import Variable
+from core import Block
 
 class AbstractNormalization(object):
     def __init__(self, method, **kwarg):
@@ -552,7 +553,7 @@ class ACDNormalization(AbstractNormalization):
     def filter_all_white(self, images):
         for item in images:
             m = np.mean(item)
-            if m < 225:
+            if 25 < m < 225:
                 return False
         return True
 
@@ -701,8 +702,6 @@ class ACDNormalization_tf(AbstractNormalization):
 
     def prepare(self, batch_images):
         pass
-
-
 
 class ImageNormalizationTool(object):
     def __init__(self, params):
@@ -934,3 +933,70 @@ class ImageNormalizationTool(object):
         avg_std_d = np.mean(std_d)
 
         return avg_mean_h, avg_mean_s, avg_mean_d, avg_std_h, avg_std_s, avg_std_d
+
+    def normalize_dataset(self, source_samples, tagrget_dir, range = None, batch_size = 20):
+        self.opcode = 19
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template2")
+
+        patch_root = self._params.PATCHS_ROOT_PATH[source_samples[0]]
+        sample_filename = source_samples[1]
+        train_list = "{}/{}".format(patch_root, sample_filename)
+
+        Xtrain, Ytrain = read_csv_file(patch_root, train_list)
+        if range is not None:
+            Xtrain = Xtrain[range[0]:range[1]]
+            Ytrain = Ytrain[range[0]:range[1]]
+
+        target_cancer_path = "{}/{}_cancer".format(patch_root, tagrget_dir)
+        target_normal_path = "{}/{}_noraml".format(patch_root, tagrget_dir)
+
+        if (not os.path.exists(target_cancer_path)):
+            os.makedirs(target_cancer_path)
+        if (not os.path.exists(target_normal_path)):
+            os.makedirs(target_normal_path)
+
+        n = 0
+        batch_images = []
+        batch_y = []
+        batch_blocks = []
+        for K, (x, y) in enumerate(zip(Xtrain, Ytrain)):
+            new_block = Block()
+            new_block.load_img(x)
+            img = np.array(new_block.get_img())
+            batch_images.append(img)
+            batch_y.append(y)
+            batch_blocks.append(new_block)
+            n = n + 1
+
+            if n >= batch_size:
+                norm_images = normal.normalize_on_batch(batch_images)
+
+                for block, norm_img, y in zip(batch_blocks, norm_images, batch_y):
+                    block.set_img(255 * norm_img)
+                    block.opcode = self.opcode
+
+                    if y == 0:
+                        block.save_img(target_normal_path)
+                    else:
+                        block.save_img(target_cancer_path)
+
+                batch_images = []
+                batch_y = []
+                batch_blocks = []
+                n = 0
+
+            if (0 == K % 1000):
+                print("{} normalizing >>> {}".format(time.asctime(time.localtime()), K))
+
+        if n > 0:
+            norm_images = normal.normalize_on_batch(batch_images)
+            for block, norm_img, y in zip(batch_blocks, norm_images, batch_y):
+                block.set_img(255 * norm_img)
+                block.opcode = self.opcode
+
+                if y == 0:
+                    block.save_img(target_normal_path)
+                else:
+                    block.save_img(target_cancer_path)
+
+        return
