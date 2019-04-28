@@ -222,7 +222,7 @@ class TestNormalization(unittest.TestCase):
 
         N = 20
         rnd = random.randint(0, len(all_file_list) // N)
-        # rnd = 0
+        rnd = 0
         file_list = all_file_list[rnd:rnd + N]
 
         images = []
