@@ -432,9 +432,13 @@ class ACDNormalization(AbstractNormalization):
     def __init__(self, method, **kwarg):
         super(ACDNormalization, self).__init__(method, **kwarg)
         self._pn = 100000
-        self._bs = 500
-        self._step_per_epoch = 20
-        self._epoch = 15
+        self._bs = 2000
+        self._step_per_epoch = int(self._pn / self._bs)
+        self._epoch = int(300 / self._step_per_epoch)
+        # self._pn = 100000
+        # self._bs = 500
+        # self._step_per_epoch = 20
+        # self._epoch = 15
         self.dc_txt = "{}/data/{}".format(get_project_root(), kwarg["dc_txt"])
         self.w_txt = "{}/data/{}".format(get_project_root(), kwarg["w_txt"])
         self.template_path = "{}/data/{}".format(get_project_root(), kwarg["template_path"])
@@ -498,13 +502,15 @@ class ACDNormalization(AbstractNormalization):
 
         model = ACD_Model()
         model.to(self.device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.05)
-        # optimizer = torch.optim.Adagrad(model.parameters(), lr=0.05)
+        # optimizer = torch.optim.Adam(model.parameters(), lr=0.05)
+        optimizer = torch.optim.Adagrad(model.parameters(), lr=0.05)
         model.train()
 
         for ep in range(self._epoch):
             for step in range(self._step_per_epoch):
                 batch_data = od_data[step * self._bs:(step + 1) * self._bs]
+                if len(batch_data) == 0:
+                    break;
                 x = torch.from_numpy(batch_data).float()
                 b_x = Variable(x.to(self.device))
                 out = model(b_x)
@@ -516,6 +522,7 @@ class ACDNormalization(AbstractNormalization):
 
                 running_loss = loss.item()
                 # print('(%d) %d / %d ==> Loss: %.4f ' % (ep, step, self._step_per_epoch, running_loss))
+
             print('(%d) ==> Loss: %.4f ' % (ep, running_loss))
 
         opt_cd = model.cd_mat.data.cpu().numpy()
@@ -552,9 +559,14 @@ class ACDNormalization_tf(AbstractNormalization):
     def __init__(self, method, **kwarg):
         super(ACDNormalization_tf, self).__init__(method, **kwarg)
         self._pn = 100000
-        self._bs = 1500
+        self._bs = 2000
         self._step_per_epoch = int(self._pn / self._bs)
         self._epoch = int(300 / self._step_per_epoch)
+        # self._pn = 100000
+        # self._bs = 1500
+        # self._step_per_epoch = 20
+        # self._epoch = 15
+
         # self.dc_txt = kwarg["dc_txt"]
         # self.w_txt = kwarg["w_txt"]
         # self.template_path = kwarg["template_path"]
@@ -568,8 +580,9 @@ class ACDNormalization_tf(AbstractNormalization):
         self.target, self.cd, self.w = self.acd_model(self.input_od)
         self.init = tf.global_variables_initializer()
 
-        if(not os.path.exists(self.dc_txt) or not os.path.exists(self.w_txt)):
-            self.generate()
+        # if(not os.path.exists(self.dc_txt) or not os.path.exists(self.w_txt)):
+        #     self.generate()
+        self.generate()
         self._template_dc_mat = np.loadtxt(self.dc_txt)
         self._template_w_mat = np.loadtxt(self.w_txt)
         self.inv = np.linalg.inv(self._template_dc_mat * self._template_w_mat)

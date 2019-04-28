@@ -77,7 +77,8 @@ class Test_cnn_classifier(unittest.TestCase):
         # normal = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
 
-        normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+        # normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
 
         cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= True)
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
@@ -87,11 +88,11 @@ class Test_cnn_classifier(unittest.TestCase):
         #                    model_file=None, batch_size=20, max_count=None)
         # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
-        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
+        # cnn.evaluate_model(samples_name=("P0404", "T_NC_W0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
 
         cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
-                           model_file=None, batch_size=60, max_count=None)
+                           model_file=None, batch_size=20, max_count=None)
         # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=600, )
 
