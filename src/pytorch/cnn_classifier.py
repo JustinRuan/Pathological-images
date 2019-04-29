@@ -156,7 +156,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
                 total_loss += running_loss
 
                 endtime = datetime.datetime.now()
-                remaining_time = train_data_len * (endtime - starttime).seconds / (step + 1)
+                remaining_time = (train_data_len - step)* (endtime - starttime).seconds / (step + 1)
                 print('%d / %d ==> Loss: %.4f | Acc: %.4f ,  remaining time: %d (s)'
                       % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0), remaining_time))
 
@@ -272,7 +272,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
             predicted_tags.extend(preds.cpu().numpy())
 
             endtime = datetime.datetime.now()
-            remaining_time = test_data_len * (endtime - starttime).seconds / (step + 1)
+            remaining_time = (test_data_len - step) * (endtime - starttime).seconds / (step + 1)
             print('predicting => %d / %d , remaining time: %d (s)' % (step + 1, test_data_len, remaining_time))
             probs = probs.cpu().numpy()
             mean = np.mean(probs)
