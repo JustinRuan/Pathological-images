@@ -42,9 +42,9 @@ class Test_cnn_classifier(unittest.TestCase):
         cnn = Simple_Classifier(c, model_name, sample_name)
         # augment = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
-        augment = HRndAugmentation()
+        # augment = HRndAugmentation()
 
-        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_4000_256"), augment_func = augment,
+        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_4000_256"), augment_func = None,
                         batch_size=40, epochs = 3)
         # cnn.train_model(samples_name=("P0327", "Aug_LAB_4000_256"), augment_func=None,
         #                 batch_size=30, epochs = 10)
@@ -78,7 +78,7 @@ class Test_cnn_classifier(unittest.TestCase):
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
 
         # normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
-        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template2")
 
         cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= True)
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),

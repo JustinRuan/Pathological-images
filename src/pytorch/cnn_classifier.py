@@ -25,7 +25,7 @@ from pytorch.net import DenseNet, SEDenseNet
 from pytorch.net import Simple_CNN
 from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_image_blocks_batch_normalize_itor, \
     get_image_file_batch_normalize_itor
-
+import datetime
 
 class BaseClassifier(object, metaclass=ABCMeta):
     def __init__(self, params, model_name, patch_type, **kwargs):
@@ -137,6 +137,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
             # 开始训练
             train_data_len = len(train_loader)
             total_loss = 0
+            starttime = datetime.datetime.now()
             for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
                 b_x = Variable(x.to(self.device))
                 b_y = Variable(y.to(self.device))
@@ -153,8 +154,11 @@ class BaseClassifier(object, metaclass=ABCMeta):
                 running_loss = loss.item()
                 running_corrects = torch.sum(preds == b_y.data)
                 total_loss += running_loss
-                print('%d / %d ==> Loss: %.4f | Acc: %.4f '
-                      % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0)))
+
+                endtime = datetime.datetime.now()
+                remaining_time = train_data_len * (endtime - starttime).seconds / (step + 1)
+                print('%d / %d ==> Loss: %.4f | Acc: %.4f ,  remaining time: %d (s)'
+                      % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0), remaining_time))
 
             scheduler.step(total_loss)
 
@@ -257,6 +261,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
         else:
             test_data_len = len_y // batch_size + 1
 
+        starttime = datetime.datetime.now()
         for step, (x, _) in enumerate(test_loader):
             b_x = Variable(x.to(self.device))  # batch x
 
@@ -265,7 +270,10 @@ class BaseClassifier(object, metaclass=ABCMeta):
             probs, preds = torch.max(output_softmax, 1)
 
             predicted_tags.extend(preds.cpu().numpy())
-            print('predicting => %d / %d ' % (step + 1, test_data_len))
+
+            endtime = datetime.datetime.now()
+            remaining_time = test_data_len * (endtime - starttime).seconds / (step + 1)
+            print('predicting => %d / %d , remaining time: %d (s)' % (step + 1, test_data_len, remaining_time))
             probs = probs.cpu().numpy()
             mean = np.mean(probs)
             std = np.std(probs)
