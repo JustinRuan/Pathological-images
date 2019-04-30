@@ -81,9 +81,9 @@ class Test_cnn_classifier(unittest.TestCase):
         normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template2")
 
         cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= True)
-        # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_{}".format(sample_name)),
-        #                    model_file=None, batch_size=20, max_count=None)
-        # cnn.evaluate_model(samples_name="T_NC_Simple0327_2_{}".format(sample_name), model_file=None, batch_size=20)
+        cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_4000_256_test.txt"),
+                           model_file=None, batch_size=20, max_count=None)
+
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
         # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
@@ -91,9 +91,9 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_W0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
 
-        cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
-                           model_file=None,
-                           batch_size=20, max_count=None)
+        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
+        #                    model_file=None,
+        #                    batch_size=20, max_count=None)
         # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=600, )
 

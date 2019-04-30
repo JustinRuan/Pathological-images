@@ -121,8 +121,8 @@ class ImageCone(object):
 
         img = color.rgb2hsv(fullImg)
         # mask = np.ones(img.Shape, dtype=np.uint8)
-        mask1 = (img[:, :, 2] < 0.85) & (img[:, :, 2] > 0.15)
-        mask2 = (img[:, :, 1] > 0.1)
+        mask1 = (img[:, :, 2] < 0.80) & (img[:, :, 2] > 0.20)
+        mask2 = (img[:, :, 1] > 0.25)
         # mask3 = (img[:, :, 0] < 0.95) & (img[:, :, 0] > 0.05)
         # result = mask1 & mask2 & mask3
         result = mask1 & mask2

@@ -11,9 +11,9 @@ from core import *
 from preparation import *
 import matplotlib.pyplot as plt
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestPatchSampler(unittest.TestCase):
 
@@ -30,7 +30,7 @@ class TestPatchSampler(unittest.TestCase):
 
         patch_spacing = 400
 
-        for i in range(1, 2):
+        for i in range(1, 3):
             code = "{:0>3d}".format(i)
             print("processing ", code, " ... ...")
 
@@ -42,19 +42,23 @@ class TestPatchSampler(unittest.TestCase):
 
             if tag:
 
-                c_seeds, ei_seeds, eo_seeds = ps.detect_cancer_patches_with_scale(imgCone, extract_scale, patch_size,
+                c_seeds, ei_seeds, eo_seeds, n_seeds = ps.detect_cancer_patches_with_scale(imgCone, extract_scale, patch_size,
                                                                                   patch_spacing, edge_width=8)
-                print("slide code = ", code, ", cancer_seeds = ", len(c_seeds),
+                print("slide code = ", code, ", cancer_seeds = ", len(c_seeds), ", normal_seeds = ", len(n_seeds),
                       ", inner edge_seeds = ", len(ei_seeds), ", outer edge_seeds = ", len(eo_seeds))
 
-                seeds_dict = ps.get_multi_scale_seeds([10, 20], c_seeds, extract_scale)
-                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "cancer")
+                # seeds_dict = ps.get_multi_scale_seeds([10, 20], c_seeds, extract_scale)
+                seeds_dict = ps.get_multi_scale_seeds([], c_seeds, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "cancer", "P0430")
 
-                seeds_dict2 = ps.get_multi_scale_seeds([10, 20], ei_seeds, extract_scale)
-                ps.extract_patches_multi_scale(imgCone, seeds_dict2, patch_size, "edgeinner")
+                seeds_dict4 = ps.get_multi_scale_seeds([], n_seeds, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict4, patch_size, "noraml", "P0430")
 
-                seeds_dict3 = ps.get_multi_scale_seeds([10, 20], eo_seeds, extract_scale)
-                ps.extract_patches_multi_scale(imgCone, seeds_dict3, patch_size, "edgeouter")
+                # seeds_dict2 = ps.get_multi_scale_seeds([10, 20], ei_seeds, extract_scale)
+                # ps.extract_patches_multi_scale(imgCone, seeds_dict2, patch_size, "edgeinner")
+                #
+                # seeds_dict3 = ps.get_multi_scale_seeds([10, 20], eo_seeds, extract_scale)
+                # ps.extract_patches_multi_scale(imgCone, seeds_dict3, patch_size, "edgeouter")
 
                 # while True:
                 #     c_seeds, ei_seeds, eo_seeds = ps.detect_cancer_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
@@ -107,7 +111,8 @@ class TestPatchSampler(unittest.TestCase):
                 n_seeds = ps.detect_normal_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
                 print("slide code = ", code, ", normal_seeds = ", len(n_seeds))
 
-                seeds_dict = ps.get_multi_scale_seeds([10, 20], n_seeds, extract_scale)
+                # seeds_dict = ps.get_multi_scale_seeds([10, 20], n_seeds, extract_scale)
+                seeds_dict = ps.get_multi_scale_seeds([], n_seeds, extract_scale)
                 ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal")
 
                 # while True:

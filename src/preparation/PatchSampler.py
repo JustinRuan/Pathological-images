@@ -46,7 +46,7 @@ class PatchSampler(object):
         Root_path = self._params.PATCHS_ROOT_PATH[samples_dir]
         intScale = np.rint(extract_scale * 100).astype(np.int)
 
-        pathPatch = "{}/S{}_{}_{}".format(Root_path, intScale, patch_size, seeds_name)
+        pathPatch = "{}/S{}_{}_{}/{}".format(Root_path, intScale, patch_size, seeds_name, sourceCone.slice_id)
 
         if not os.path.exists(pathPatch):
             os.makedirs(pathPatch)
@@ -62,14 +62,27 @@ class PatchSampler(object):
         # edge_width = 4  # (256 / (40 / 1.25) = 8, 256的图块在1.25倍镜下边长为8)
 
         mask = sourceCone.create_mask_image(low_scale, edge_width)
+        roi = sourceCone.get_effective_zone(low_scale)
 
         C_mask = mask["C"]
+        N_mask = mask["N"] & roi
         EI_mask = mask["EI"]
         EO_mask = mask["EO"]
+
+        sum_C = np.sum(C_mask)
+        sum_N = np.sum(N_mask)
+        ratio = np.sqrt(sum_N / sum_C)
+        ratio = min(3, ratio)
+
+        if ratio > 1:
+            normal_sampling_interval = np.rint(ratio * sampling_interval)
+        else:
+            normal_sampling_interval = sampling_interval
 
         c_seeds = get_seeds(C_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-8)
         ei_seeds = get_seeds(EI_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
         eo_seeds = get_seeds(EO_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+        n_seeds = get_seeds(N_mask, low_scale, extract_scale, patch_size, spacingHigh=normal_sampling_interval, margin=-8)
 
         c_seeds = set(c_seeds)
         ei_seeds = set(ei_seeds)
@@ -81,15 +94,17 @@ class PatchSampler(object):
         result_c = list(c_seeds - c_and_ei - c_and_eo)
         result_ei = list(ei_seeds - eo_and_ei)
         result_eo = list(eo_seeds - eo_and_ei)
+        result_n = list(set(n_seeds) - c_seeds - ei_seeds - eo_seeds)
 
-        return result_c, result_ei, result_eo
+        return result_c, result_ei, result_eo, result_n
 
     def get_multi_scale_seeds(self,extract_scale_list, seeds, seeds_scale):
         seeds_dict = {}
         seeds_dict[seeds_scale] = seeds
 
-        for extract_scale in extract_scale_list:
-            seeds_dict[extract_scale] = transform_coordinate(0, 0, 1.25, seeds_scale, extract_scale, seeds)
+        if extract_scale_list is not None and len(extract_scale_list) > 0 :
+            for extract_scale in extract_scale_list:
+                seeds_dict[extract_scale] = transform_coordinate(0, 0, 1.25, seeds_scale, extract_scale, seeds)
 
         return seeds_dict
 
