@@ -581,7 +581,7 @@ class ACDNormalization_tf(AbstractNormalization):
     def __init__(self, method, **kwarg):
         super(ACDNormalization_tf, self).__init__(method, **kwarg)
         self._pn = 100000
-        self._bs = 2000
+        self._bs = 1500
         self._step_per_epoch = int(self._pn / self._bs)
         self._epoch = int(300 / self._step_per_epoch)
         # self._pn = 100000
@@ -617,7 +617,7 @@ class ACDNormalization_tf(AbstractNormalization):
         template_list = os.listdir(self.template_path)
         temp_images = np.zeros((template_list.__len__(), 2048, 2048, 3), np.uint8)
         # temp_images = np.zeros((template_list.__len__(), 256, 256, 3), np.uint8)
-        for i, name in enumerate(template_list):
+        for i, name in enumerate(template_list): # BGR图像
             temp_images[i] = cv2.imread(os.path.join(self.template_path, name))
 
         # fit
@@ -953,7 +953,7 @@ class ImageNormalizationTool(object):
 
     def normalize_dataset(self, source_samples, tagrget_dir, range = None, batch_size = 20):
         self.opcode = 19
-        normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
 
         patch_root = self._params.PATCHS_ROOT_PATH[source_samples[0]]
         sample_filename = source_samples[1]
@@ -968,7 +968,8 @@ class ImageNormalizationTool(object):
         images = []
         for patch_file in Xtrain:
             img = io.imread(patch_file, as_gray=False)
-            images.append(img)
+            imgBGR = img[:, :, (2, 1, 0)]
+            images.append(imgBGR)
 
         normal.prepare(images)
 
@@ -988,7 +989,8 @@ class ImageNormalizationTool(object):
             new_block = Block()
             new_block.load_img(x)
             img = np.array(new_block.get_img())
-            batch_images.append(img)
+            imgBGR = img[:, :, (2, 1, 0)]
+            batch_images.append(imgBGR)
             batch_y.append(y)
             batch_blocks.append(new_block)
             n = n + 1
@@ -997,7 +999,7 @@ class ImageNormalizationTool(object):
                 norm_images = normal.normalize_on_batch(batch_images)
 
                 for block, norm_img, y in zip(batch_blocks, norm_images, batch_y):
-                    block.set_img(255 * norm_img)
+                    block.set_img(255 * norm_img[:, :, (2, 1, 0)])
                     block.opcode = self.opcode
 
                     if y == 0:
@@ -1016,7 +1018,7 @@ class ImageNormalizationTool(object):
         if n > 0:
             norm_images = normal.normalize_on_batch(batch_images)
             for block, norm_img, y in zip(batch_blocks, norm_images, batch_y):
-                block.set_img(255 * norm_img)
+                block.set_img(255 * norm_img[:, :, (2, 1, 0)])
                 block.opcode = self.opcode
 
                 if y == 0:

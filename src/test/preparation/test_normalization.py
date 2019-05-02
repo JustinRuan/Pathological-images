@@ -255,5 +255,7 @@ class TestNormalization(unittest.TestCase):
         samples_name = ("P0404", "Cancer_4000_256_test.txt")
         normal = ImageNormalizationTool(c)
         normal.normalize_dataset(samples_name, "Norm_ACD_R", range=None, batch_size=20)
-
+        samples_name = ("P0404", "Normal_4000_256_test.txt")
+        normal = ImageNormalizationTool(c)
+        normal.normalize_dataset(samples_name, "Norm_ACD_R", range=None, batch_size=20)
 
