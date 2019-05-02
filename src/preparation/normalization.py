@@ -561,7 +561,7 @@ class ACDNormalization(AbstractNormalization):
         opt_w = np.append(model.w.data.cpu().numpy(), [1.0])
         return opt_cd, opt_w
 
-    def transform(self, images):
+    def transform(self, images):# 这里是针对BGR的写法
         # self._template_dc_mat = np.loadtxt(self.dc_txt)
         # self._template_w_mat = np.loadtxt(self.w_txt)
 

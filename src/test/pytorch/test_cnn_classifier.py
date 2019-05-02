@@ -9,6 +9,7 @@ __mtime__ = '2018-12-13'
 import unittest
 import numpy as np
 from core import *
+from skimage import io
 from pytorch.cnn_classifier import Simple_Classifier
 import torch
 from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization,ACDNormalization_tf
@@ -78,9 +79,24 @@ class Test_cnn_classifier(unittest.TestCase):
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
 
         # normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
-        # normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
 
-        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= False)
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+        source_samples = ("P0404", "R0404_4000_256_test.txt")
+        patch_root = c.PATCHS_ROOT_PATH[source_samples[0]]
+        sample_filename = source_samples[1]
+        train_list = "{}/{}".format(patch_root, sample_filename)
+
+        Xtrain, Ytrain = util.read_csv_file(patch_root, train_list)
+
+        # prepare
+        images = []
+        for patch_file in Xtrain:
+            img = io.imread(patch_file, as_gray=False)
+            images.append(img)
+
+        normal.prepare(images)
+
+        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= True)
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
 
@@ -91,7 +107,7 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_W0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
 
-        cnn.evaluate_model(samples_name=("P0404", "R0404_4000_256_test.txt"),
+        cnn.evaluate_model(samples_name=source_samples,
                            model_file=None,
                            batch_size=20, max_count=None)
         # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
