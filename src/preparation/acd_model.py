@@ -26,9 +26,8 @@ class ACD_Model(nn.Module):
 
         # sca_mat = tf.stack((tf.cos(alpha) * tf.sin(beta), tf.cos(alpha) * tf.cos(beta), tf.sin(alpha)), axis=1)
         # cd_mat = tf.matrix_inverse(sca_mat)
-        # sca_mat = torch.stack([torch.cos(alpha) * torch.sin(beta), torch.cos(alpha) * torch.cos(beta), torch.sin(alpha)],dim = 1)
         sca_mat = torch.stack(
-            [torch.cos(alpha) * torch.sin(beta), torch.cos(alpha) * torch.cos(beta), torch.sin(alpha)], dim=0)
+            [torch.cos(alpha) * torch.sin(beta), torch.cos(alpha) * torch.cos(beta), torch.sin(alpha)], dim=0) #输入图像为BGR时
         cd_mat = torch.nn.Parameter(torch.inverse(sca_mat), requires_grad=True)
 
         self.w = w
@@ -38,7 +37,6 @@ class ACD_Model(nn.Module):
     def forward(self, x):
 
         # s = tf.matmul(input_od, cd_mat) * w
-
         s1 = torch.matmul(x, self.cd_mat)
         one = torch.FloatTensor([1.0])
         one = one.to(x.device)
@@ -76,7 +74,3 @@ class ACD_Model(nn.Module):
         loss = l_p1 + lambda_p * l_p2 + lambda_b * l_b + lambda_e * l_e
 
         return loss
-
-    # def get_params(self):
-    #     w = self.w.data[0].
-    #     return

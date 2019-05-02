@@ -460,13 +460,29 @@ class ACDNormalization(AbstractNormalization):
     def normalize_on_batch(self, src_img):
         return self.normalize(src_img)
 
-    def normalize(self, src_img):
+    # def normalize(self, src_img):
+    #     BGR_images = []
+    #     for img in src_img:
+    #         BGR_images.append(img[:,:, (2,1,0)])
+    #
+    #     od = -np.log((np.asarray(BGR_images, np.float) + 1) / 256.0)
+    #     normed_od = np.matmul(od, self.transform_mat)
+    #     normed_images = np.exp(-normed_od) * 256 - 1
+    #     result = (np.clip(normed_images, 0, 255)) / 255
+    #
+    #     RBG_images = []
+    #     for img in result:
+    #         RBG_images.append(img[:,:, (2,1,0)])
+    #
+    #     return RBG_images
 
+    def normalize(self, src_img):
         od = -np.log((np.asarray(src_img, np.float) + 1) / 256.0)
+
         normed_od = np.matmul(od, self.transform_mat)
         normed_images = np.exp(-normed_od) * 256 - 1
-
-        return (np.clip(normed_images, 0, 255)) / 255
+        result = (np.clip(normed_images, 0, 255)) / 255
+        return result
 
     def generate(self):
         template_list = os.listdir(self.template_path)
@@ -475,7 +491,9 @@ class ACDNormalization(AbstractNormalization):
 
         for i, name in enumerate(template_list):
             if name.endswith(".jpg"):
-                temp_images.append(cv2.imread(os.path.join(self.template_path, name)))
+                # temp_images.append(cv2.imread(os.path.join(self.template_path, name))) # BGR
+                # 读入RGB
+                temp_images.append(io.imread(os.path.join(self.template_path, name)))
 
         temp_images = np.array(temp_images)
         # fit
@@ -488,6 +506,7 @@ class ACDNormalization(AbstractNormalization):
 
     def sampling_data(self, images):
         pixels = np.reshape(images, (-1, 3))
+        pixels = pixels[ :, (2, 1, 0)] # 从RGB变BGR
         pixels = pixels[np.random.choice(pixels.shape[0], min(self._pn * 20, pixels.shape[0]))]
         od = -np.log((np.asarray(pixels, np.float) + 1) / 256.0)
         tmp = np.mean(od, axis=1)
@@ -564,8 +583,11 @@ class ACDNormalization(AbstractNormalization):
             raise AssertionError('Run fit function first')
 
         opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
-        self.transform_mat = np.matmul(opt_cd_mat * opt_w_mat,
+        transform_mat = np.matmul(opt_cd_mat * opt_w_mat,
                                   np.linalg.inv(self._template_dc_mat * self._template_w_mat))
+        # 当输入图像为RGB时
+        transform_mat = transform_mat[(2,1,0), :]
+        self.transform_mat = transform_mat[:, (2,1,0)]
         return
 
     def filter_all_white(self, images):
@@ -615,10 +637,11 @@ class ACDNormalization_tf(AbstractNormalization):
 
     def generate(self):
         template_list = os.listdir(self.template_path)
-        temp_images = np.zeros((template_list.__len__(), 2048, 2048, 3), np.uint8)
-        # temp_images = np.zeros((template_list.__len__(), 256, 256, 3), np.uint8)
-        for i, name in enumerate(template_list): # BGR图像
-            temp_images[i] = cv2.imread(os.path.join(self.template_path, name))
+        temp_images = []
+        for i, name in enumerate(template_list):
+            # temp_images.append(cv2.imread(os.path.join(self.template_path, name))) # BGR
+            # 读入RGB
+            temp_images.append(io.imread(os.path.join(self.template_path, name)))
 
         # fit
         st = time.time()
@@ -640,6 +663,7 @@ class ACDNormalization_tf(AbstractNormalization):
 
     def sampling_data(self, images):
         pixels = np.reshape(images, (-1, 3))
+        pixels = pixels[:, (2, 1, 0)]  # 从RGB变BGR
         pixels = pixels[np.random.choice(pixels.shape[0], min(self._pn * 20, pixels.shape[0]))]
         od = -np.log((np.asarray(pixels, np.float) + 1) / 256.0)
         tmp = np.mean(od, axis=1)
@@ -717,8 +741,11 @@ class ACDNormalization_tf(AbstractNormalization):
             raise AssertionError('Run fit function first')
 
         opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
-        self.transform_mat = np.matmul(opt_cd_mat * opt_w_mat, self.inv)
-        # np.linalg.inv(self._template_dc_mat * self._template_w_mat))
+        transform_mat = np.matmul(opt_cd_mat * opt_w_mat, self.inv)
+
+        # 当输入图像为RGB时
+        transform_mat = transform_mat[(2,1,0), :]
+        self.transform_mat = transform_mat[:, (2,1,0)]
 
 class ImageNormalizationTool(object):
     def __init__(self, params):
@@ -953,7 +980,7 @@ class ImageNormalizationTool(object):
 
     def normalize_dataset(self, source_samples, tagrget_dir, range = None, batch_size = 20):
         self.opcode = 19
-        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+        normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
 
         patch_root = self._params.PATCHS_ROOT_PATH[source_samples[0]]
         sample_filename = source_samples[1]
@@ -968,8 +995,9 @@ class ImageNormalizationTool(object):
         images = []
         for patch_file in Xtrain:
             img = io.imread(patch_file, as_gray=False)
-            imgBGR = img[:, :, (2, 1, 0)]
-            images.append(imgBGR)
+            # imgBGR = img[:, :, (2, 1, 0)]
+            # images.append(imgBGR)
+            images.append(img)
 
         normal.prepare(images)
 
@@ -989,8 +1017,9 @@ class ImageNormalizationTool(object):
             new_block = Block()
             new_block.load_img(x)
             img = np.array(new_block.get_img())
-            imgBGR = img[:, :, (2, 1, 0)]
-            batch_images.append(imgBGR)
+            # imgBGR = img[:, :, (2, 1, 0)]
+            # batch_images.append(imgBGR)
+            batch_images.append(img)
             batch_y.append(y)
             batch_blocks.append(new_block)
             n = n + 1
@@ -999,7 +1028,8 @@ class ImageNormalizationTool(object):
                 norm_images = normal.normalize_on_batch(batch_images)
 
                 for block, norm_img, y in zip(batch_blocks, norm_images, batch_y):
-                    block.set_img(255 * norm_img[:, :, (2, 1, 0)])
+                    # block.set_img(255 * norm_img[:, :, (2, 1, 0)])
+                    block.set_img(255 * norm_img)
                     block.opcode = self.opcode
 
                     if y == 0:
@@ -1018,7 +1048,8 @@ class ImageNormalizationTool(object):
         if n > 0:
             norm_images = normal.normalize_on_batch(batch_images)
             for block, norm_img, y in zip(batch_blocks, norm_images, batch_y):
-                block.set_img(255 * norm_img[:, :, (2, 1, 0)])
+                # block.set_img(255 * norm_img[:, :, (2, 1, 0)])
+                block.set_img(255 * norm_img)
                 block.opcode = self.opcode
 
                 if y == 0:
