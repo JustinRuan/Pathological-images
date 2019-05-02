@@ -252,7 +252,7 @@ class TestNormalization(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        samples_name = ("P0404", "T_NC_Simple0404_4000_256_test.txt")
+        samples_name = ("P0404", "Cancer_4000_256_test.txt")
         normal = ImageNormalizationTool(c)
         normal.normalize_dataset(samples_name, "Norm_ACD_R", range=None, batch_size=20)
 

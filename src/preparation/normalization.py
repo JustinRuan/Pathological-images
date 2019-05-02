@@ -631,17 +631,9 @@ class ACDNormalization_tf(AbstractNormalization):
         np.savetxt(self.w_txt, opt_w_mat)
 
     def transform(self, images):
-        self._template_dc_mat = np.loadtxt(self.dc_txt)
-        self._template_w_mat = np.loadtxt(self.w_txt)
-        if self._template_dc_mat is None:
-            raise AssertionError('Run fit function first')
-
-        opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
-        transform_mat = np.matmul(opt_cd_mat * opt_w_mat, self.inv)
-                                  # np.linalg.inv(self._template_dc_mat * self._template_w_mat))
 
         od = -np.log((np.asarray(images, np.float) + 1) / 256.0)
-        normed_od = np.matmul(od, transform_mat)
+        normed_od = np.matmul(od, self.transform_mat)
         normed_images = np.exp(-normed_od) * 256 - 1
 
         return np.maximum(np.minimum(normed_images, 255), 0)/255
@@ -718,8 +710,15 @@ class ACDNormalization_tf(AbstractNormalization):
 
         return target, cd_mat, w
 
-    def prepare(self, batch_images):
-        pass
+    def prepare(self, images):
+        self._template_dc_mat = np.loadtxt(self.dc_txt)
+        self._template_w_mat = np.loadtxt(self.w_txt)
+        if self._template_dc_mat is None:
+            raise AssertionError('Run fit function first')
+
+        opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
+        self.transform_mat = np.matmul(opt_cd_mat * opt_w_mat, self.inv)
+        # np.linalg.inv(self._template_dc_mat * self._template_w_mat))
 
 class ImageNormalizationTool(object):
     def __init__(self, params):
@@ -965,13 +964,13 @@ class ImageNormalizationTool(object):
             Xtrain = Xtrain[range[0]:range[1]]
             Ytrain = Ytrain[range[0]:range[1]]
 
-        # # prepare
-        # images = []
-        # for patch_file in Xtrain:
-        #     img = io.imread(patch_file, as_gray=False)
-        #     images.append(img)
-        #
-        # normal.prepare(images)
+        # prepare
+        images = []
+        for patch_file in Xtrain:
+            img = io.imread(patch_file, as_gray=False)
+            images.append(img)
+
+        normal.prepare(images)
 
         target_cancer_path = "{}/{}_cancer".format(patch_root, tagrget_dir)
         target_normal_path = "{}/{}_normal".format(patch_root, tagrget_dir)
