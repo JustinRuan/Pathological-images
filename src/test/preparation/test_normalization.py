@@ -170,7 +170,7 @@ class TestNormalization(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template2")
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
 
         # filename = "T_NC_Simple0404_4000_256_test.txt"
         # patch_path = c.PATCHS_ROOT_PATH["P0404"]
@@ -190,6 +190,7 @@ class TestNormalization(unittest.TestCase):
             img = cv2.imread(filename)
             images.append(img)
 
+        normal.prepare(images)
         results = normal.normalize_on_batch(images)
 
         fig = plt.figure(figsize=(16, 10), dpi=100)
@@ -251,8 +252,8 @@ class TestNormalization(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        samples_name = ("P0327", "T_NC_Simple0327_2_4000_256_train.txt")
+        samples_name = ("P0404", "T_NC_Simple0404_4000_256_test.txt")
         normal = ImageNormalizationTool(c)
-        normal.normalize_dataset(samples_name, "Norm_ACD", range=(0, 50), batch_size=20)
+        normal.normalize_dataset(samples_name, "Norm_ACD_R", range=None, batch_size=20)
 
 

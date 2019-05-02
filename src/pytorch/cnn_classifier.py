@@ -274,10 +274,11 @@ class BaseClassifier(object, metaclass=ABCMeta):
             endtime = datetime.datetime.now()
             remaining_time = (test_data_len - step) * (endtime - starttime).seconds / (step + 1)
             print('predicting => %d / %d , remaining time: %d (s)' % (step + 1, test_data_len, remaining_time))
-            probs = probs.cpu().numpy()
-            mean = np.mean(probs)
-            std = np.std(probs)
-            print("mean of prob = ", mean, std)
+            #for debug
+            # probs = probs.cpu().numpy()
+            # mean = np.mean(probs)
+            # std = np.std(probs)
+            # print("mean of prob = ", mean, std)
 
         Ytest = np.array(Ytest)
         predicted_tags = np.array(predicted_tags)
@@ -387,7 +388,7 @@ class Simple_Classifier(BaseClassifier):
             self.image_size = 32
 
     def create_initial_model(self):
-        def create_densenet(self, depth):
+        def create_densenet(depth):
             '''
             生成指定深度的Densenet
             :param depth: 深度
@@ -420,7 +421,7 @@ class Simple_Classifier(BaseClassifier):
                 )
             return model
 
-        def create_se_densenet(self, depth):
+        def create_se_densenet(depth):
             # Get densenet configuration
             if (depth - 4) % 3:
                 raise Exception('Invalid depth')

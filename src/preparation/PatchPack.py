@@ -68,7 +68,7 @@ class PatchPack(object):
                     L.append((rfile, tag))
         return L
 
-    def create_train_test_data(self, data_tag, train_size, test_size, file_tag, suffle = True):
+    def create_train_test_data(self, data_tag, train_size, test_size, file_tag, need_balance):
         '''
         生成样本文件的列表，存入txt中
         :param data_tag: 样本集
@@ -82,17 +82,31 @@ class PatchPack(object):
 
         root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
 
-        count = len(data_tag)
+        # 平衡各个类别样本的数量, normal 远多于Cancer
+        normal_data = data_tag[0]
+        # normal_count = len(normal_data)
+        cancer_data = data_tag[1]
+
+        if need_balance:
+            cancer_count = len(cancer_data)
+            random.shuffle(normal_data)
+            normal_data = normal_data[:cancer_count]
+
+        balance_data = cancer_data
+        balance_data.extend(normal_data)
+        count = len(balance_data)
         train_count = int(train_size * count)
         test_count = int(test_size * count)
 
-        if suffle:
-            random.shuffle(data_tag)
+        random.shuffle(balance_data)
 
-        train_data = data_tag[:train_count]
-        test_data = data_tag[train_count : train_count + test_count]
+        train_data = balance_data[:train_count]
+        test_data = balance_data[train_count : train_count + test_count]
 
         for file_type, data in zip(["train", "test"], [train_data, test_data]):
+            if len(data) == 0:
+                continue
+
             full_filename = "{0}/{1}_{2}.txt".format(root_path, file_tag, file_type)
 
             f = open(full_filename, "w")
@@ -143,11 +157,11 @@ class PatchPack(object):
         :param dir_tag_map: { "dir_code": tag }
         :return: 已经标注的，样本的文件路径
         '''
-        data_tag = []
+        data_tag = {0:[], 1:[]}
         self.patches_code = patches_code
         for dir_code, tag in dir_tag_map.items():
             result = self.loading_filename_tags(dir_code, tag)
-            data_tag.extend(result)
+            data_tag[tag].extend(result)
 
         return data_tag
 

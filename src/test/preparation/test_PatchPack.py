@@ -59,14 +59,14 @@ class TestPatchPack(unittest.TestCase):
         # data_tag = pack.initialize_sample_tags("Target", {"template_normal": 0})
         # pack.create_train_test_data(data_tag, 0, 1, "Target_T2_4000_2048")
 
-        # data_tag = pack.initialize_sample_tags("P0327", {"Aug_LAB_cancer": 1, "Aug_LAB_noraml": 0})
-        # pack.create_train_test_data(data_tag, 0.95, 0.05, "Aug_LAB_4000_256")
+        # data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_cancer": 1, "S4000_256_noraml": 0})
+        # pack.create_train_test_data(data_tag, 0.95, 0.05, "P0430_4000_256")
 
         # data_tag = pack.initialize_sample_tags("P0330", {"S4000_256_cancer": 1, "S4000_256_normal": 0})
         # pack.create_train_test_data(data_tag, 0, 1, "T_NC_Simple0330_4000_256")
 
-        data_tag = pack.initialize_sample_tags("P0404", {"WS4000_256_cancer": 1, "WS4000_256_normal": 0})
-        pack.create_train_test_data(data_tag, 0, 1, "T_NC_W0404_4000_256")
+        data_tag = pack.initialize_sample_tags("P0404", {"Norm_ACD_R_cancer": 1, "Norm_ACD_R_normal": 0})
+        pack.create_train_test_data(data_tag, 0, 1, "R0404_4000_256", need_balance=False)
 
     #################################################################################################################
     ####################  20 x 256  ############################

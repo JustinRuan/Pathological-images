@@ -451,12 +451,22 @@ class ACDNormalization(AbstractNormalization):
         self._template_dc_mat = np.loadtxt(self.dc_txt)
         self._template_w_mat = np.loadtxt(self.w_txt)
 
+    # def normalize_on_batch(self, src_img):
+    #     if self.filter_all_white(src_img):
+    #         return src_img
+    #     else:
+    #         img = self.transform(src_img)
+    #         return img
     def normalize_on_batch(self, src_img):
-        if self.filter_all_white(src_img):
-            return src_img
-        else:
-            img = self.transform(src_img)
-            return img
+        return self.normalize(src_img)
+
+    def normalize(self, src_img):
+
+        od = -np.log((np.asarray(src_img, np.float) + 1) / 256.0)
+        normed_od = np.matmul(od, self.transform_mat)
+        normed_images = np.exp(-normed_od) * 256 - 1
+
+        return (np.clip(normed_images, 0, 255)) / 255
 
     def generate(self):
         template_list = os.listdir(self.template_path)
@@ -469,9 +479,7 @@ class ACDNormalization(AbstractNormalization):
 
         temp_images = np.array(temp_images)
         # fit
-        st = time.time()
         self.fit(temp_images)
-        print('fit time', time.time() - st)
 
     def fit(self, images):
         opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
@@ -527,7 +535,7 @@ class ACDNormalization(AbstractNormalization):
                 running_loss = loss.item()
                 # print('(%d) %d / %d ==> Loss: %.4f ' % (ep, step, self._step_per_epoch, running_loss))
 
-            print('(%d) ==> Loss: %.4f ' % (ep, running_loss))
+            # print('(%d) ==> Loss: %.4f ' % (ep, running_loss))
 
         opt_cd = model.cd_mat.data.cpu().numpy()
         # opt_w = model.w.data.numpy()
@@ -548,7 +556,17 @@ class ACDNormalization(AbstractNormalization):
         normed_od = np.matmul(od, transform_mat)
         normed_images = np.exp(-normed_od) * 256 - 1
 
-        return np.maximum(np.minimum(normed_images, 255), 0) / 255
+        # return np.maximum(np.minimum(normed_images, 255), 0) / 255
+        return (np.clip(normed_images, 0, 255)) / 255
+
+    def prepare(self, images):
+        if self._template_dc_mat is None:
+            raise AssertionError('Run fit function first')
+
+        opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
+        self.transform_mat = np.matmul(opt_cd_mat * opt_w_mat,
+                                  np.linalg.inv(self._template_dc_mat * self._template_w_mat))
+        return
 
     def filter_all_white(self, images):
         for item in images:
@@ -689,7 +707,7 @@ class ACDNormalization_tf(AbstractNormalization):
 
         objective = l_p1 + lambda_p * l_p2 + lambda_b * l_b + lambda_e * l_e
 
-        tag_dubeg = True
+        tag_dubeg = False
         if tag_dubeg:
             print_op = tf.print(['cd_mat: ', cd_mat])
             print_op2 = tf.print("objective", objective, ['l_p1: ', l_p1], ['l_p2: ', l_p2], ['l_b: ', l_b], ['l_p1: ', l_e])
@@ -936,7 +954,7 @@ class ImageNormalizationTool(object):
 
     def normalize_dataset(self, source_samples, tagrget_dir, range = None, batch_size = 20):
         self.opcode = 19
-        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template2")
+        normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
 
         patch_root = self._params.PATCHS_ROOT_PATH[source_samples[0]]
         sample_filename = source_samples[1]
@@ -947,8 +965,16 @@ class ImageNormalizationTool(object):
             Xtrain = Xtrain[range[0]:range[1]]
             Ytrain = Ytrain[range[0]:range[1]]
 
+        # # prepare
+        # images = []
+        # for patch_file in Xtrain:
+        #     img = io.imread(patch_file, as_gray=False)
+        #     images.append(img)
+        #
+        # normal.prepare(images)
+
         target_cancer_path = "{}/{}_cancer".format(patch_root, tagrget_dir)
-        target_normal_path = "{}/{}_noraml".format(patch_root, tagrget_dir)
+        target_normal_path = "{}/{}_normal".format(patch_root, tagrget_dir)
 
         if (not os.path.exists(target_cancer_path)):
             os.makedirs(target_cancer_path)

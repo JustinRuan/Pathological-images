@@ -30,7 +30,7 @@ class TestPatchSampler(unittest.TestCase):
 
         patch_spacing = 400
 
-        for i in range(1, 3):
+        for i in range(4, 71):
             code = "{:0>3d}".format(i)
             print("processing ", code, " ... ...")
 
@@ -95,9 +95,9 @@ class TestPatchSampler(unittest.TestCase):
 
         ps = PatchSampler(c)
 
-        patch_spacing = 1200
+        patch_spacing = 2000
 
-        for i in range(1, 51):
+        for i in range(1, 3):
             code = "{:0>3d}".format(i)
             print("processing ", code, " ... ...")
 
@@ -113,7 +113,7 @@ class TestPatchSampler(unittest.TestCase):
 
                 # seeds_dict = ps.get_multi_scale_seeds([10, 20], n_seeds, extract_scale)
                 seeds_dict = ps.get_multi_scale_seeds([], n_seeds, extract_scale)
-                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal")
+                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal2", "P0430")
 
                 # while True:
                 #     n_seeds = ps.detect_normal_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
