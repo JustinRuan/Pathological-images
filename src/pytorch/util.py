@@ -91,7 +91,7 @@ def get_image_blocks_itor(src_img, fScale, seeds, nWidth, nHeight, batch_size, n
 #         img_tensor = torch.stack(images)
 #         yield img_tensor
 
-def get_image_blocks_batch_normalize_itor(src_img, fScale, seeds, nWidth, nHeight, batch_size, normalization):
+def get_image_blocks_batch_normalize_itor(src_img, fScale, seeds, nWidth, nHeight, batch_size, normalization, dynamic_update):
     '''
     获得以种子点为图块的迭代器，使用每批次图块的归一化参数计算和归一化过程
     :param src_img: 切片图像
@@ -115,7 +115,8 @@ def get_image_blocks_batch_normalize_itor(src_img, fScale, seeds, nWidth, nHeigh
         n = n + 1
 
         if n >= batch_size:
-            normalization.prepare(batch_images)
+            if dynamic_update:
+                normalization.prepare(batch_images)
             norm_images = normalization.normalize_on_batch(batch_images)
             temp = []
             for norm_img in norm_images:
@@ -129,7 +130,8 @@ def get_image_blocks_batch_normalize_itor(src_img, fScale, seeds, nWidth, nHeigh
             n = 0
 
     if n > 0:
-        normalization.prepare(batch_images)
+        if dynamic_update:
+            normalization.prepare(batch_images)
         norm_images = normalization.normalize_on_batch(batch_images)
         temp = []
         for norm_img in norm_images:
@@ -139,7 +141,7 @@ def get_image_blocks_batch_normalize_itor(src_img, fScale, seeds, nWidth, nHeigh
         img_tensor = torch.stack(temp)
         yield img_tensor
 
-def get_image_file_batch_normalize_itor(image_filenames, y_set, batch_size, normalization):
+def get_image_file_batch_normalize_itor(image_filenames, y_set, batch_size, normalization, dynamic_update):
     '''
     获得以种子点为图块的迭代器，使用批量的归一化参数计算和归一化过程
     :param src_img: 切片图像
@@ -149,6 +151,7 @@ def get_image_file_batch_normalize_itor(image_filenames, y_set, batch_size, norm
     :param nHeight: 图块的高
     :param batch_size: 每批的数量
     :param normalization: 归一化算法 的类
+    :param dynamic_update
     :return: 返回图块集合的迭代器
     '''
     assert normalization is not None, "Normalization is None!"
@@ -163,7 +166,8 @@ def get_image_file_batch_normalize_itor(image_filenames, y_set, batch_size, norm
         n = n + 1
 
         if n >= batch_size:
-            # normalization.prepare(batch_images)
+            if dynamic_update:
+                normalization.prepare(batch_images)
             norm_images = normalization.normalize_on_batch(batch_images)
             temp = []
             for norm_img in norm_images:
@@ -180,7 +184,8 @@ def get_image_file_batch_normalize_itor(image_filenames, y_set, batch_size, norm
             n = 0
 
     if n > 0:
-        # normalization.prepare(batch_images)
+        if dynamic_update:
+            normalization.prepare(batch_images)
         norm_images = normalization.normalize_on_batch(batch_images)
         temp = []
         for norm_img in norm_images:

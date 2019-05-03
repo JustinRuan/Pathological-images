@@ -64,7 +64,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
         if 'special_norm' in kwargs:
             self.special_norm_mode = kwargs["special_norm"]
         else:
-            self.special_norm_mode = False
+            self.special_norm_mode = -1
 
     @abstractmethod
     def create_initial_model(self):
@@ -225,16 +225,18 @@ class BaseClassifier(object, metaclass=ABCMeta):
         test_data = Image_Dataset(Xtest, Ytest)
         return  train_data, test_data
 
-    def loading_test_dataset(self, samples_name, batch_size, max_count, special_norm_mode = False):
+    def loading_test_dataset(self, samples_name, batch_size, max_count, special_norm_mode = -1):
         test_list = "{}/{}".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
 
         if max_count is not None:
             Xtest, Ytest = Xtest[:max_count], Ytest[:max_count]  # for debug
 
-        if special_norm_mode:
+        if special_norm_mode == 0:
             # 自定义的数据加载方式
-            test_loader = get_image_file_batch_normalize_itor(Xtest, Ytest, batch_size, self.normal_func)
+            test_loader = get_image_file_batch_normalize_itor(Xtest, Ytest, batch_size, self.normal_func, False)
+        elif special_norm_mode == 1:
+            test_loader = get_image_file_batch_normalize_itor(Xtest, Ytest, batch_size, self.normal_func, True)
         else:
             test_data = Image_Dataset(Xtest, Ytest, norm = self.normal_func)
             test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
@@ -294,10 +296,14 @@ class BaseClassifier(object, metaclass=ABCMeta):
         :param seeds: 种子点的集合
         :return: 预测结果与概率
         '''
-        if self.special_norm_mode:
+        if self.special_norm_mode == 0:
             seeds_itor = get_image_blocks_batch_normalize_itor(src_img, scale, seeds, patch_size, patch_size,
                                                                batch_size,
-                                                               normalization=self.normal_func)
+                                                               normalization=self.normal_func, dynamic_update=False)
+        elif self.special_norm_mode == 1:
+            seeds_itor = get_image_blocks_batch_normalize_itor(src_img, scale, seeds, patch_size, patch_size,
+                                                               batch_size,
+                                                               normalization=self.normal_func, dynamic_update=True)
         else:
             seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
                                                normalization=self.normal_func)

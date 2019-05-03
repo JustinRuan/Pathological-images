@@ -12,6 +12,7 @@ from skimage import draw
 from skimage import color, morphology
 from skimage.morphology import square
 import io
+from core.util import get_seeds, transform_coordinate
 
 class ImageCone(object):
 
@@ -130,4 +131,18 @@ class ImageCone(object):
         result = morphology.binary_closing(result, square(4))
         # result = morphology.binary_erosion(result, square(4))
         result = morphology.binary_dilation(result, square(8))
+        return result
+
+    def get_uniform_sampling_blocks(self, extract_scale, patch_size, ):
+        low_scale = self._params.GLOBAL_SCALE
+        eff_region = self.get_effective_zone(low_scale)
+        area = np.sum(eff_region)
+        sampling_interval = 2000
+        seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+
+        result = []
+        for (x, y) in seeds:
+            block = self.get_image_block(extract_scale, x, y, patch_size, patch_size)
+            result.append(block.get_img())
+
         return result

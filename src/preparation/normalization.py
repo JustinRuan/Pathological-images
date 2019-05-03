@@ -400,34 +400,34 @@ class HistNormalization(AbstractNormalization):
             update='insert',
         )
 
-    @staticmethod
-    def get_normalization_function(imgCone, params, extract_scale, patch_size, ):
-        low_scale = params.GLOBAL_SCALE
-        # 在有效检测区域内，均匀抽样
-        eff_region = imgCone.get_effective_zone(low_scale)
-        sampling_interval = 1000
-        seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-4)
-
-        # #不受限制地随机抽样
-        # rx2 = int(imgCone.ImageWidth * extract_scale / params.GLOBAL_SCALE)
-        # ry2 = int(imgCone.ImageHeight * extract_scale / params.GLOBAL_SCALE)
-        # random_gen = Random_Gen("halton")
-        #
-        # N = 2000
-        # # rx1, ry1, rx2, ry2 = self.valid_rect
-        # x, y = self.random_gen.generate_random(N, 0, rx2, 0, ry2)
-
-        images = []
-        for x, y in seeds:
-            block = imgCone.get_image_block(extract_scale, x, y, patch_size, patch_size)
-            img = block.get_img()
-            images.append(img)
-
-        normal = HistNormalization("match_hist", hist_target ="hist_templates.npy",
-                                   hist_source = None)
-        normal.prepare(images)
-
-        return normal
+    # @staticmethod
+    # def get_normalization_function(imgCone, params, extract_scale, patch_size, ):
+    #     low_scale = params.GLOBAL_SCALE
+    #     # 在有效检测区域内，均匀抽样
+    #     eff_region = imgCone.get_effective_zone(low_scale)
+    #     sampling_interval = 1000
+    #     seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-4)
+    #
+    #     # #不受限制地随机抽样
+    #     # rx2 = int(imgCone.ImageWidth * extract_scale / params.GLOBAL_SCALE)
+    #     # ry2 = int(imgCone.ImageHeight * extract_scale / params.GLOBAL_SCALE)
+    #     # random_gen = Random_Gen("halton")
+    #     #
+    #     # N = 2000
+    #     # # rx1, ry1, rx2, ry2 = self.valid_rect
+    #     # x, y = self.random_gen.generate_random(N, 0, rx2, 0, ry2)
+    #
+    #     images = []
+    #     for x, y in seeds:
+    #         block = imgCone.get_image_block(extract_scale, x, y, patch_size, patch_size)
+    #         img = block.get_img()
+    #         images.append(img)
+    #
+    #     normal = HistNormalization("match_hist", hist_target ="hist_templates.npy",
+    #                                hist_source = None)
+    #     normal.prepare(images)
+    #
+    #     return normal
 
 class ACDNormalization(AbstractNormalization):
     def __init__(self, method, **kwarg):
