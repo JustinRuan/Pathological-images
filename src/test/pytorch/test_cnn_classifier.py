@@ -37,7 +37,9 @@ class Test_cnn_classifier(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        model_name = "simple_cnn"
+        # model_name = "simple_cnn"
+        # model_name = "se_densenet_22"
+        model_name = "densenet_22"
         sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name)
@@ -45,12 +47,8 @@ class Test_cnn_classifier(unittest.TestCase):
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
         # augment = HRndAugmentation()
 
-        cnn.train_model(samples_name=("P0327","T_NC_Simple0327_2_4000_256"), augment_func = None,
-                        batch_size=40, epochs = 3)
-        # cnn.train_model(samples_name=("P0327", "Aug_LAB_4000_256"), augment_func=None,
-        #                 batch_size=30, epochs = 10)
-        # cnn.train_model(samples_name=("P0327", "Aug_HIST_4000_256"), augment_func=None,
-        #                 batch_size=60, epochs = 10)
+        cnn.train_model(samples_name=("P0430","P0430_4000_256"), augment_func = None,
+                        batch_size=40, epochs = 10)
 
     def test_evaluate_model(self):
         c = Params()
@@ -80,7 +78,7 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
 
-        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template2")
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="Tumor_025")
         source_samples = ("P0404", "T_NC_Simple0404_4000_256_test.txt")
         # patch_root = c.PATCHS_ROOT_PATH[source_samples[0]]
         # sample_filename = source_samples[1]
@@ -133,7 +131,7 @@ class Test_cnn_classifier(unittest.TestCase):
         normal.prepare(images)
 
         source_samples = ("P0404", "T_NC_Simple0404_4000_256_test.txt")
-        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= True)
+        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= 0)
         cnn.evaluate_model(samples_name=source_samples,
                            model_file=None,
                            batch_size=20, max_count=None)

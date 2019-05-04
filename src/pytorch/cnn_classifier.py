@@ -80,22 +80,24 @@ class BaseClassifier(object, metaclass=ABCMeta):
         :param model_file: 模型文件
         :return: 网络模型
         '''
-        if model_file is not None:
-            print("loading >>> ", model_file, " ...")
-            model = torch.load(model_file)
-            return model
-        else:
+        if model_file is None:
             checkpoint_dir = self.model_root
             if (not os.path.exists(checkpoint_dir)):
                 os.makedirs(checkpoint_dir)
 
-            latest = latest_checkpoint(checkpoint_dir)
-            if latest is not None:
-                print("loading >>> ", latest, " ...")
-                model = torch.load(latest)
-            else:
+            model_file = latest_checkpoint(checkpoint_dir)
+
+        if model_file is not None:
+            print("loading >>> ", model_file, " ...")
+            load_object = torch.load(model_file)
+            if isinstance(load_object, dict):
                 model = self.create_initial_model()
-            return model
+                model.load_state_dict(torch.load(model_file))
+            else:
+                model = load_object
+        else:
+            model = self.create_initial_model()
+        return model
 
     def train_model(self, samples_name, augment_func, batch_size, epochs):
         '''
@@ -181,7 +183,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
             epoch_loss=running_loss / test_data_len
             epoch_acc=running_corrects.double() / test_data_len
 
-            torch.save(model, self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch+1, epoch_loss, epoch_acc),
+            torch.save(model.state_dict(), self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch+1, epoch_loss, epoch_acc),
                        )
 
         return
@@ -423,7 +425,7 @@ class Simple_Classifier(BaseClassifier):
                     num_classes=self.num_classes,
                     small_inputs=False,  # 32 x 32的图片为True
                     gvp_out_size=1,
-                    efficient=True,
+                    efficient=False,
                 )
             return model
 
@@ -588,7 +590,7 @@ class MultiTask_Classifier(BaseClassifier):
             epoch_loss = running_loss / test_data_len
             epoch_acc_c = running_corrects1.double() / test_data_len
             epoch_acc_m = running_corrects2.double() / test_data_len
-            torch.save(model,
+            torch.save(model.state_dict(),
                        self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss,
                                                                                       epoch_acc_c,
                                                                                       epoch_acc_m))
@@ -788,7 +790,7 @@ class MSC_Classifier(BaseClassifier):
             epoch_loss = running_loss / test_data_len
             epoch_acc_c = running_corrects1.double() / test_data_len
             epoch_acc_m = running_corrects2.double() / test_data_len
-            torch.save(model,
+            torch.save(model.state_dict(),
                        self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss,
                                                                                       epoch_acc_c,
                                                                                       epoch_acc_m))
