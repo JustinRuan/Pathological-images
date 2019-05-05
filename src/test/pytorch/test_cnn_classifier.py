@@ -16,8 +16,8 @@ from preparation.normalization import HistNormalization, HSDNormalization, ACDNo
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -39,7 +39,7 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # model_name = "simple_cnn"
         # model_name = "se_densenet_22"
-        model_name = "densenet_22"
+        model_name = "densenet_40"
         sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name)

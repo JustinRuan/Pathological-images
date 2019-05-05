@@ -396,7 +396,7 @@ class Simple_Classifier(BaseClassifier):
             self.image_size = 32
 
     def create_initial_model(self):
-        def create_densenet(depth):
+        def create_densenet(depth, gvp_out_size):
             '''
             生成指定深度的Densenet
             :param depth: 深度
@@ -414,7 +414,7 @@ class Simple_Classifier(BaseClassifier):
                     block_config=block_config,
                     num_classes=self.num_classes,
                     small_inputs=True,  # 32 x 32的图片为True
-                    gvp_out_size=1,
+                    gvp_out_size=gvp_out_size,
                     efficient=True,
                 )
             elif self.patch_type in ["500_128", "2000_256", "4000_256", "x_256"]:  # 256 x 256
@@ -424,7 +424,7 @@ class Simple_Classifier(BaseClassifier):
                     block_config=block_config,
                     num_classes=self.num_classes,
                     small_inputs=False,  # 32 x 32的图片为True
-                    gvp_out_size=1,
+                    gvp_out_size=gvp_out_size,
                     efficient=False,
                 )
             return model
@@ -447,7 +447,9 @@ class Simple_Classifier(BaseClassifier):
         if self.model_name == "simple_cnn":
             model = Simple_CNN(self.num_classes, self.image_size)
         elif self.model_name == "densenet_22":
-            model = create_densenet(depth=22)
+            model = create_densenet(depth=22, gvp_out_size=1)
+        elif self.model_name == "densenet_40":
+            model = create_densenet(depth=40, gvp_out_size=(2,2))
         elif self.model_name == "se_densenet_22":
             model = create_se_densenet(depth=22)
         elif self.model_name =="se_densenet_40":
