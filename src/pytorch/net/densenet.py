@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import torch.utils.checkpoint as cp
 from collections import OrderedDict
 from pytorch.net.se_module import SELayer
+import numpy as np
 
 def _bn_function_factory(norm, relu, conv):
     def bn_function(*inputs):
@@ -148,7 +149,7 @@ class DenseNet(nn.Module):
             ]))
 
         # Linear layer
-        self.classifier = nn.Linear(num_features * sum(self.gvp_out_size), num_classes)
+        self.classifier = nn.Linear(num_features * np.sum(self.gvp_out_size), num_classes)
 
         # Initialization
         for name, param in self.named_parameters():

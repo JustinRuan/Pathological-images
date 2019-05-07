@@ -16,8 +16,8 @@ from preparation.normalization import HistNormalization, HSDNormalization, ACDNo
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -39,7 +39,7 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # model_name = "simple_cnn"
         # model_name = "se_densenet_22"
-        model_name = "densenet_40"
+        model_name = "densenet_22"
         sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name)
@@ -47,8 +47,11 @@ class Test_cnn_classifier(unittest.TestCase):
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
         # augment = HRndAugmentation()
 
-        cnn.train_model(samples_name=("P0430","P0430_4000_256"), augment_func = None,
-                        batch_size=40, epochs = 10)
+        # cnn.train_model(samples_name=("P0430","P0430_4000_256"), augment_func = None,
+        #                 batch_size=40, epochs = 10)
+        cnn.train_model_domain_validation(samples_name=("P0430","P0430_4000_256"),
+                                          check_samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
+                                          augment_func = None, batch_size=40, epochs = 10)
 
     def test_evaluate_model(self):
         c = Params()
@@ -56,7 +59,8 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # model_name = "se_densenet_22"
         # sample_name = "x_256"
-        model_name = "simple_cnn"
+        # model_name = "simple_cnn"
+        model_name = "densenet_22"
         sample_name = "4000_256"
 
         # normal = HistNormalization("match_hist", hist_target ="hist_templates_2048.npy",
@@ -78,8 +82,8 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
 
-        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="Tumor_025")
-        source_samples = ("P0404", "T_NC_Simple0404_4000_256_test.txt")
+        # normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="Tumor_025")
+        # source_samples = ("P0404", "T_NC_Simple0404_4000_256_test.txt")
         # patch_root = c.PATCHS_ROOT_PATH[source_samples[0]]
         # sample_filename = source_samples[1]
         # train_list = "{}/{}".format(patch_root, sample_filename)
@@ -94,22 +98,24 @@ class Test_cnn_classifier(unittest.TestCase):
         #
         # normal.prepare(images)
 
-        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= 1)
+        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= -1)
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
 
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
-        # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
-        #                    model_file=None, batch_size=20, max_count=None)
+
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_W0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
 
-        cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"), # T_NC_Simple0404_4000_256_test
-                           model_file=None,
-                           batch_size=20, max_count=None)
-        # cnn.evaluate_model(samples_name=("P0327", "T_NC_Simple0327_2_4000_256_test.txt"),
-        #                    model_file=None, batch_size=20, max_count=600, )
+        cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_4000_256_test.txt"),
+                           model_file=None, batch_size=20, max_count=None)
+
+        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"), # T_NC_Simple0404_4000_256_test
+        #                    model_file=None,
+        #                    batch_size=20, max_count=None)
+        # cnn.evaluate_model(samples_name=("P0430", "Check_P0430_4000_256_test.txt"),
+        #                    model_file=None, batch_size=100, max_count=None )
 
 
     def test_evaluate_model_with_sampling(self):
