@@ -22,16 +22,16 @@ JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 
 class Test_cnn_classifier(unittest.TestCase):
 
-    # def test_train_model_cifar(self):
-    #     c = Params()
-    #     c.load_config_file(JSON_PATH)
-    #
-    #     # model_name = "simple_cnn"
-    #     model_name = "densenet_22"
-    #     sample_name = "cifar10"
-    #
-    #     cnn = CNN_Classifier(c, model_name, sample_name)
-    #     cnn.train_model(samples_name=None, batch_size=32, epochs = 200)
+    def test_train_model_cifar(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "simple_cnn"
+        # model_name = "densenet_22"
+        sample_name = "cifar10"
+
+        cnn = Simple_Classifier(c, model_name, sample_name)
+        cnn.train_model(samples_name=None, augment_func=None, batch_size=32, epochs = 200)
 
     def test_train_model_patholImg(self):
         c = Params()
@@ -51,7 +51,7 @@ class Test_cnn_classifier(unittest.TestCase):
         #                 batch_size=40, epochs = 10)
         cnn.train_model_domain_validation(samples_name=("P0430","P0430_4000_256"),
                                           check_samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
-                                          augment_func = None, batch_size=40, epochs = 10)
+                                          batch_size=60, epochs = 10)
 
     def test_evaluate_model(self):
         c = Params()
@@ -109,7 +109,7 @@ class Test_cnn_classifier(unittest.TestCase):
         #                    model_file=None, batch_size=20, max_count=None)
 
         cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_4000_256_test.txt"),
-                           model_file=None, batch_size=20, max_count=None)
+                           model_file=None, batch_size=60, max_count=None)
 
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"), # T_NC_Simple0404_4000_256_test
         #                    model_file=None,

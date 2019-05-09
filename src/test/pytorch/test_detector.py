@@ -441,7 +441,7 @@ class Test_detector(unittest.TestCase):
     def test_adaptive_detect_region_test(self):
         # test test
         test_set = {1: ("001", 100, 100, 2600, 2700),  # 检测 dice =0.81
-                    2: ("001", 800, 1600, 1600, 2300),  # dice = 0.95
+                    2: ("001", 800, 1600, 1600, 2300),  # dice = 0.91
                     3: ("016", 0, 200, 3250, 2900),  # 检测不出
                     4: ("021", 0, 2400, 3000, 6500),  # 检测 dice， c3 0.9, c9 0.95
                     5: ("026", 0, 0, 0, 0),  # 检测，dice c3= 0.11
@@ -471,7 +471,7 @@ class Test_detector(unittest.TestCase):
                     30: ("073", 0, 0, 0, 0),
                     }
 
-        id = 2
+        id = 1
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]

@@ -26,6 +26,7 @@ from pytorch.net import Simple_CNN
 from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_image_blocks_batch_normalize_itor, \
     get_image_file_batch_normalize_itor
 import datetime
+from core import Block
 
 class BaseClassifier(object, metaclass=ABCMeta):
     def __init__(self, params, model_name, patch_type, **kwargs):
@@ -122,7 +123,8 @@ class BaseClassifier(object, metaclass=ABCMeta):
         if self.use_GPU:
             model.to(self.device)
 
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
+        # optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
         # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
@@ -273,6 +275,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
             epoch_loss=running_loss / test_data_len
             epoch_acc=running_corrects.double() / test_data_len
 
+            model.eval()
             # 验证第二测试数据集
             # running_loss2=0.0
             running_corrects2=0
@@ -352,10 +355,10 @@ class BaseClassifier(object, metaclass=ABCMeta):
             test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
                                           shuffle=False, num_workers=self.NUM_WORKERS)
 
-        return test_loader, Ytest
+        return test_loader, Xtest, Ytest
 
     def evaluate_model(self, samples_name, model_file, batch_size, max_count):
-        test_loader, Ytest  = self.loading_test_dataset(samples_name, batch_size, max_count, self.special_norm_mode)
+        test_loader, Xtest, Ytest  = self.loading_test_dataset(samples_name, batch_size, max_count, self.special_norm_mode)
 
         model = self.load_model(model_file=model_file)
         # 关闭求导，节约大量的显存
@@ -396,6 +399,25 @@ class BaseClassifier(object, metaclass=ABCMeta):
         predicted_tags = np.array(predicted_tags)
         print("%s Classification report for classifier :\n%s\n"
               % (self.model_name, metrics.classification_report(Ytest, predicted_tags, digits=4)))
+
+        self.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
+
+    def evaluate_accuracy_based_slice(self, Xtest, results, y_true_set):
+        slice_result = {}
+        b = Block()
+        for file_name, y, true_y in zip(Xtest, results, y_true_set):
+            b.decoding(file_name, 256, 256)
+            if b.slice_number in slice_result.keys():
+                slice_result[b.slice_number].append(y == true_y)
+            else:
+                slice_result[b.slice_number] = [y == true_y]
+
+        for slice_name in sorted(slice_result.keys()):
+            value = slice_result[slice_name]
+            count = len(value)
+            accu = float(sum(value)) / count
+            print("{} => accu ={:.4f}, count = {}".format(slice_name, accu, count))
+        return
 
     def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
         '''
@@ -442,10 +464,10 @@ class BaseClassifier(object, metaclass=ABCMeta):
             print('predicting => %d / %d ' % (step + 1, data_len))
 
             # for debug
-            probs = probs.cpu().numpy()
-            mean = np.mean(probs)
-            std = np.std(probs)
-            print("mean of prob = ", mean, std)
+            # probs = probs.cpu().numpy()
+            # mean = np.mean(probs)
+            # std = np.std(probs)
+            # print("mean of prob = ", mean, std)
 
         return results
 
@@ -572,8 +594,9 @@ class Simple_Classifier(BaseClassifier):
         :return: 网络模型
         '''
         net_file = {
-            "simple_cnn_4000_256": "simple_cnn_40_256_cp-0002-0.0650-0.9779.pth",
-            "se_densenet_22_4000_256":"densenet_22_4000_256-cp-0019-0.1793-0.9353.pth",
+            "simple_cnn_4000_256": "simple_cnn_cps-0010-0.1799-0.9308.pth",
+            "densenet_22_4000_256": "densenet_22_cp-0006-0.3120-0.8750-0.9838.pth",
+            "se_densenet_22_4000_256":"se_densenet_22_cp-0001-0.1922-0.9223-0.9094.pth",
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)

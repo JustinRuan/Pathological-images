@@ -617,7 +617,7 @@ class Detector(object):
         '''
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
-        self.effi_seeds = self.get_effective_seeds(x1, y1, x2, y2, coordinate_scale, self._params.GLOBAL_SCALE)
+        # self.effi_seeds = self.get_effective_seeds(x1, y1, x2, y2, coordinate_scale, self._params.GLOBAL_SCALE)
 
         # normal_func = HistNormalization.get_normalization_function(self._imgCone, self._params,
         #                                                             extract_scale, patch_size)
@@ -627,17 +627,18 @@ class Detector(object):
 
         # normal_func = None
 
-        model_name = "se_densenet_22"
-        sample_name = "x_256"
-        cnn = MultiTask_Classifier(self._params, model_name, sample_name, normalization=normal_func)
+        # model_name = "se_densenet_22"
+        # sample_name = "x_256"
+        # cnn = MultiTask_Classifier(self._params, model_name, sample_name, normalization=normal_func)
 
         #         # sample_name = "msc_256"
         # model_name = "se_densenet_22"
         # model_name = "se_densenet_c9_22"
 
         # model_name = "simple_cnn"
-        # sample_name = "4000_256"
-        # cnn = Simple_Classifier(self._params, model_name, sample_name, normalization=normal_func)
+        model_name = "densenet_22"
+        sample_name = "4000_256"
+        cnn = Simple_Classifier(self._params, model_name, sample_name, normalization=normal_func)
 
         # 生成坐标网格
         grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
@@ -690,14 +691,14 @@ class Detector(object):
             ########################################################################################
 
             # 单倍镜下进行检测
-            if model_name == "se_densenet_22":
+            if model_name in ["se_densenet_22", "densenet_22", "simple_cnn"]:
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
                 predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
                 probs = self.get_cancer_probability(predictions)
-            elif model_name == "simple_cnn":
-                high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
-                predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
-                probs = self.get_cancer_probability(predictions)
+            # elif model_name == "simple_cnn":
+            #     high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
+            #     predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
+            #     probs = self.get_cancer_probability(predictions)
             # # 多倍镜下进行检测, 效果不好啊！
             # elif mode == 2:
             #     # def predict_multi_scale(self, src_img, scale_tuple, patch_size, seeds_scale, seeds, batch_size):
