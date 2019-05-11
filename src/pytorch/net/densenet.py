@@ -252,12 +252,12 @@ class SEDenseNet(nn.Module):
         # Linear layer
         if self.MultiTask:
             self.out = nn.ModuleList()
-            self.classifier = nn.Linear(num_features, num_classes)
-            self.classifier2 = nn.Linear(num_features, num_classes2)
+            self.classifier = nn.Linear(num_features * np.sum(self.gvp_out_size), num_classes)
+            self.classifier2 = nn.Linear(num_features * np.sum(self.gvp_out_size), num_classes2)
             self.out.append(self.classifier)
             self.out.append(self.classifier2)
         else:
-            self.classifier = nn.Linear(num_features, num_classes)
+            self.classifier = nn.Linear(num_features * np.sum(self.gvp_out_size), num_classes)
 
         # Official init from torch repo.
         for m in self.modules():

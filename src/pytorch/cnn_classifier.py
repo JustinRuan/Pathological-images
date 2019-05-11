@@ -206,7 +206,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
                                       num_workers=self.NUM_WORKERS)
 
-        check_loader, Ycheck = self.loading_test_dataset(check_samples_name, batch_size, None, -1)
+        check_loader, _, Ycheck = self.loading_test_dataset(check_samples_name, batch_size, None, -1)
 
         model = self.load_model(model_file=None)
         print(model)
@@ -559,7 +559,7 @@ class Simple_Classifier(BaseClassifier):
                 )
             return model
 
-        def create_se_densenet(depth):
+        def create_se_densenet(depth, gvp_out_size):
             # Get densenet configuration
             if (depth - 4) % 3:
                 raise Exception('Invalid depth')
@@ -570,7 +570,7 @@ class Simple_Classifier(BaseClassifier):
                 growth_rate=12,
                 block_config=block_config,
                 num_classes=self.num_classes,
-                gvp_out_size=1,
+                gvp_out_size=gvp_out_size,
             )
             return model
 
@@ -581,9 +581,9 @@ class Simple_Classifier(BaseClassifier):
         elif self.model_name == "densenet_40":
             model = create_densenet(depth=40, gvp_out_size=(2,2))
         elif self.model_name == "se_densenet_22":
-            model = create_se_densenet(depth=22)
+            model = create_se_densenet(depth=22, gvp_out_size=1)
         elif self.model_name =="se_densenet_40":
-            model= create_se_densenet(depth=40)
+            model= create_se_densenet(depth=40, gvp_out_size=(2,2))
 
         return model
 

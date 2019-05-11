@@ -44,7 +44,7 @@ class PatchPack(object):
 
         for dir_name in os.listdir(root_path):
             full_path = "{}/{}".format(root_path, dir_name)
-            if dir_code in dir_name:
+            if dir_code == dir_name:
                 filename_tags = self.get_filename(full_path, tag)
                 result.extend(filename_tags)
 

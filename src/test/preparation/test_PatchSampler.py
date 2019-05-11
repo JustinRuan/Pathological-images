@@ -149,7 +149,7 @@ class TestPatchSampler(unittest.TestCase):
         patch_spacing_cancer = 400
         patch_spacing_normal = 2000
 
-        for i in range(51, 52):
+        for i in range(50, 51):
             code = "{:0>3d}".format(i)
             print("processing ", code, " ... ...")
 
@@ -172,7 +172,7 @@ class TestPatchSampler(unittest.TestCase):
                     ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "T_cancer", "P0430")
 
                     seeds_dict4 = ps.get_multi_scale_seeds([], n_seeds, extract_scale)
-                    ps.extract_patches_multi_scale(imgCone, seeds_dict4, patch_size, "T_noraml", "P0430")
+                    ps.extract_patches_multi_scale(imgCone, seeds_dict4, patch_size, "T_normal", "P0430")
             else:
                 tag = imgCone.open_slide("Testing/images/test_%s.tif" % code,
                                          None, "test_{}".format(code))
