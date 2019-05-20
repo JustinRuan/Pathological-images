@@ -27,6 +27,7 @@ from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_i
     get_image_file_batch_normalize_itor
 import datetime
 from core import Block
+import matplotlib.pyplot as plt
 
 class BaseClassifier(object, metaclass=ABCMeta):
     def __init__(self, params, model_name, patch_type, **kwargs):
@@ -186,7 +187,8 @@ class BaseClassifier(object, metaclass=ABCMeta):
             epoch_loss=running_loss / test_data_len
             epoch_acc=running_corrects.double() / test_data_len
 
-            torch.save(model.state_dict(), self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}.pth".format(epoch+1, epoch_loss, epoch_acc),
+            torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}.pth".format(
+                self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc),
                        )
         return
 
@@ -294,8 +296,8 @@ class BaseClassifier(object, metaclass=ABCMeta):
             # epoch_loss2=running_loss2 / check_data_len
             epoch_acc2=running_corrects2.double() / check_data_len
 
-            torch.save(model.state_dict(), self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(
-                epoch+1, epoch_loss, epoch_acc, epoch_acc2), )
+            torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(
+                self.model_name, self.patch_type, epoch+1, epoch_loss, epoch_acc, epoch_acc2), )
         return
 
 
@@ -370,6 +372,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
         model.eval()
 
         predicted_tags = []
+        features = []
         len_y = len(Ytest)
         if len_y % batch_size == 0:
             test_data_len = len_y // batch_size
@@ -385,6 +388,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
             probs, preds = torch.max(output_softmax, 1)
 
             predicted_tags.extend(preds.cpu().numpy())
+            features.extend(output.cpu().numpy())
 
             endtime = datetime.datetime.now()
             remaining_time = (test_data_len - step) * (endtime - starttime).seconds / (step + 1)
@@ -400,7 +404,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
         print("%s Classification report for classifier :\n%s\n"
               % (self.model_name, metrics.classification_report(Ytest, predicted_tags, digits=4)))
 
-        self.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
+        return Xtest, Ytest, predicted_tags, features
 
     def evaluate_accuracy_based_slice(self, Xtest, results, y_true_set):
         slice_result = {}
@@ -506,6 +510,25 @@ class BaseClassifier(object, metaclass=ABCMeta):
         from tensorboardX import SummaryWriter
         with SummaryWriter(comment="{}".format(self.model_name)) as w:
             w.add_graph(torch_model, (x, ))
+
+    def visualize_features(self, features, true_labels, predicted_tags):
+        c = ['#ff0000', '#00ff00', '#ffff00', '#00ffff', '#0000ff',
+             '#ff00ff', '#999900', '#999900', '#009900', '#009999']
+        plt.clf()
+        features = np.array(features)
+        for i in range(2):
+            # feat = features[np.logical_and(true_labels == i, true_labels == predicted_tags)]
+            # plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i])
+            #
+            # feat = features[np.logical_and(true_labels == i, true_labels != predicted_tags)]
+            # plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i + 5])
+            feat = features[true_labels == i]
+            plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i], alpha=0.6)
+
+        # plt.legend(['true_cancer', 'false_cancer', 'true_normal', 'false_normal'], loc='upper right')
+        plt.legend(['cancer', 'normal',], loc='upper right')
+        plt.show()
+
 
 # 输入为RGB三通道图像，单输出的分类器
 ######################################################################################################################

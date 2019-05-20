@@ -16,8 +16,8 @@ from preparation.normalization import HistNormalization, HSDNormalization, ACDNo
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -38,8 +38,8 @@ class Test_cnn_classifier(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         # model_name = "simple_cnn"
-        model_name = "se_densenet_40"
-        # model_name = "densenet_22"
+        # model_name = "se_densenet_40"
+        model_name = "densenet_22"
         sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name)
@@ -57,10 +57,10 @@ class Test_cnn_classifier(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        model_name = "se_densenet_22"
+        # model_name = "se_densenet_40"
         # sample_name = "x_256"
         # model_name = "simple_cnn"
-        # model_name = "densenet_22"
+        model_name = "densenet_22"
         sample_name = "4000_256"
 
         # normal = HistNormalization("match_hist", hist_target ="hist_templates_2048.npy",
@@ -114,9 +114,37 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"), # T_NC_Simple0404_4000_256_test
         #                    model_file=None,
         #                    batch_size=20, max_count=None)
-        cnn.evaluate_model(samples_name=("P0430", "T1_P0430_4000_256_train.txt"), # Check_P0430_4000_256_test, T1_P0430_4000_256_train
+        cnn.evaluate_model(samples_name=("P0430", "Check_P0430_4000_256_test.txt"), # Check_P0430_4000_256_test, T1_P0430_4000_256_train
                            model_file=None, batch_size=100, max_count=None )
 
+    def test_evaluate_model2(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        # model_name = "se_densenet_40"
+        # sample_name = "x_256"
+        # model_name = "simple_cnn"
+        model_name = "densenet_22"
+        sample_name = "4000_256"
+
+        normal = None
+
+        cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= -1)
+        # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_4000_256_test.txt"),
+        #                    model_file=None, batch_size=20, max_count=None)
+
+        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
+        #                    model_file=None, batch_size=20, max_count=None)
+
+        # cnn.evaluate_model(samples_name=("P0404", "T_NC_W0404_4000_256_test.txt"),
+        #                    model_file=None, batch_size=20, max_count=None)
+
+        # Check_P0430_4000_256_test, T1_P0430_4000_256_train
+        Xtest, Ytest, predicted_tags, features = cnn.evaluate_model(
+            samples_name=("P0430", "Check_P0430_4000_256_test.txt"),
+            model_file=None, batch_size=20, max_count=200)
+        # cnn.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
+        cnn.visualize_features(features, Ytest, predicted_tags)
 
     def test_evaluate_model_with_sampling(self):
         c = Params()
@@ -185,6 +213,19 @@ class Test_cnn_classifier(unittest.TestCase):
         for index, (x, y) in enumerate(train_loader):
             print(x.shape, y)
             if index > 10: break
+
+    def test_export_ONNX_model(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        # model_name = "se_densenet_22"
+        model_name = "simple_cnn"
+        sample_name = "4000_256"
+
+        cnn = Simple_Classifier(c, model_name, sample_name)
+
+        cnn.export_ONNX_model()
+        # cnn.export_tensorboard_model()
 
 
     # def test_train_model_multi_task(self):

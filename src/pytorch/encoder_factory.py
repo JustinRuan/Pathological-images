@@ -597,7 +597,7 @@ class EncoderFactory(object):
                                                   shuffle=False, drop_last =True)
 
         ae_model = self.load_model()
-        model = IDEC(ae_model, self.latent_vector_dim, n_clusters)
+        model = IDEC(ae_model, self.latent_vvector_dim, n_clusters)
         summary(ae_model, input_size=(3, self.image_size, self.image_size), device="cpu")
 
         model.to(self.device)

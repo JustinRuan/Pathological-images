@@ -68,7 +68,7 @@ class TestPatchPack(unittest.TestCase):
 
         data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_cancer": 1, "S4000_256_normal": 0,
                                                          "S4000_256_normal2": 0})
-        pack.create_train_test_data(data_tag, 0.95, 0.05, "T1_P0430_4000_256", need_balance=True)
+        pack.create_train_test_data(data_tag, 0.95, 0.05, "T3_P0430_4000_256", need_balance=True)
 
     #################################################################################################################
     ####################  20 x 256  ############################

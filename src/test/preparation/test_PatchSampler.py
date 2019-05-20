@@ -98,7 +98,7 @@ class TestPatchSampler(unittest.TestCase):
 
         patch_spacing = 2000
 
-        for i in range(1, 3):
+        for i in range(100, 161):
             code = "{:0>3d}".format(i)
             print("processing ", code, " ... ...")
 
