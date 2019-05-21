@@ -618,14 +618,19 @@ class Detector(object):
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
         # self.effi_seeds = self.get_effective_seeds(x1, y1, x2, y2, coordinate_scale, self._params.GLOBAL_SCALE)
+        seeds_scale = self._params.GLOBAL_SCALE
 
-        # normal_func = HistNormalization.get_normalization_function(self._imgCone, self._params,
-        #                                                             extract_scale, patch_size)
-        # normal_func.draw_normalization_func("Now")
+        seg = Segmentation(self._params, self._imgCone)
+        # region_count = self.valid_area_height * self.valid_area_width // 400
+        region_count = 30
+        print("the number of superpixel regions ", region_count)
+
+        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, coordinate_scale, seeds_scale, region_count, 20)
+        boundary_seeds = seg.get_seeds_at_boundaries(label_map, x1, y1, coordinate_scale, 64)
+        print("the number of seeds at boundaries is ", len(boundary_seeds))
+
         normal_func = None
         # normal_func = HistNormalization("match_hist", hist_target ="hist_templates.npy", hist_source = None)
-
-        # normal_func = None
 
         # model_name = "se_densenet_22"
         # sample_name = "x_256"
@@ -647,8 +652,6 @@ class Detector(object):
         interpolate_img = None
         history = {}
         N = 400
-
-        seeds_scale = self._params.GLOBAL_SCALE
 
         #########################################################################################################
         viz = Visdom(env="main")
@@ -677,6 +680,8 @@ class Detector(object):
             print("iter {}, {}, {}".format(i + 1, (rx1, ry1), (rx2, ry2)))
             # seeds = self.get_random_seeds(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
             seeds = self.get_random_seeds_ex2(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
+            if i == 0:
+                seeds.extend(boundary_seeds)
 
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
             print("the number of new seeds: ", len(new_seeds), ', the number of seeds in history:', len(history))
@@ -963,7 +968,7 @@ class Detector(object):
                 x.extend(sx)
                 y.extend(sy)
 
-        return tuple(zip(x, y))
+        return list(zip(x, y))
 
     # 在有效区域内采样，效果不好，因为无效区域内没有值时，插值后会出现误差
     # def get_random_seeds_ex3(self, N, x0, y0, x1, x2, y1, y2, sobel_img, threshold):

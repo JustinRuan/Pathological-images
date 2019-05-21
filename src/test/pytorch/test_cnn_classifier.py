@@ -16,8 +16,8 @@ from preparation.normalization import HistNormalization, HSDNormalization, ACDNo
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -58,8 +58,8 @@ class Test_cnn_classifier(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         # model_name = "simple_cnn"
-        # model_name = "se_densenet_40"
-        model_name = "densenet_22"
+        model_name = "se_densenet_40"
+        # model_name = "densenet_22"
         sample_name = "4000_256"
 
         cnn = SingleTask_Classifier(c, model_name, sample_name)
@@ -68,7 +68,7 @@ class Test_cnn_classifier(unittest.TestCase):
         # augment = HRndAugmentation()
 
         cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
-                        batch_size=20, loss_weight=0.001, epochs = 10)
+                        batch_size=40, loss_weight=0.001, epochs = 10)
         # cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"),
         #                                   check_samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
         #                                   batch_size=40, epochs = 10)
@@ -78,10 +78,10 @@ class Test_cnn_classifier(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        # model_name = "se_densenet_40"
+        model_name = "se_densenet_40"
         # sample_name = "x_256"
         # model_name = "simple_cnn"
-        model_name = "densenet_22"
+        # model_name = "densenet_22"
         sample_name = "4000_256"
 
         # normal = HistNormalization("match_hist", hist_target ="hist_templates_2048.npy",
@@ -157,15 +157,15 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
         #                    model_file=None, batch_size=20, max_count=None)
 
-        # cnn.evaluate_model(samples_name=("P0404", "T_NC_W0404_4000_256_test.txt"),
-        #                    model_file=None, batch_size=20, max_count=None)
+        cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
+                           model_file=None, batch_size=20, max_count=None)
 
         # Check_P0430_4000_256_test, T1_P0430_4000_256_train
-        Xtest, Ytest, predicted_tags, features = cnn.evaluate_model(
-            samples_name=("P0430", "Check_P0430_4000_256_test.txt"),
-            model_file=None, batch_size=20, max_count=200)
-        # cnn.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
-        cnn.visualize_features(features, Ytest, predicted_tags)
+        # Xtest, Ytest, predicted_tags, features = cnn.evaluate_model(
+        #     samples_name=("P0430", "Check_P0430_4000_256_test.txt"),
+        #     model_file=None, batch_size=20, max_count=None)
+        # # cnn.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
+        # cnn.visualize_features(features, Ytest, predicted_tags)
 
     def test_evaluate_model_with_sampling(self):
         c = Params()

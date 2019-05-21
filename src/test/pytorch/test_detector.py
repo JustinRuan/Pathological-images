@@ -303,7 +303,7 @@ class Test_detector(unittest.TestCase):
         #             ("021", 0, 2400, 3000, 6500),
         #             ("001", 800, 1600, 1600, 2300),]
 
-        id = 2
+        id = 3
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]

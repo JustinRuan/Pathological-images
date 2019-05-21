@@ -512,7 +512,7 @@ class Simple_Classifier(BaseClassifier):
         '''
         net_file = {
             "simple_cnn_4000_256": "simple_cnn_cps-0010-0.1799-0.9308.pth",
-            "densenet_22_4000_256": "densenet_22_cp-0006-0.3120-0.8750-0.9838.pth",
+            "densenet_22_4000_256": "densenet_22_4000_256_cp-0006-0.1814-0.9301.pth",
             "se_densenet_22_4000_256":"se_densenet_22_cp-0001-0.1922-0.9223-0.9094.pth",
         }
 

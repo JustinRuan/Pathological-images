@@ -8,10 +8,11 @@ __mtime__ = '2018-12-19'
 
 import numpy as np
 from pytorch.util import get_image_blocks_itor
-from core.util import transform_coordinate
+from core.util import transform_coordinate, get_seeds
 from pytorch.encoder_factory import EncoderFactory
 from core.slic import SLICProcessor
 from skimage.segmentation.slic_superpixels import slic
+from skimage.segmentation import find_boundaries
 
 class Segmentation(object):
     def __init__(self, params, src_image, encoder = None):
@@ -126,5 +127,31 @@ class Segmentation(object):
         else:
             label_map = slic_map
         return label_map
+
+    def get_seeds_at_boundaries(self, label_img, x1, y1, coordinate_scale, spacing):
+        boundaries = find_boundaries(label_img,)
+
+        GLOBAL_SCALE = self._params.GLOBAL_SCALE
+        # seeds = get_seeds(boundaries, lowScale=GLOBAL_SCALE, highScale=GLOBAL_SCALE, patch_size_high=4,
+        #                    spacingHigh = spacing, margin = 0)
+
+        xx1 = int(x1 / coordinate_scale * GLOBAL_SCALE)
+        yy1 = int(y1 / coordinate_scale * GLOBAL_SCALE)
+
+        pos = boundaries.nonzero()
+        y = pos[0]  # row
+        x = pos[1]  # col
+        seeds = []
+        test = set()
+        for xx, yy in zip(x, y):
+            int_y = (np.rint(yy / spacing) * spacing).astype(np.int32)  # row
+            int_x = (np.rint(xx / spacing) * spacing).astype(np.int32)  # col
+            if (int_x, int_y) not in test:
+                test.add((int_x, int_y))
+                seeds.append((xx + xx1, yy + yy1))
+
+        # extract_seeds = transform_coordinate(-x1, -y1, coordinate_scale, GLOBAL_SCALE, GLOBAL_SCALE, seeds)
+        return seeds
+        # return seeds
 
 
