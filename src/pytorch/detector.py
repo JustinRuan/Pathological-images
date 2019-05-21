@@ -641,6 +641,7 @@ class Detector(object):
         # model_name = "se_densenet_c9_22"
 
         # model_name = "simple_cnn"
+        # model_name = "se_densenet_40"
         model_name = "densenet_22"
         sample_name = "4000_256"
         cnn = Simple_Classifier(self._params, model_name, sample_name, normalization=normal_func)
@@ -696,7 +697,7 @@ class Detector(object):
             ########################################################################################
 
             # 单倍镜下进行检测
-            if model_name in ["se_densenet_22", "densenet_22", "simple_cnn"]:
+            if model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn"]:
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
                 predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
                 probs = self.get_cancer_probability(predictions)

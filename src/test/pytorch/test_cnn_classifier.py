@@ -15,9 +15,10 @@ import torch
 from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization,ACDNormalization_tf
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
+import pandas as pd
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -151,14 +152,9 @@ class Test_cnn_classifier(unittest.TestCase):
         normal = None
 
         cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= -1)
-        # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_4000_256_test.txt"),
-        #                    model_file=None, batch_size=20, max_count=None)
-
-        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Y0404_4000_256_test.txt"),
-        #                    model_file=None, batch_size=20, max_count=None)
 
         cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
-                           model_file=None, batch_size=20, max_count=None)
+                           model_file=None, batch_size=20, max_count=600)
 
         # Check_P0430_4000_256_test, T1_P0430_4000_256_train
         # Xtest, Ytest, predicted_tags, features = cnn.evaluate_model(
@@ -166,6 +162,27 @@ class Test_cnn_classifier(unittest.TestCase):
         #     model_file=None, batch_size=20, max_count=None)
         # # cnn.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
         # cnn.visualize_features(features, Ytest, predicted_tags)
+
+    def test_evaluate_model3(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        # model_name = "se_densenet_40"
+        # model_name = "simple_cnn"
+        model_name = "densenet_22"
+        sample_name = "4000_256"
+
+        cnn = Simple_Classifier(c, model_name, sample_name, normalization=None, special_norm= -1)
+
+        result = cnn.evaluate_models(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
+                           model_directory="D:/CloudSpace/WorkSpace/PatholImage/models/pytorch/densenet_22_4000_256",
+                                           batch_size=20, max_count=None)
+
+        pd.set_option('display.max_colwidth', 300)
+        pd.set_option('display.max_rows', None)
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', 2000)
+        print(result)
 
     def test_evaluate_model_with_sampling(self):
         c = Params()

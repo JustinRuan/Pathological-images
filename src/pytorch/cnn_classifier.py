@@ -28,6 +28,7 @@ from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_i
 import datetime
 from core import Block
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from pytorch.loss_function import CenterLoss
 
@@ -300,6 +301,68 @@ class BaseClassifier(object, metaclass=ABCMeta):
 
         return Xtest, Ytest, predicted_tags, features
 
+    def evaluate_models(self, samples_name, model_directory, batch_size, max_count):
+        test_loader, Xtest, Ytest = self.loading_test_dataset(samples_name, batch_size, max_count,
+                                                              self.special_norm_mode)
+
+        len_y = len(Ytest)
+        if len_y % batch_size == 0:
+            test_data_len = len_y // batch_size
+        else:
+            test_data_len = len_y // batch_size + 1
+
+        filename = []
+        loss = []
+        train_accuracy = []
+        test_accuracy = []
+
+
+        for model_file in os.listdir(model_directory):
+            file_name = os.path.splitext(model_file)[0]
+            ext_name = os.path.splitext(model_file)[1]
+            if ext_name == ".pth":
+                value = file_name.split("-")
+                if len(value) >= 4:
+                    filename.append(file_name)
+                    loss.append(float(value[2]))
+                    train_accuracy.append(float(value[3]))
+
+                model = self.load_model(model_file="{}/{}".format(model_directory, model_file))
+                # 关闭求导，节约大量的显存
+                for param in model.parameters():
+                    param.requires_grad = False
+
+                model.to(self.device)
+                model.eval()
+                predicted_tags = []
+                starttime = datetime.datetime.now()
+                for step, (x, _) in enumerate(test_loader):
+                    b_x = Variable(x.to(self.device))  # batch x
+
+                    output = model(b_x)  # model最后不包括一个softmax层
+                    output_softmax = nn.functional.softmax(output, dim=1)
+                    probs, preds = torch.max(output_softmax, 1)
+
+                    predicted_tags.extend(preds.cpu().numpy())
+
+                    endtime = datetime.datetime.now()
+                    remaining_time = (test_data_len - step) * (endtime - starttime).seconds / (step + 1)
+                    print('predicting => %d / %d , remaining time: %d (s)' % (step + 1, test_data_len, remaining_time))
+
+                test_accu = np.sum(np.array(predicted_tags) == np.array(Ytest), dtype=np.float)/len_y
+                # print(predicted_tags)
+                # print(Ytest)
+                print(file_name, test_accu)
+                test_accuracy.append(test_accu)
+
+
+        data = {'filename': filename, 'loss': loss, 'train accuracy': train_accuracy,
+                'test accuracy': test_accuracy}
+        df = pd.DataFrame(data, columns=['filename', 'loss', 'train accuracy', 'test accuracy'])
+        result = df.sort_values(['loss', 'train accuracy','test accuracy'], ascending=[True, False, False])
+
+        return result
+
     def evaluate_accuracy_based_slice(self, Xtest, results, y_true_set):
         slice_result = {}
         b = Block()
@@ -514,6 +577,7 @@ class Simple_Classifier(BaseClassifier):
             "simple_cnn_4000_256": "simple_cnn_cps-0010-0.1799-0.9308.pth",
             "densenet_22_4000_256": "densenet_22_4000_256_cp-0006-0.1814-0.9301.pth",
             "se_densenet_22_4000_256":"se_densenet_22_cp-0001-0.1922-0.9223-0.9094.pth",
+            "se_densenet_40_4000_256":"se_densenet_40_4000_256_cp-0002-0.1575-0.9436.pth"
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)
@@ -526,113 +590,113 @@ class Simple_Classifier(BaseClassifier):
         return model
 
     # train model with domain validation
-    def train_model(self, samples_name, check_samples_name, batch_size, epochs):
-        '''
-        训练模型
-        :param samples_name: 自制训练集的代号
-        :param batch_size: 每批的图片数量
-        :param epochs:epoch数量
-        :return:
-        '''
-
-        train_data, test_data = self.load_custom_data(samples_name, augment_func=None)
-
-        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
-                                       num_workers=self.NUM_WORKERS)
-        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
-                                      num_workers=self.NUM_WORKERS)
-
-        check_loader, _, Ycheck = self.loading_test_dataset(check_samples_name, batch_size, None, -1)
-
-        model = self.load_model(model_file=None)
-        print(model)
-        if self.use_GPU:
-            model.to(self.device)
-
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
-        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
-        # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
-        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
-                                                               factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
-        loss_func = nn.CrossEntropyLoss()
-
-        # training and testing
-        for epoch in range(epochs):
-            print('Epoch {}/{}'.format(epoch + 1, epochs))
-            print('-' * 80)
-
-            model.train()
-            # 开始训练
-            train_data_len = len(train_loader)
-            total_loss = 0
-            starttime = datetime.datetime.now()
-            for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
-                b_x = Variable(x.to(self.device))
-                b_y = Variable(y.to(self.device))
-
-                output = model(b_x)  # cnn output
-                loss = loss_func(output, b_y)  # cross entropy loss
-                optimizer.zero_grad()  # clear gradients for this training step
-                loss.backward()  # backpropagation, compute gradients
-                optimizer.step()
-
-                # 数据统计
-                _, preds = torch.max(output, 1)
-
-                running_loss = loss.item()
-                running_corrects = torch.sum(preds == b_y.data)
-                total_loss += running_loss
-
-                if step % 5 == 0:
-                    endtime = datetime.datetime.now()
-                    remaining_time = (train_data_len - step)* (endtime - starttime).seconds / (step + 1)
-                    print('%d / %d ==> Loss: %.4f | Acc: %.4f ,  remaining time: %d (s)'
-                          % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0), remaining_time))
-
-            scheduler.step(total_loss)
-
-            running_loss=0.0
-            running_corrects=0
-            model.eval()
-            # 开始评估
-            for x, y in test_loader:
-                b_x = Variable(x.to(self.device))
-                b_y = Variable(y.to(self.device))
-
-                output = model(b_x)
-                loss = loss_func(output, b_y)
-
-                _, preds = torch.max(output, 1)
-                running_loss += loss.item() * b_x.size(0)
-                running_corrects += torch.sum(preds == b_y.data)
-
-            test_data_len = test_data.__len__()
-            epoch_loss=running_loss / test_data_len
-            epoch_acc=running_corrects.double() / test_data_len
-
-            model.eval()
-            # 验证第二测试数据集
-            # running_loss2=0.0
-            running_corrects2=0
-            for x, y in check_loader:
-                b_x = Variable(x.to(self.device))
-                b_y = Variable(y.to(self.device))
-
-                output = model(b_x)
-                # loss = loss_func(output, b_y)
-
-                _, preds = torch.max(output, 1)
-                # running_loss2 += loss.item() * b_x.size(0)
-                running_corrects2 += torch.sum(preds == b_y.data)
-
-            check_data_len = len(Ycheck)
-            # epoch_loss2=running_loss2 / check_data_len
-            epoch_acc2=running_corrects2.double() / check_data_len
-
-            torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(
-                self.model_name, self.patch_type, epoch+1, epoch_loss, epoch_acc, epoch_acc2), )
-        return
+    # def train_model(self, samples_name, check_samples_name, batch_size, epochs):
+    #     '''
+    #     训练模型
+    #     :param samples_name: 自制训练集的代号
+    #     :param batch_size: 每批的图片数量
+    #     :param epochs:epoch数量
+    #     :return:
+    #     '''
+    #
+    #     train_data, test_data = self.load_custom_data(samples_name, augment_func=None)
+    #
+    #     train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
+    #                                    num_workers=self.NUM_WORKERS)
+    #     test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
+    #                                   num_workers=self.NUM_WORKERS)
+    #
+    #     check_loader, _, Ycheck = self.loading_test_dataset(check_samples_name, batch_size, None, -1)
+    #
+    #     model = self.load_model(model_file=None)
+    #     print(model)
+    #     if self.use_GPU:
+    #         model.to(self.device)
+    #
+    #     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
+    #     # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
+    #     # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
+    #     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
+    #     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
+    #                                                            factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
+    #     loss_func = nn.CrossEntropyLoss()
+    #
+    #     # training and testing
+    #     for epoch in range(epochs):
+    #         print('Epoch {}/{}'.format(epoch + 1, epochs))
+    #         print('-' * 80)
+    #
+    #         model.train()
+    #         # 开始训练
+    #         train_data_len = len(train_loader)
+    #         total_loss = 0
+    #         starttime = datetime.datetime.now()
+    #         for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
+    #             b_x = Variable(x.to(self.device))
+    #             b_y = Variable(y.to(self.device))
+    #
+    #             output = model(b_x)  # cnn output
+    #             loss = loss_func(output, b_y)  # cross entropy loss
+    #             optimizer.zero_grad()  # clear gradients for this training step
+    #             loss.backward()  # backpropagation, compute gradients
+    #             optimizer.step()
+    #
+    #             # 数据统计
+    #             _, preds = torch.max(output, 1)
+    #
+    #             running_loss = loss.item()
+    #             running_corrects = torch.sum(preds == b_y.data)
+    #             total_loss += running_loss
+    #
+    #             if step % 5 == 0:
+    #                 endtime = datetime.datetime.now()
+    #                 remaining_time = (train_data_len - step)* (endtime - starttime).seconds / (step + 1)
+    #                 print('%d / %d ==> Loss: %.4f | Acc: %.4f ,  remaining time: %d (s)'
+    #                       % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0), remaining_time))
+    #
+    #         scheduler.step(total_loss)
+    #
+    #         running_loss=0.0
+    #         running_corrects=0
+    #         model.eval()
+    #         # 开始评估
+    #         for x, y in test_loader:
+    #             b_x = Variable(x.to(self.device))
+    #             b_y = Variable(y.to(self.device))
+    #
+    #             output = model(b_x)
+    #             loss = loss_func(output, b_y)
+    #
+    #             _, preds = torch.max(output, 1)
+    #             running_loss += loss.item() * b_x.size(0)
+    #             running_corrects += torch.sum(preds == b_y.data)
+    #
+    #         test_data_len = test_data.__len__()
+    #         epoch_loss=running_loss / test_data_len
+    #         epoch_acc=running_corrects.double() / test_data_len
+    #
+    #         model.eval()
+    #         # 验证第二测试数据集
+    #         # running_loss2=0.0
+    #         running_corrects2=0
+    #         for x, y in check_loader:
+    #             b_x = Variable(x.to(self.device))
+    #             b_y = Variable(y.to(self.device))
+    #
+    #             output = model(b_x)
+    #             # loss = loss_func(output, b_y)
+    #
+    #             _, preds = torch.max(output, 1)
+    #             # running_loss2 += loss.item() * b_x.size(0)
+    #             running_corrects2 += torch.sum(preds == b_y.data)
+    #
+    #         check_data_len = len(Ycheck)
+    #         # epoch_loss2=running_loss2 / check_data_len
+    #         epoch_acc2=running_corrects2.double() / check_data_len
+    #
+    #         torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(
+    #             self.model_name, self.patch_type, epoch+1, epoch_loss, epoch_acc, epoch_acc2), )
+    #     return
 
 
 ######################################################################################################################
