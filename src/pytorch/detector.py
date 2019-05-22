@@ -354,141 +354,6 @@ class Detector(BaseDetector):
 
         return result_cancer
 
-    ##################################################################################################################
-    ##########   自适应采样，全切片扫描    #################
-    ##################################################################################################################
-
-    # 第一版本
-    # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
-    #                            max_iter_nums, batch_size, use_post=True):
-    #     self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
-    #     print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
-    #
-    #     # cnn = CNN_Classifier(self._params, "densenet_22", "2000_256")
-    #     cnn = CNN_Classifier(self._params, "se_densenet_22", "x_256")
-    #
-    #     # 生成坐标网格
-    #     grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
-    #
-    #     sobel_img = None
-    #     interpolate_img = None
-    #     threshold = 0.05
-    #     history = {}
-    #     N = 400
-    #
-    #     seeds_scale = self._params.GLOBAL_SCALE
-    #
-    #     #########################################################################################################
-    #     viz = Visdom(env="main")
-    #     pic_thresh = None
-    #     pic_points = None
-    #     mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
-    #     c_mask = find_contours(np.array(mask_img).astype(int), level=0.5)
-    #     for i, contour in enumerate(c_mask):
-    #         contour = np.abs(np.array(contour - [y2 - y1, 0]))
-    #         c_name = "GT {}".format(i)
-    #         if pic_points is None:
-    #             pic_points = viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name,
-    #                                   opts={'linecolor': np.array([[0, 0, 0], ]), 'showlegend': True, })
-    #         else:
-    #             viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name, win=pic_points, update='append',
-    #                      opts={'linecolor': np.array([[0, 0, 0], ])})
-    #     #########################################################################################################
-    #
-    #     for i in range(max_iter_nums):
-    #         print("iter %d" % (i + 1))
-    #         seeds = self.get_random_seeds(N, x1, x2, y1, y2, sobel_img, threshold)
-    #
-    #         new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
-    #         print("the number of new seeds: ", len(new_seeds))
-    #         #######################################################################################
-    #         t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
-    #         len_seed = len(new_seeds)
-    #         t_y = np.full((len_seed, 1), i + 1)
-    #         random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed, 1))
-    #         step_name = "Round {}".format(i + 1)
-    #         viz.scatter(X=t_seeds, Y=t_y, name=step_name, win=pic_points, update="append",
-    #                     opts=dict(title='seeds', caption='seeds', showlegend=True,
-    #                               markercolor=random_color, markersize=8))
-    #         ########################################################################################
-    #         if len(new_seeds) / N < 0.9:
-    #             break
-    #
-    #         high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
-    #         predictions = cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
-    #         probs = self.get_cancer_probability(predictions)
-    #
-    #         for (x, y), pred in zip(new_seeds, probs):
-    #             xx = x - x1
-    #             yy = y - y1
-    #
-    #             if not history.__contains__((xx, yy)):
-    #                 history[(xx, yy)] = pred
-    #
-    #         value = list(history.values())
-    #         point = list(history.keys())
-    #         # interpolate_img, sobel_img = self.inter_sobel(point, value,
-    #         #                                               (grid_x, grid_y), method='linear')
-    #         # 使用cubic，会出现负值，而选用linear不会这样
-    #         interpolate_img = griddata(point, value, (grid_x, grid_y), method='linear', fill_value=0.0)
-    #         sobel_img, threshold = self.calc_sobel(interpolate_img)
-    #
-    #         ########################################################################################################
-    #
-    #         if pic_thresh is None:
-    #             pic_thresh = viz.line(Y=[threshold], X=[i], opts=dict(title='treshold', caption='treshold'))
-    #         else:
-    #             viz.line(Y=[threshold], X=[i], win=pic_thresh, update="append")
-    #
-    #         #########################################################################################################
-    #
-    #     if use_post:
-    #         amplify = extract_scale / seeds_scale
-    #         bias = int(0.25 * patch_size / amplify)
-    #         interpolate_img = self.post_process(interpolate_img, bias)
-    #
-    #     np.savez("detect.npz", interpolate_img, history)
-    #     return interpolate_img, history
-
-    # def get_random_seeds(self, N, x1, x2, y1, y2, sobel_img, threshold):
-    #     if sobel_img is not None and threshold > 0.015:
-    #         x = []
-    #         y = []
-    #         while len(x) < N:
-    #             n = 2 * N
-    #             sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
-    #
-    #             prob = sobel_img[sy - y1, sx - x1]
-    #             index = prob >= threshold
-    #             sx = sx[index]
-    #             sy = sy[index]
-    #
-    #             x.extend(sx)
-    #             y.extend(sy)
-    #     else:
-    #         n = N
-    #         x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
-    #     return tuple(zip(x, y))
-
-    # def calc_sobel(self, interpolate):
-    #     sobel_img = np.abs(cv2.Sobel(interpolate, -1, 1, 1))
-    #     sobel_value = sobel_img.reshape(-1, 1)
-    #
-    #     clustering = MiniBatchKMeans(n_clusters=2, init='k-means++', max_iter=100,
-    #                                  batch_size=1000, tol=1e-3).fit(sobel_value)
-    #
-    #     self.cluster_centers = clustering.cluster_centers_.ravel()
-    #     threshold = np.mean(self.cluster_centers)
-    #     print("threshold = {:.6f}, clustering = {}".format(threshold, self.cluster_centers))
-    #
-    #     # threshold小于设定值时，膨胀的作用在于，增加大梯点的数量，以便更容易找到这些区域。
-    #     #                        同时这样也能避免算法过早收敛。（超过阈值的点太少，找不到新的就收敛了）
-    #     # threshold大于设定值时，说明已经发现了高梯度区域，不进行膨胀操作，可以加速算法收敛。
-    #     #                        但Dice会有所降低。这里只能折中考虑了。
-    #     # if threshold < self.search_therhold:
-    #     #     sobel_img = dilation(sobel_img, square(8))
-    #
-    #     return sobel_img, threshold
     def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
         interval = kwargs["interval"]
 
@@ -514,6 +379,9 @@ class Detector(BaseDetector):
         return cancer_map, cancer_map2, cancer_map3, cancer_map4
 
 
+    ##################################################################################################################
+    ##########   自适应采样，全切片扫描    #################
+    ##################################################################################################################
 class AdaptiveDetector(BaseDetector):
     def __init__(self, params, src_image):
         super(AdaptiveDetector, self).__init__(params, src_image)
