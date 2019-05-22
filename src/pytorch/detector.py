@@ -5,6 +5,7 @@ __author__ = 'Justin'
 __mtime__ = '2018-10-26'
 
 """
+from abc import ABCMeta, abstractmethod
 import cv2
 import numpy as np
 from scipy.interpolate import griddata
@@ -23,8 +24,8 @@ from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
 
-class Detector(object):
 
+class BaseDetector(object, metaclass=ABCMeta):
     def __init__(self, params, src_image):
         '''
         初始化
@@ -38,12 +39,7 @@ class Detector(object):
         self.ImageWidth = w
         self.ImageHeight = h
         self.valid_map = np.zeros((h, w), dtype=np.bool)
-        self.enable_transfer = False
 
-        self.random_gen = Random_Gen("halton")  # random, sobol, halton
-        self.cluster_centers = None
-
-        self.search_therhold = 0.015
         return
 
     def setting_detected_area(self, x1, y1, x2, y2, scale):
@@ -72,6 +68,84 @@ class Detector(object):
         '''
         self.valid_map = np.zeros((self.ImageHeight, self.ImageWidth), dtype=np.bool)
         return
+
+    def evaluate(self, threshold, cancer_map, true_mask):
+        '''
+        癌变概率矩阵进行阈值分割后，与人工标记真值进行 评估
+        :param threshold: 分割的阈值
+        :param cancer_map: 癌变概率矩阵
+        :param true_mask: 人工标记真值
+        :return: ROC曲线
+        '''
+        cancer_tag = np.array(cancer_map).ravel()
+        mask_tag = np.array(true_mask).ravel()
+        predicted_tags = cancer_tag >= threshold
+
+        print("Classification report for classifier:\n%s\n"
+              % (metrics.classification_report(mask_tag, predicted_tags, digits=4)))
+        print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
+
+        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, cancer_tag)
+        roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
+        print("\n ROC auc: %s" % roc_auc)
+
+        dice = self.calculate_dice_coef(mask_tag, cancer_tag)
+        print("dice coef = {}".format(dice))
+        print("############################################################")
+        return false_positive_rate, true_positive_rate, roc_auc, dice
+
+    def calculate_dice_coef(self, y_true, y_pred):
+        smooth = 1.
+        y_true_f = y_true.flatten()
+        y_pred_f = y_pred.flatten()
+        intersection = np.sum(y_true_f * y_pred_f)
+        dice = (2. * intersection + smooth) / (np.sum(y_true_f * y_true_f) + np.sum(y_pred_f * y_pred_f) + smooth)
+        return dice
+
+    def get_img_in_detect_area(self, x1, y1, x2, y2, coordinate_scale, img_scale):
+        '''
+        得到指定的检测区域对应的图像
+        :param x1: 左上角x坐标
+        :param y1: 左上角y坐标
+        :param x2: 右下角x坐标
+        :param y2: 右下角y坐标
+        :param coordinate_scale:以上坐标的倍镜数
+        :param img_scale: 提取图像所对应的倍镜
+        :return:指定的检测区域对应的图像
+        '''
+        xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * img_scale / coordinate_scale).astype(np.int)
+        w = xx2 - xx1
+        h = yy2 - yy1
+        block = self._imgCone.get_image_block(img_scale, int(xx1 + (w >> 1)), int(yy1 + (h >> 1)), w, h)
+        return block.get_img()
+
+    def get_true_mask_in_detect_area(self, x1, y1, x2, y2, coordinate_scale, img_scale):
+        '''
+        生成选定区域内的人工标记的Mask
+        :param x1: 左上角x
+        :param y1: 左上角y
+        :param x2: 右下角x
+        :param y2: 右下角y
+        :param coordinate_scale 以上坐标的倍镜数:
+        :param img_scale: 生成Mask图像的倍镜数
+        :return: mask图像
+        '''
+        xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * img_scale / coordinate_scale).astype(np.int)
+        w = xx2 - xx1
+        h = yy2 - yy1
+
+        all_mask = self._imgCone.create_mask_image(img_scale, 0)
+        cancer_mask = all_mask['C']
+        return cancer_mask[yy1:yy2, xx1:xx2]
+
+    @abstractmethod
+    def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
+        pass
+
+class Detector(BaseDetector):
+    def __init__(self, params, src_image):
+        super(Detector, self).__init__(params, src_image)
+        self.enable_transfer = True
 
     def get_points_detected_area(self, extract_scale, patch_size_extract, interval):
         '''
@@ -242,90 +316,6 @@ class Detector(object):
         tag = count_map > 0
         cancer_map[tag] = prob_map[tag] / count_map[tag]
         return cancer_map, prob_map, count_map
-
-    def get_img_in_detect_area(self, x1, y1, x2, y2, coordinate_scale, img_scale):
-        '''
-        得到指定的检测区域对应的图像
-        :param x1: 左上角x坐标
-        :param y1: 左上角y坐标
-        :param x2: 右下角x坐标
-        :param y2: 右下角y坐标
-        :param coordinate_scale:以上坐标的倍镜数
-        :param img_scale: 提取图像所对应的倍镜
-        :return:指定的检测区域对应的图像
-        '''
-        xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * img_scale / coordinate_scale).astype(np.int)
-        w = xx2 - xx1
-        h = yy2 - yy1
-        block = self._imgCone.get_image_block(img_scale, int(xx1 + (w >> 1)), int(yy1 + (h >> 1)), w, h)
-        return block.get_img()
-
-    def get_true_mask_in_detect_area(self, x1, y1, x2, y2, coordinate_scale, img_scale):
-        '''
-        生成选定区域内的人工标记的Mask
-        :param x1: 左上角x
-        :param y1: 左上角y
-        :param x2: 右下角x
-        :param y2: 右下角y
-        :param coordinate_scale 以上坐标的倍镜数:
-        :param img_scale: 生成Mask图像的倍镜数
-        :return: mask图像
-        '''
-        xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * img_scale / coordinate_scale).astype(np.int)
-        w = xx2 - xx1
-        h = yy2 - yy1
-
-        all_mask = self._imgCone.create_mask_image(img_scale, 0)
-        cancer_mask = all_mask['C']
-        return cancer_mask[yy1:yy2, xx1:xx2]
-
-    def get_effective_seeds(self, x1, y1, x2, y2, coordinate_scale, seed_scale):
-        xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * seed_scale / coordinate_scale).astype(np.int)
-
-        effi_region =self._imgCone.get_effective_zone(seed_scale)
-        mask = np.zeros(effi_region.shape, dtype=np.bool)
-        mask[yy1:yy2, xx1:xx2] = effi_region[yy1:yy2, xx1:xx2]
-
-        result = mask.nonzero()
-
-        effi_seeds = set()
-        for xx, yy in zip(result[1], result[0]):
-            effi_seeds.add((xx, yy))
-
-        return effi_seeds
-
-    def evaluate(self, threshold, cancer_map, true_mask):
-        '''
-        癌变概率矩阵进行阈值分割后，与人工标记真值进行 评估
-        :param threshold: 分割的阈值
-        :param cancer_map: 癌变概率矩阵
-        :param true_mask: 人工标记真值
-        :return: ROC曲线
-        '''
-        cancer_tag = np.array(cancer_map).ravel()
-        mask_tag = np.array(true_mask).ravel()
-        predicted_tags = cancer_tag >= threshold
-
-        print("Classification report for classifier:\n%s\n"
-              % (metrics.classification_report(mask_tag, predicted_tags, digits=4)))
-        print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
-
-        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, cancer_tag)
-        roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
-        print("\n ROC auc: %s" % roc_auc)
-
-        dice = self.calculate_dice_coef(mask_tag, cancer_tag)
-        print("dice coef = {}".format(dice))
-        print("############################################################")
-        return false_positive_rate, true_positive_rate, roc_auc, dice
-
-    def calculate_dice_coef(self, y_true, y_pred):
-        smooth = 1.
-        y_true_f = y_true.flatten()
-        y_pred_f = y_pred.flatten()
-        intersection = np.sum(y_true_f * y_pred_f)
-        dice = (2. * intersection + smooth) / (np.sum(y_true_f * y_true_f) + np.sum(y_pred_f * y_pred_f) + smooth)
-        return dice
 
     def create_superpixels(self, x1, y1, x2, y2, coordinate_scale, feature_extract_scale):
         '''
@@ -499,6 +489,39 @@ class Detector(object):
     #     #     sobel_img = dilation(sobel_img, square(8))
     #
     #     return sobel_img, threshold
+    def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
+        interval = kwargs["interval"]
+
+        seeds, predictions = self.detect_region(x1, y1, x2, y2, 1.25, 5, 128, interval=interval)
+        new20_seeds, new20_predictions = self.detect_region_detailed(seeds, predictions, 5, 128, 20, 256)
+        new40_seeds, new40_predictions = self.detect_region_detailed(new20_seeds, new20_predictions, 20, 256, 40,
+                                                                         256)
+
+        cancer_map, prob_map, count_map = self.create_cancer_map(x1, y1, 1.25, 5, 1.25, seeds, predictions, 128,
+                                                                     None, None)
+        cancer_map2, prob_map, count_map = self.create_cancer_map(x1, y1, 1.25, 20, 1.25, new20_seeds,
+                                                                      new20_predictions,
+                                                                      256, prob_map, count_map)
+        cancer_map3, prob_map, count_map = self.create_cancer_map(x1, y1, 1.25, 40, 1.25, new40_seeds,
+                                                                      new40_predictions,
+                                                                      256, prob_map, count_map)
+
+        seg = Segmentation(self._params, self._imgCone)
+        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, 1.25, 1.25, 30, 20)
+
+        cancer_map4 = self.create_cancer_map_superpixels(cancer_map3, label_map)
+
+        return cancer_map, cancer_map2, cancer_map3, cancer_map4
+
+
+class AdaptiveDetector(BaseDetector):
+    def __init__(self, params, src_image):
+        super(AdaptiveDetector, self).__init__(params, src_image)
+
+        self.random_gen = Random_Gen("halton")  # random, sobol, halton
+        self.cluster_centers = None
+
+        self.search_therhold = 0.015
 
     def get_cancer_probability(self, predictions):
         '''
@@ -597,6 +620,16 @@ class Detector(object):
         result = dilation(result, square(bias))
 
         return result
+
+    def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
+        extract_scale = kwargs["extract_scale"]
+        patch_size = kwargs["patch_size"]
+        max_iter_nums = kwargs["max_iter_nums"]
+        batch_size = kwargs["batch_size"]
+        limit_sampling_density = kwargs["limit_sampling_density"]
+
+        return self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
+                               max_iter_nums, batch_size, limit_sampling_density, use_post=True)
 
     # 第三版本: 增强自适应采样
     def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
@@ -1065,3 +1098,18 @@ class Detector(object):
     #             y.extend(sy)
     #
     #     return tuple(zip(x, y))
+
+    # def get_effective_seeds(self, x1, y1, x2, y2, coordinate_scale, seed_scale):
+    #     xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * seed_scale / coordinate_scale).astype(np.int)
+    #
+    #     effi_region =self._imgCone.get_effective_zone(seed_scale)
+    #     mask = np.zeros(effi_region.shape, dtype=np.bool)
+    #     mask[yy1:yy2, xx1:xx2] = effi_region[yy1:yy2, xx1:xx2]
+    #
+    #     result = mask.nonzero()
+    #
+    #     effi_seeds = set()
+    #     for xx, yy in zip(result[1], result[0]):
+    #         effi_seeds.add((xx, yy))
+    #
+    #     return effi_seeds

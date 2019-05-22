@@ -9,7 +9,7 @@ __mtime__ = '2018-06-02'
 import unittest
 from core import *
 import matplotlib.pyplot as plt
-from pytorch.detector import Detector
+from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
@@ -63,8 +63,7 @@ class Test_detector(unittest.TestCase):
 
         return
 
-    def test_detect2(self):
-
+    def test_detector(self):
         test_set = [("001", 2100, 3800, 2400, 4000),
                     ("003", 2400, 4700, 2600, 4850)]
         id = 1
@@ -80,89 +79,17 @@ class Test_detector(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
-                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+        tag = imgCone.open_slide("Train_Tumor/Tumor_%s.tif" % slice_id,
+                                 'Train_Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
 
         detector = Detector(c, imgCone)
         print(detector.ImageHeight, detector.ImageWidth)
 
-        seeds, predictions = detector.detect_region(x1, y1, x2, y2, 1.25, 5, 128, interval=64)
-        new20_seeds, new20_predictions = detector.detect_region_detailed(seeds, predictions, 5, 128, 20, 256)
-        new40_seeds, new40_predictions = detector.detect_region_detailed(new20_seeds, new20_predictions, 20, 256, 40,
-                                                                         256)
-        # print(predictions_deep)
+        cancer_map, cancer_map2, cancer_map3, cancer_map4 = detector.process(x1, y1, x2, y2, 1.25, interval=64)
 
+        # show result
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
-
-        np.savez("{}/data/cancer_predictions_{}".format(c.PROJECT_ROOT, id), src_img,
-                 seeds, predictions, new20_seeds, new20_predictions, new40_seeds, new40_predictions)
-
-        # fig, axes = plt.subplots(2, 2, figsize=(12, 6), dpi=200)
-        # ax = axes.ravel()
-        #
-        # ax[0].imshow(src_img)
-        # ax[0].set_title("src_img")
-        #
-        # ax[1].imshow(src_img)
-        # ax[1].imshow(cancer_map, alpha=0.6)
-        # ax[1].set_title("cancer_map")
-        #
-        # ax[2].imshow(src_img)
-        # ax[2].imshow(cancer_map2, alpha=0.6)
-        # ax[2].set_title("cancer_map2")
-        #
-        # for a in ax.ravel():
-        #     a.axis('off')
-        #
-        # plt.show()
-
-        return
-
-    def test_show_result(self):
-        test_set = [("001", 2100, 3800, 2400, 4000),
-                    ("003", 2400, 4700, 2600, 4850)]
-        id = 1
-        roi = test_set[id]
-        slice_id = roi[0]
-        x1 = roi[1]
-        y1 = roi[2]
-        x2 = roi[3]
-        y2 = roi[4]
-
-        c = Params()
-        c.load_config_file(JSON_PATH)
-
-        D = np.load("{}/data/cancer_predictions_{}.npz".format(c.PROJECT_ROOT, slice_id))
-        src_img = D['arr_0']
-        seeds = D['arr_1']
-        predictions = D['arr_2']
-        new20_seeds = D['arr_3']
-        new20_predictions = D['arr_4']
-        new40_seeds = D['arr_5']
-        new40_predictions = D['arr_6']
-
-        imgCone = ImageCone(c, Open_Slide())
-
-        # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
-                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
-
-        detector = Detector(c, imgCone)
-        print(detector.ImageHeight, detector.ImageWidth)
-        detector.setting_detected_area(x1, y1, x2, y2, 1.25)
-        cancer_map, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 5, 1.25, seeds, predictions, 128,
-                                                                     None, None)
-        cancer_map2, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 20, 1.25, new20_seeds,
-                                                                      new20_predictions,
-                                                                      256, prob_map, count_map)
-        cancer_map3, prob_map, count_map = detector.create_cancer_map(x1, y1, 1.25, 40, 1.25, new40_seeds,
-                                                                      new40_predictions,
-                                                                      256, prob_map, count_map)
-
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
-
-        label_map = np.load("label_map.npy")
-        cancer_map4 = detector.create_cancer_map_superpixels(cancer_map3, label_map)
 
         print("\n x5 低倍镜下的结果：")
         t1 = 0.8
@@ -232,6 +159,7 @@ class Test_detector(unittest.TestCase):
 
         plt.show()
 
+
     def test_01(self):
         test_set = [("001", 2100, 3800, 2400, 4000),
                     ("003", 2400, 4700, 2600, 4850)]
@@ -248,8 +176,8 @@ class Test_detector(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
-                                 'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+        tag = imgCone.open_slide("Train_Tumor/Tumor_%s.tif" % slice_id,
+                                 'Train_Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
 
         detector = Detector(c, imgCone)
         print(detector.ImageHeight, detector.ImageWidth)
@@ -303,7 +231,7 @@ class Test_detector(unittest.TestCase):
         #             ("021", 0, 2400, 3000, 6500),
         #             ("001", 800, 1600, 1600, 2300),]
 
-        id = 3
+        id = 2
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -321,12 +249,13 @@ class Test_detector(unittest.TestCase):
         # tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
         #                          'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
 
-        detector = Detector(c, imgCone)
+        detector = AdaptiveDetector(c, imgCone)
 
         # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
         #                            iter_nums, batch_size, threshold):
-        cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums=50,
-                                                              batch_size=10, limit_sampling_density=10, use_post=True)
+        cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale = 40, patch_size = 256,
+                                               max_iter_nums=50, batch_size=10,
+                                               limit_sampling_density=10, use_post=True)
         # label_map = np.load("label_map.npy")
         # cancer_map2 = detector.create_cancer_map_superpixels(cancer_map, label_map)
 
