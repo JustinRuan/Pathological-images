@@ -545,7 +545,8 @@ class AdaptiveDetector(BaseDetector):
         seeds_scale = self._params.GLOBAL_SCALE
 
         seg = Segmentation(self._params, self._imgCone)
-        region_count = self.valid_area_height * self.valid_area_width // 32000
+        # region_count = self.valid_area_height * self.valid_area_width // 32000
+        region_count = np.sqrt(self.valid_area_height * self.valid_area_width) // 40
         # region_count = 30
         print("the number of superpixel regions ", region_count)
 
