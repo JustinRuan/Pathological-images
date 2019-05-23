@@ -101,9 +101,14 @@ class TestSegmentation(unittest.TestCase):
         print(b)
 
     def test_create_superpixels_slic(self):
-        test_set = [("001", 2100, 3800, 2400, 4000),
-                    ("003", 2400, 4700, 2600, 4850)]
-        id = 1
+        test_set = {1: ("001", 2100, 3800, 2400, 4000),
+                    2: ("003", 2400, 4700, 2600, 4850),  # 小的局部150 x 200
+                    3: ("003", 2000, 4300, 2800, 4900),  # 600 x 800
+                    4: ("003", 721, 3244, 3044, 5851),  # 全切片范围
+                    5: ("044", 410, 2895, 2813, 6019),  #
+                    6: ("047", 391, 2402, 2891, 4280),  #
+                    }
+        id = 4
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -130,13 +135,15 @@ class TestSegmentation(unittest.TestCase):
         gt_img = cancer_mask[yy1:yy2, xx1:xx2]
 
         seg = Segmentation(c, imgCone)
-        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, 1.25, 1.25, 30, 20)
+        K = np.sqrt(w * h) // 40
+        print(K)
+        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, 1.25, 1.25, K, 20)
         # slic_img = label2rgb(label_map, alpha=0.3, image=gt_img)
 
         # print(label_map.shape)
         # np.save("label_map_slic", label_map)
 
-        seeds = seg.get_seeds_at_boundaries(label_map, x1, y1,1.25, 16)
+        seeds = seg.get_seeds_at_boundaries(label_map, x1, y1,1.25,)
         # draw_seeds = np.array(seeds)
         draw_seeds = np.array(transform_coordinate(x1, y1, 1.25, 1.25, 1.25, seeds))
         print(len(seeds), "\n", seeds)

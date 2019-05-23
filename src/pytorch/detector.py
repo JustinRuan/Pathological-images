@@ -545,12 +545,12 @@ class AdaptiveDetector(BaseDetector):
         seeds_scale = self._params.GLOBAL_SCALE
 
         seg = Segmentation(self._params, self._imgCone)
-        # region_count = self.valid_area_height * self.valid_area_width // 400
-        region_count = 30
+        region_count = self.valid_area_height * self.valid_area_width // 32000
+        # region_count = 30
         print("the number of superpixel regions ", region_count)
 
         label_map = seg.create_superpixels_slic(x1, y1, x2, y2, coordinate_scale, seeds_scale, region_count, 20)
-        boundary_seeds = seg.get_seeds_at_boundaries(label_map, x1, y1, coordinate_scale, 64)
+        boundary_seeds = seg.get_seeds_at_boundaries(label_map, x1, y1, coordinate_scale)
         print("the number of seeds at boundaries is ", len(boundary_seeds))
 
         # 生成坐标网格

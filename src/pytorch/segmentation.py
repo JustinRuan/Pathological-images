@@ -13,6 +13,9 @@ from pytorch.encoder_factory import EncoderFactory
 from core.slic import SLICProcessor
 from skimage.segmentation.slic_superpixels import slic
 from skimage.segmentation import find_boundaries
+from skimage import morphology
+from skimage.morphology import square
+import random
 
 class Segmentation(object):
     def __init__(self, params, src_image, encoder = None):
@@ -128,8 +131,10 @@ class Segmentation(object):
             label_map = slic_map
         return label_map
 
-    def get_seeds_at_boundaries(self, label_img, x1, y1, coordinate_scale, spacing):
+    def get_seeds_at_boundaries(self, label_img, x1, y1, coordinate_scale, ):
         boundaries = find_boundaries(label_img,)
+        temp = morphology.binary_dilation(boundaries, square(32))
+        boundaries = find_boundaries(temp, )
 
         GLOBAL_SCALE = self._params.GLOBAL_SCALE
         # seeds = get_seeds(boundaries, lowScale=GLOBAL_SCALE, highScale=GLOBAL_SCALE, patch_size_high=4,
@@ -141,8 +146,12 @@ class Segmentation(object):
         pos = boundaries.nonzero()
         y = pos[0]  # row
         x = pos[1]  # col
+
+        spacing = np.rint(np.sqrt(len(y)) / 4.0)
+        print("superpixels boundaries spacing", spacing)
         seeds = []
         test = set()
+        # K = 32
         for xx, yy in zip(x, y):
             int_y = (np.rint(yy / spacing) * spacing).astype(np.int32)  # row
             int_x = (np.rint(xx / spacing) * spacing).astype(np.int32)  # col
