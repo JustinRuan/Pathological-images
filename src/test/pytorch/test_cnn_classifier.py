@@ -12,7 +12,7 @@ from core import *
 from skimage import io
 from pytorch.cnn_classifier import Simple_Classifier, SingleTask_Classifier
 import torch
-from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization,ACDNormalization_tf
+from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization #, ACDNormalization_tf
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
 import pandas as pd
@@ -51,7 +51,7 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # cnn.train_model(samples_name=("P0430","P0430_4000_256"), augment_func = None,
         #                 batch_size=40, epochs = 10)
-        cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"),
+        cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
                                           batch_size=40, epochs = 10)
 
     def test_train_model_patholImg_SingleTask_Classifier(self):
@@ -168,16 +168,17 @@ class Test_cnn_classifier(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        # model_name = "se_densenet_40"
+        model_name = "se_densenet_40"
         # model_name = "simple_cnn"
-        model_name = "densenet_22"
+        # model_name = "resnet_18"
+        # model_name = "densenet_22"
         sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name, normalization=None, special_norm= -1)
 
         result = cnn.evaluate_models(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
-                           model_directory="D:/CloudSpace/WorkSpace/PatholImage/models/pytorch/densenet_22_4000_256",
-                                           batch_size=20, max_count=None)
+                           model_directory="{}/models/pytorch/{}_{}".format(c.PROJECT_ROOT,model_name, sample_name),
+                                           batch_size=60, max_count=None)
 
         pd.set_option('display.max_colwidth', 300)
         pd.set_option('display.max_rows', None)
@@ -224,8 +225,12 @@ class Test_cnn_classifier(unittest.TestCase):
         tag = imgCone.open_slide("Train_Tumor/Tumor_004.tif",
                                  None, "Tumor_004")
         seeds = [(69400, 98400), (70800, 98400), (27200, 113600)] # C, C, S,
-        result = cnn.predict_on_batch(imgCone, 40, 256, seeds, 1)
+        result = cnn.predict_on_batch(imgCone, 40, 256, seeds, 2)
         print(result)
+
+        # features = np.array(result)[:, 2]
+        features = result[2]
+        print(features)
 
     def test_Image_Dataset(self):
         c = Params()

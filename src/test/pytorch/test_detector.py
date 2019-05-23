@@ -418,7 +418,7 @@ class Test_detector(unittest.TestCase):
         tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
                                  'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
 
-        detector = Detector(c, imgCone)
+        detector = AdaptiveDetector(c, imgCone)
 
         if x2 * y2 == 0:
             print("y ", detector.ImageHeight, ", x ", detector.ImageWidth)
@@ -427,8 +427,9 @@ class Test_detector(unittest.TestCase):
             y1 = 0
             x1 = 0
 
-        cancer_map, history = detector.adaptive_detect_region(x1, y1, x2, y2, 1.25, 40, 256, max_iter_nums=50,
-                                                              batch_size=20, limit_sampling_density=10, use_post=True)
+        cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale = 40, patch_size = 256,
+                                               max_iter_nums=50, batch_size=10,
+                                               limit_sampling_density=10, use_post=True)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)

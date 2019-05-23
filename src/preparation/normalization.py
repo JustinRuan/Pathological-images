@@ -598,154 +598,154 @@ class ACDNormalization(AbstractNormalization):
         return True
 
 
-import tensorflow as tf
-class ACDNormalization_tf(AbstractNormalization):
-    def __init__(self, method, **kwarg):
-        super(ACDNormalization_tf, self).__init__(method, **kwarg)
-        self._pn = 100000
-        self._bs = 1500
-        self._step_per_epoch = int(self._pn / self._bs)
-        self._epoch = int(300 / self._step_per_epoch)
-        # self._pn = 100000
-        # self._bs = 1500
-        # self._step_per_epoch = 20
-        # self._epoch = 15
-
-        # self.dc_txt = kwarg["dc_txt"]
-        # self.w_txt = kwarg["w_txt"]
-        # self.template_path = kwarg["template_path"]
-        self.dc_txt = "{}/data/{}".format(get_project_root(), kwarg["dc_txt"])
-        self.w_txt = "{}/data/{}".format(get_project_root(), kwarg["w_txt"])
-        self.template_path = "{}/data/{}".format(get_project_root(), kwarg["template_path"])
-        self._template_dc_mat = None
-        self._template_w_mat = None
-
-        self.input_od = tf.placeholder(dtype=tf.float32, shape=[None, 3])
-        self.target, self.cd, self.w = self.acd_model(self.input_od)
-        self.init = tf.global_variables_initializer()
-
-        # if(not os.path.exists(self.dc_txt) or not os.path.exists(self.w_txt)):
-        #     self.generate()
-        self.generate()
-        self._template_dc_mat = np.loadtxt(self.dc_txt)
-        self._template_w_mat = np.loadtxt(self.w_txt)
-        self.inv = np.linalg.inv(self._template_dc_mat * self._template_w_mat)
-
-    def normalize_on_batch(self, src_img):
-        img = self.transform(src_img)
-        return img
-
-    def generate(self):
-        template_list = os.listdir(self.template_path)
-        temp_images = []
-        for i, name in enumerate(template_list):
-            # temp_images.append(cv2.imread(os.path.join(self.template_path, name))) # BGR
-            # 读入RGB
-            temp_images.append(io.imread(os.path.join(self.template_path, name)))
-
-        # fit
-        st = time.time()
-        self.fit(temp_images)
-        print('fit time', time.time() - st)
-
-    def fit(self, images):
-        opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
-        np.savetxt(self.dc_txt, opt_cd_mat)
-        np.savetxt(self.w_txt, opt_w_mat)
-
-    def transform(self, images):
-
-        od = -np.log((np.asarray(images, np.float) + 1) / 256.0)
-        normed_od = np.matmul(od, self.transform_mat)
-        normed_images = np.exp(-normed_od) * 256 - 1
-
-        return np.maximum(np.minimum(normed_images, 255), 0)/255
-
-    def sampling_data(self, images):
-        pixels = np.reshape(images, (-1, 3))
-        pixels = pixels[:, (2, 1, 0)]  # 从RGB变BGR
-        pixels = pixels[np.random.choice(pixels.shape[0], min(self._pn * 20, pixels.shape[0]))]
-        od = -np.log((np.asarray(pixels, np.float) + 1) / 256.0)
-        tmp = np.mean(od, axis=1)
-
-        # filter the background pixels (white or black)
-        od = od[(tmp > 0.3) & (tmp < -np.log(30 / 256))]
-        od = od[np.random.choice(od.shape[0], min(self._pn, od.shape[0]))]
-
-        return od
-
-    def extract_adaptive_cd_params(self, images):
-        """
-        :param images: RGB uint8 format in shape of [k, m, n, 3], where
-                       k is the number of ROIs sampled from a WSI, [m, n] is
-                       the size of ROI.
-        """
-        od_data = self.sampling_data(images)
-        if self.input_od is None:
-            input_od = tf.placeholder(dtype=tf.float32, shape=[None, 3])
-        if self.target is None:
-            self.target, self.cd, self.w  = self.acd_model(input_od)
-        if self.init is None:
-            self.init = tf.global_variables_initializer()
-
-        with tf.Session() as sess:
-            with tf.device('/cpu:0'):
-                sess.run(self.init)
-                for ep in range(self._epoch):
-                    for step in range(self._step_per_epoch):
-                        sess.run(self.target, {self.input_od: od_data[step * self._bs:(step + 1) * self._bs]})
-                opt_cd = sess.run(self.cd)
-                opt_w = sess.run(self.w)
-        return opt_cd, opt_w
-
-    @staticmethod
-    def acd_model(input_od, lambda_p=0.002, lambda_b=10, lambda_e=1, eta=0.6, gamma=0.5):
-        """
-        Stain matrix estimation via method of
-        "Yushan Zheng, et al., Adaptive Color Deconvolution for Histological WSI Normalization."
-        """
-        init_varphi = np.asarray([[0.6060, 1.2680, 0.7989],
-                                  [1.2383, 1.2540, 0.3927]])
-        alpha = tf.Variable(init_varphi[0], dtype='float32')
-        beta = tf.Variable(init_varphi[1], dtype='float32')
-        w = [tf.Variable(1.0, dtype='float32'), tf.Variable(1.0, dtype='float32'), tf.constant(1.0)]
-
-        sca_mat = tf.stack((tf.cos(alpha) * tf.sin(beta), tf.cos(alpha) * tf.cos(beta), tf.sin(alpha)), axis=1)
-        cd_mat = tf.matrix_inverse(sca_mat)
-
-        s = tf.matmul(input_od, cd_mat) * w
-        h, e, b = tf.split(s, (1, 1, 1), axis=1)
-
-        l_p1 = tf.reduce_mean(tf.square(b))
-        l_p2 = tf.reduce_mean(2 * h * e / (tf.square(h) + tf.square(e)))
-        l_b = tf.square((1 - eta) * tf.reduce_mean(h) - eta * tf.reduce_mean(e))
-        l_e = tf.square(gamma - tf.reduce_mean(s))
-
-        objective = l_p1 + lambda_p * l_p2 + lambda_b * l_b + lambda_e * l_e
-
-        tag_dubeg = False
-        if tag_dubeg:
-            print_op = tf.print(['cd_mat: ', cd_mat])
-            print_op2 = tf.print("objective", objective, ['l_p1: ', l_p1], ['l_p2: ', l_p2], ['l_b: ', l_b], ['l_p1: ', l_e])
-            with tf.control_dependencies([print_op, print_op2]):
-                target = tf.train.AdagradOptimizer(learning_rate=0.05).minimize(objective)
-        else:
-            target = tf.train.AdagradOptimizer(learning_rate=0.05).minimize(objective)
-
-        return target, cd_mat, w
-
-    def prepare(self, images):
-        self._template_dc_mat = np.loadtxt(self.dc_txt)
-        self._template_w_mat = np.loadtxt(self.w_txt)
-        if self._template_dc_mat is None:
-            raise AssertionError('Run fit function first')
-
-        opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
-        transform_mat = np.matmul(opt_cd_mat * opt_w_mat, self.inv)
-
-        # 当输入图像为RGB时
-        transform_mat = transform_mat[(2,1,0), :]
-        self.transform_mat = transform_mat[:, (2,1,0)]
+# import tensorflow as tf
+# class ACDNormalization_tf(AbstractNormalization):
+#     def __init__(self, method, **kwarg):
+#         super(ACDNormalization_tf, self).__init__(method, **kwarg)
+#         self._pn = 100000
+#         self._bs = 1500
+#         self._step_per_epoch = int(self._pn / self._bs)
+#         self._epoch = int(300 / self._step_per_epoch)
+#         # self._pn = 100000
+#         # self._bs = 1500
+#         # self._step_per_epoch = 20
+#         # self._epoch = 15
+#
+#         # self.dc_txt = kwarg["dc_txt"]
+#         # self.w_txt = kwarg["w_txt"]
+#         # self.template_path = kwarg["template_path"]
+#         self.dc_txt = "{}/data/{}".format(get_project_root(), kwarg["dc_txt"])
+#         self.w_txt = "{}/data/{}".format(get_project_root(), kwarg["w_txt"])
+#         self.template_path = "{}/data/{}".format(get_project_root(), kwarg["template_path"])
+#         self._template_dc_mat = None
+#         self._template_w_mat = None
+#
+#         self.input_od = tf.placeholder(dtype=tf.float32, shape=[None, 3])
+#         self.target, self.cd, self.w = self.acd_model(self.input_od)
+#         self.init = tf.global_variables_initializer()
+#
+#         # if(not os.path.exists(self.dc_txt) or not os.path.exists(self.w_txt)):
+#         #     self.generate()
+#         self.generate()
+#         self._template_dc_mat = np.loadtxt(self.dc_txt)
+#         self._template_w_mat = np.loadtxt(self.w_txt)
+#         self.inv = np.linalg.inv(self._template_dc_mat * self._template_w_mat)
+#
+#     def normalize_on_batch(self, src_img):
+#         img = self.transform(src_img)
+#         return img
+#
+#     def generate(self):
+#         template_list = os.listdir(self.template_path)
+#         temp_images = []
+#         for i, name in enumerate(template_list):
+#             # temp_images.append(cv2.imread(os.path.join(self.template_path, name))) # BGR
+#             # 读入RGB
+#             temp_images.append(io.imread(os.path.join(self.template_path, name)))
+#
+#         # fit
+#         st = time.time()
+#         self.fit(temp_images)
+#         print('fit time', time.time() - st)
+#
+#     def fit(self, images):
+#         opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
+#         np.savetxt(self.dc_txt, opt_cd_mat)
+#         np.savetxt(self.w_txt, opt_w_mat)
+#
+#     def transform(self, images):
+#
+#         od = -np.log((np.asarray(images, np.float) + 1) / 256.0)
+#         normed_od = np.matmul(od, self.transform_mat)
+#         normed_images = np.exp(-normed_od) * 256 - 1
+#
+#         return np.maximum(np.minimum(normed_images, 255), 0)/255
+#
+#     def sampling_data(self, images):
+#         pixels = np.reshape(images, (-1, 3))
+#         pixels = pixels[:, (2, 1, 0)]  # 从RGB变BGR
+#         pixels = pixels[np.random.choice(pixels.shape[0], min(self._pn * 20, pixels.shape[0]))]
+#         od = -np.log((np.asarray(pixels, np.float) + 1) / 256.0)
+#         tmp = np.mean(od, axis=1)
+#
+#         # filter the background pixels (white or black)
+#         od = od[(tmp > 0.3) & (tmp < -np.log(30 / 256))]
+#         od = od[np.random.choice(od.shape[0], min(self._pn, od.shape[0]))]
+#
+#         return od
+#
+#     def extract_adaptive_cd_params(self, images):
+#         """
+#         :param images: RGB uint8 format in shape of [k, m, n, 3], where
+#                        k is the number of ROIs sampled from a WSI, [m, n] is
+#                        the size of ROI.
+#         """
+#         od_data = self.sampling_data(images)
+#         if self.input_od is None:
+#             input_od = tf.placeholder(dtype=tf.float32, shape=[None, 3])
+#         if self.target is None:
+#             self.target, self.cd, self.w  = self.acd_model(input_od)
+#         if self.init is None:
+#             self.init = tf.global_variables_initializer()
+#
+#         with tf.Session() as sess:
+#             with tf.device('/cpu:0'):
+#                 sess.run(self.init)
+#                 for ep in range(self._epoch):
+#                     for step in range(self._step_per_epoch):
+#                         sess.run(self.target, {self.input_od: od_data[step * self._bs:(step + 1) * self._bs]})
+#                 opt_cd = sess.run(self.cd)
+#                 opt_w = sess.run(self.w)
+#         return opt_cd, opt_w
+#
+#     @staticmethod
+#     def acd_model(input_od, lambda_p=0.002, lambda_b=10, lambda_e=1, eta=0.6, gamma=0.5):
+#         """
+#         Stain matrix estimation via method of
+#         "Yushan Zheng, et al., Adaptive Color Deconvolution for Histological WSI Normalization."
+#         """
+#         init_varphi = np.asarray([[0.6060, 1.2680, 0.7989],
+#                                   [1.2383, 1.2540, 0.3927]])
+#         alpha = tf.Variable(init_varphi[0], dtype='float32')
+#         beta = tf.Variable(init_varphi[1], dtype='float32')
+#         w = [tf.Variable(1.0, dtype='float32'), tf.Variable(1.0, dtype='float32'), tf.constant(1.0)]
+#
+#         sca_mat = tf.stack((tf.cos(alpha) * tf.sin(beta), tf.cos(alpha) * tf.cos(beta), tf.sin(alpha)), axis=1)
+#         cd_mat = tf.matrix_inverse(sca_mat)
+#
+#         s = tf.matmul(input_od, cd_mat) * w
+#         h, e, b = tf.split(s, (1, 1, 1), axis=1)
+#
+#         l_p1 = tf.reduce_mean(tf.square(b))
+#         l_p2 = tf.reduce_mean(2 * h * e / (tf.square(h) + tf.square(e)))
+#         l_b = tf.square((1 - eta) * tf.reduce_mean(h) - eta * tf.reduce_mean(e))
+#         l_e = tf.square(gamma - tf.reduce_mean(s))
+#
+#         objective = l_p1 + lambda_p * l_p2 + lambda_b * l_b + lambda_e * l_e
+#
+#         tag_dubeg = False
+#         if tag_dubeg:
+#             print_op = tf.print(['cd_mat: ', cd_mat])
+#             print_op2 = tf.print("objective", objective, ['l_p1: ', l_p1], ['l_p2: ', l_p2], ['l_b: ', l_b], ['l_p1: ', l_e])
+#             with tf.control_dependencies([print_op, print_op2]):
+#                 target = tf.train.AdagradOptimizer(learning_rate=0.05).minimize(objective)
+#         else:
+#             target = tf.train.AdagradOptimizer(learning_rate=0.05).minimize(objective)
+#
+#         return target, cd_mat, w
+#
+#     def prepare(self, images):
+#         self._template_dc_mat = np.loadtxt(self.dc_txt)
+#         self._template_w_mat = np.loadtxt(self.w_txt)
+#         if self._template_dc_mat is None:
+#             raise AssertionError('Run fit function first')
+#
+#         opt_cd_mat, opt_w_mat = self.extract_adaptive_cd_params(images)
+#         transform_mat = np.matmul(opt_cd_mat * opt_w_mat, self.inv)
+#
+#         # 当输入图像为RGB时
+#         transform_mat = transform_mat[(2,1,0), :]
+#         self.transform_mat = transform_mat[:, (2,1,0)]
 
 class ImageNormalizationTool(object):
     def __init__(self, params):

@@ -421,8 +421,8 @@ class BaseClassifier(object, metaclass=ABCMeta):
             output = self.model(b_x) # model最后不包括一个softmax层
             output_softmax = nn.functional.softmax(output, dim =1)
             probs, preds = torch.max(output_softmax, 1)
-            for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
-                results.append((pred, prob))
+            for prob, pred, feature in zip(probs.cpu().numpy(), preds.cpu().numpy(), output.cpu().numpy()):
+                results.append((pred, prob, tuple(feature)))
             print('predicting => %d / %d ' % (step + 1, data_len))
 
             # for debug

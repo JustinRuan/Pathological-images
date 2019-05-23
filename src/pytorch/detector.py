@@ -77,7 +77,7 @@ class BaseDetector(object, metaclass=ABCMeta):
         :param true_mask: 人工标记真值
         :return: ROC曲线
         '''
-        cancer_tag = np.array(cancer_map).ravel()
+        cancer_tag = np.array(cancer_map > threshold).ravel()
         mask_tag = np.array(true_mask).ravel()
         predicted_tags = cancer_tag >= threshold
 
@@ -85,7 +85,7 @@ class BaseDetector(object, metaclass=ABCMeta):
               % (metrics.classification_report(mask_tag, predicted_tags, digits=4)))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
 
-        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, cancer_tag)
+        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, np.array(cancer_map).ravel())
         roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
         print("\n ROC auc: %s" % roc_auc)
 
@@ -389,20 +389,23 @@ class AdaptiveDetector(BaseDetector):
         self.random_gen = Random_Gen("halton")  # random, sobol, halton
         self.cluster_centers = None
 
-        self.search_therhold = 0.015
+        self.search_therhold = 0.03 # 0.015
 
-    def get_cancer_probability(self, predictions):
+    def get_cancer_feature(self, predictions):
         '''
         计算出每个检测点所得到的癌变概率
         :param predictions: 预测的结果列表，（pred 预测的类型, prob可能性）
         :return:概率列表
         '''
+        # probs = []
+        # for pred, prob, feature in predictions:
+        #     if pred == 0:
+        #         probs.append(1 - prob)
+        #     else:
+        #         probs.append(prob)
         probs = []
-        for pred, prob in predictions:
-            if pred == 0:
-                probs.append(1 - prob)
-            else:
-                probs.append(prob)
+        for pred, prob, feature in predictions:
+            probs.append(feature[1])
 
         return probs
 
@@ -467,6 +470,9 @@ class AdaptiveDetector(BaseDetector):
         :param thresh: 高低概率的阈值
         :return: 概率图
         '''
+        # 1 / (1 + math.exp(-x))
+        cancer_map = 1 / (1 + np.exp(-cancer_map))
+
         high_region = cancer_map > thresh[0] # 高概率
         low_region = cancer_map > thresh[1] # 低概率
 
@@ -601,16 +607,16 @@ class AdaptiveDetector(BaseDetector):
             if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn"]:
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
                 predictions = self.cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
-                probs = self.get_cancer_probability(predictions)
+                probs = self.get_cancer_feature(predictions)
 
             #######################################################################################
             t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
             len_seed = len(new_seeds)
             random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed, 1))
             step_name = "Round {}".format(total_step)
-            text_labels = []
-            for item in probs:
-                text_labels.append("{:.2f}".format(item))
+            # text_labels = []
+            # for item in probs:
+            #     text_labels.append("{:.2f}".format(item))
 
             viz.scatter(X=t_seeds, name=step_name, win=pic_points, update="append",
                         opts=dict(title='seeds', caption='seeds', showlegend=True,  #textlabels=text_labels,
@@ -628,7 +634,7 @@ class AdaptiveDetector(BaseDetector):
             point = list(history.keys())
 
             # 使用cubic，会出现负值，而选用linear不会这样
-            interpolate_img = griddata(point, value, (grid_x, grid_y), method='linear', fill_value=0.0)
+            interpolate_img = griddata(point, value, (grid_x, grid_y), method='linear', fill_value= -2.0)
             sobel_img, threshold = self.calc_sobel(interpolate_img)
 
             ########################################################################################################
@@ -641,13 +647,6 @@ class AdaptiveDetector(BaseDetector):
             #########################################################################################################
             total_step += 1
 
-            # if (len(new_seeds) / N < 0.9):
-            #     # 避免过早收敛
-            #     count_tresh += 1
-            #     if count_tresh >= 2:
-            #         break
-            # else:
-            #     count_tresh = 0
             if sampling_density > limit_sampling_density:
                 break
 
