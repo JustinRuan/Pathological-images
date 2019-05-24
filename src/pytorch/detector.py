@@ -23,7 +23,7 @@ from pytorch.cnn_classifier import Simple_Classifier, MultiTask_Classifier, MSC_
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
-
+from skimage import measure
 
 class BaseDetector(object, metaclass=ABCMeta):
     def __init__(self, params, src_image):
@@ -141,6 +141,60 @@ class BaseDetector(object, metaclass=ABCMeta):
     @abstractmethod
     def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
         pass
+
+    def save(self, x1, y1, coordinate_scale, cancer_map, threshold):
+        cancer_tag = np.array(cancer_map > threshold)
+        contours = measure.find_contours(cancer_tag, 0.5)
+
+        scale = int(40 / self._params.GLOBAL_SCALE)
+        scale2 = int(40 / coordinate_scale)
+
+        contours_x40 = []
+        for n, contour in enumerate(contours):
+            c = scale * np.array(np.array(contour))  + np.array([y1, x1]) * scale2
+            contours_x40.append(c)
+
+        self.write_xml(contours_x40)
+
+    def write_xml(self, contours):
+        from xml.dom import minidom
+        doc = minidom.Document()
+        rootNode = doc.createElement("ASAP_Annotations")
+        doc.appendChild(rootNode)
+
+        AnnotationsNode = doc.createElement("Annotations")
+        rootNode.appendChild(AnnotationsNode)
+        Code = "_99"
+        for i, contour in enumerate(contours):
+            # one contour
+            AnnotationNode = doc.createElement("Annotation")
+            AnnotationNode.setAttribute("Name", str(i))
+            AnnotationNode.setAttribute("Type", "Polygon")
+            AnnotationNode.setAttribute("PartOfGroup", Code)
+            AnnotationNode.setAttribute("Color", "#F4FA00")
+            AnnotationsNode.appendChild(AnnotationNode)
+
+            CoordinatesNode = doc.createElement("Coordinates")
+            AnnotationNode.appendChild(CoordinatesNode)
+
+            for n, (y, x) in enumerate(contour):
+                CoordinateNode = doc.createElement("Coordinate")
+                CoordinateNode.setAttribute("Order", str(n))
+                CoordinateNode.setAttribute("X", str(x))
+                CoordinateNode.setAttribute("Y", str(y))
+                CoordinatesNode.appendChild(CoordinateNode)
+
+        AnnotationGroups_Node = doc.createElement("AnnotationGroups")
+        rootNode.appendChild(AnnotationGroups_Node)
+        GroupNode = doc.createElement("Group")
+        GroupNode.setAttribute("Name", Code)
+        GroupNode.setAttribute("PartOfGroup", "None")
+        GroupNode.setAttribute("Color", "#00ffBB")
+        AnnotationGroups_Node.appendChild(GroupNode)
+
+        f = open("{}/results/{}_output.xml".format(self._params.PROJECT_ROOT, self._imgCone.slice_id), "w")
+        doc.writexml(f, encoding="utf-8")
+        f.close()
 
 class Detector(BaseDetector):
     def __init__(self, params, src_image):

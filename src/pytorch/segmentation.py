@@ -133,7 +133,8 @@ class Segmentation(object):
 
     def get_seeds_at_boundaries(self, label_img, x1, y1, coordinate_scale, ):
         boundaries = find_boundaries(label_img,)
-        temp = morphology.binary_dilation(boundaries, square(32))
+        s = np.rint(np.sqrt(np.sum(boundaries)) / 6.0,).astype(np.int32)
+        temp = morphology.binary_dilation(boundaries, square(s))
         boundaries = find_boundaries(temp, )
 
         GLOBAL_SCALE = self._params.GLOBAL_SCALE

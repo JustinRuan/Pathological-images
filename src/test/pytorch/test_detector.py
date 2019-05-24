@@ -13,8 +13,8 @@ from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class Test_detector(unittest.TestCase):
 
@@ -213,8 +213,35 @@ class Test_detector(unittest.TestCase):
         plt.show()
 
     def test_03(self):
-        from visdom import Visdom
-        viz = Visdom()
+        from xml.dom import minidom
+        doc = minidom.Document()
+        rootNode = doc.createElement("ASAP_Annotations")
+        doc.appendChild(rootNode)
+
+        AnnotationsNode = doc.createElement("Annotations")
+        rootNode.appendChild(AnnotationsNode)
+
+        # one contour
+        AnnotationNode = doc.createElement("Annotation")
+        AnnotationNode.setAttribute("Name", "_0")
+        AnnotationNode.setAttribute("Type", "Polygon")
+        AnnotationNode.setAttribute("PartOfGroup", "_0")
+        AnnotationNode.setAttribute("Color", "#F4FA00")
+        AnnotationsNode.appendChild(AnnotationNode)
+
+        CoordinatesNode = doc.createElement("Coordinates")
+        AnnotationNode.appendChild(CoordinatesNode)
+
+
+        CoordinateNode = doc.createElement("Coordinate")
+        CoordinateNode.setAttribute("Order", "0")
+        CoordinateNode.setAttribute("X", "123")
+        CoordinateNode.setAttribute("Y", "456")
+        CoordinatesNode.appendChild(CoordinateNode)
+
+        f = open("test_output.xml", "w")
+        doc.writexml(f, encoding="utf-8")
+        f.close()
 
     def test_adaptive_detect_region(self):
         # # train set
@@ -334,38 +361,7 @@ class Test_detector(unittest.TestCase):
 
         plt.show()
 
-    # def test_search_focus_area(self):
-    #     test_set = [("001", 2100, 3800, 2400, 4000),
-    #                 ("003", 2400, 4700, 2600, 4850),  # 小的局部150 x 200
-    #                 ("003", 2000, 4300, 2800, 4900),  # 600 x 800
-    #                 ("003", 721, 3244, 3044, 5851),  # 全切片范围
-    #                 ("044", 410, 2895, 2813, 6019),
-    #                 ]
-    #     id = 2
-    #     roi = test_set[id]
-    #     slice_id = roi[0]
-    #     x1 = roi[1]
-    #     y1 = roi[2]
-    #     x2 = roi[3]
-    #     y2 = roi[4]
-    #
-    #     c = Params()
-    #     c.load_config_file(JSON_PATH)
-    #     imgCone = ImageCone(c, Open_Slide())
-    #
-    #     # 读取数字全扫描切片图像
-    #     tag = imgCone.open_slide("Tumor/Tumor_%s.tif" % slice_id,
-    #                              'Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
-    #
-    #     detector = Detector(c, imgCone)
-    #     detector.setting_detected_area(x1, y1, x2, y2, 1.25)
-    #
-    #     saved_record = np.load("detect.npz")
-    #     cancer_map = saved_record['arr_0']
-    #     result = detector.search_focus_area(x1, y1, cancer_map, (0.9, 0.1))
-    #     print(result)
-    #     # src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
-    #     # mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
+        detector.save(x1, y1, 1.25, cancer_map, t1)
 
     def test_adaptive_detect_region_test(self):
         # test test
