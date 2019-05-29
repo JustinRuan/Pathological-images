@@ -166,8 +166,8 @@ class DenseNet(nn.Module):
     def forward(self, x):
         features = self.features(x)
         pool_feature = self.pool_final(features)
-        out = pool_feature.view(pool_feature.size(0), -1)
-        out = self.classifier(out)
+        self.out_feature = pool_feature.view(pool_feature.size(0), -1)
+        out = self.classifier(self.out_feature)
         return out
 
 

@@ -13,8 +13,9 @@ from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_detector(unittest.TestCase):
 
@@ -365,38 +366,37 @@ class Test_detector(unittest.TestCase):
 
     def test_adaptive_detect_region_test(self):
         # test test
-        test_set = {1: ("001", 100, 100, 2600, 2700),  # 检测 dice =0.83
-                    2: ("001", 800, 1600, 1600, 2300),  # dice = 0.91
-                    3: ("016", 0, 200, 3250, 2900),  # 检测不出
-                    4: ("021", 0, 2400, 3000, 6500),  # 检测 dice， c3 0.9, c9 0.95
-                    5: ("026", 0, 0, 0, 0),  # 检测，dice c3= 0.11
-                    6: ("061", 0, 0, 0, 0),  # 检测, c3 = 0.06,
-                    7: ("004", 0, 0, 0, 0),  # 检测，c3 = 0
-                    8: ("008", 0, 0, 0, 0),  # 检测，c3 = 0
-                    9: ("010", 0, 0, 0, 0),  # 检测,c3 = 0
-                    11: ("011", 0, 0, 0, 0),  # 检测,c3 = 0
-                    12: ("013", 0, 0, 0, 0),  # 检测,c3 = 0
-                    13: ("016", 0, 0, 0, 0),  # 检测,c3 =
-                    14: ("027", 0, 0, 0, 0),  # 检测,c3 =
-                    15: ("029", 0, 0, 0, 0),  # 检测,c3 =
-                    16: ("030", 0, 0, 0, 0),
-                    17: ("033", 0, 0, 0, 0),
-                    18: ("038", 0, 0, 0, 0),
-                    19: ("040", 0, 0, 0, 0),
-                    20: ("046", 0, 0, 0, 0),
-                    21: ("048", 0, 0, 0, 0),
-                    22: ("051", 0, 0, 0, 0),
-                    23: ("052", 0, 0, 0, 0),
-                    24: ("071", 0, 0, 0, 0),
-                    25: ("064", 0, 0, 0, 0),
-                    26: ("065", 0, 0, 0, 0),
-                    27: ("066", 0, 0, 0, 0),
-                    28: ("068", 0, 0, 0, 0),
-                    29: ("069", 0, 0, 0, 0),
-                    30: ("073", 0, 0, 0, 0),
+        test_set = {1: ("001", 100, 100, 2600, 2700),  # 检测 dice =0.671216, 0.76084
+                    1.1: ("001", 800, 1600, 1600, 2300),  # dice = 0.91547
+                    16: ("016", 0, 200, 3250, 2900),  # dice = 0.89606
+                    21: ("021", 0, 0, 0, 0),  # dice = 0.93743
+                    26: ("026", 0, 0, 0, 0),  # 检测，dice c3= 0.7601
+                    61: ("061", 0, 0, 0, 0),  # 检测, c3 = 0.1905
+                    4: ("004", 0, 0, 0, 0),  # 检测，c3 = 2.5917e-05， 检测区域太小
+                    8: ("008", 0, 0, 0, 0),  # 检测，c3 = 0.003159
+                    10: ("010", 0, 0, 0, 0),  # 检测,c3 = 3.7647e-05
+                    11: ("011", 0, 0, 0, 0),  # 检测,c3 = 0.0005543
+                    13: ("013", 0, 0, 0, 0),  # 检测,c3 = 0.003278
+                    27: ("027", 0, 0, 0, 0),  # 检测,c3 = 0.9601, 0.3540
+                    29: ("029", 0, 0, 0, 0),  # 检测,c3 =
+                    30: ("030", 0, 0, 0, 0), # 检测,c3 = 0.02823
+                    33: ("033", 0, 0, 0, 0), # 检测,c3 =
+                    38: ("038", 0, 0, 0, 0), # 检测,c3 = 0.000214
+                    40: ("040", 0, 0, 0, 0), # 检测,c3 = 0.06608, 检测错误
+                    46: ("046", 0, 0, 0, 0), # 检测,c3 = 0.0005763
+                    48: ("048", 0, 0, 0, 0), # 检测,c3 =
+                    51: ("051", 0, 0, 0, 0), # 检测,c3 = 0.1478
+                    52: ("052", 0, 0, 0, 0), # 检测,c3 =
+                    71: ("071", 0, 0, 0, 0), # 检测,c3 =
+                    64: ("064", 0, 0, 0, 0), # 检测,c3 =
+                    65: ("065", 0, 0, 0, 0), # 检测,c3 =
+                    66: ("066", 0, 0, 0, 0), # 检测,c3 =
+                    68: ("068", 0, 0, 0, 0), # 检测,c3 =
+                    69: ("069", 0, 0, 0, 0), # 检测,c3 =
+                    73: ("073", 0, 0, 0, 0), # 检测,c3 =
                     }
 
-        id = 2
+        id = 1.1
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -418,14 +418,14 @@ class Test_detector(unittest.TestCase):
 
         if x2 * y2 == 0:
             print("y ", detector.ImageHeight, ", x ", detector.ImageWidth)
-            y2 = detector.ImageHeight - 1
-            x2 = detector.ImageWidth - 1
-            y1 = 0
-            x1 = 0
+            y2 = detector.ImageHeight - 100
+            x2 = detector.ImageWidth - 100
+            y1 = 100
+            x1 = 100
 
         cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale = 40, patch_size = 256,
-                                               max_iter_nums=50, batch_size=10,
-                                               limit_sampling_density=10, use_post=True)
+                                               max_iter_nums=50, batch_size=100,
+                                               limit_sampling_density=20, use_post=True)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -469,7 +469,7 @@ class Test_detector(unittest.TestCase):
 
         ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
         shape = src_img.shape
-        ax[1].set_title("src_img {} x {}".format(shape[0], shape[1]))
+        ax[1].set_title("slice id:{},  src_img {} x {}".format(slice_id, shape[0], shape[1]))
 
         ax[2].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
         ax[2].imshow(cancer_map, alpha=0.3)
@@ -490,3 +490,4 @@ class Test_detector(unittest.TestCase):
         # ax[0].axis("on")
 
         plt.show()
+        detector.save(x1, y1, 1.25, cancer_map, t1)

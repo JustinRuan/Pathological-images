@@ -980,7 +980,8 @@ class ImageNormalizationTool(object):
 
     def normalize_dataset(self, source_samples, tagrget_dir, range = None, batch_size = 20):
         self.opcode = 19
-        normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+        # normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+        normal = ACDNormalization("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
 
         patch_root = self._params.PATCHS_ROOT_PATH[source_samples[0]]
         sample_filename = source_samples[1]

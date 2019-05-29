@@ -12,13 +12,14 @@ from core import *
 from skimage import io
 from pytorch.cnn_classifier import Simple_Classifier, SingleTask_Classifier
 import torch
-from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization #, ACDNormalization_tf
+from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization,ReinhardNormalization #, ACDNormalization_tf
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
 import pandas as pd
 
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -60,8 +61,8 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # model_name = "simple_cnn"
         # model_name = "se_densenet_40"
-        # model_name = "densenet_22"
-        model_name = "resnet_18"
+        model_name = "densenet_22"
+        # model_name = "resnet_18"
         sample_name = "4000_256"
 
         cnn = SingleTask_Classifier(c, model_name, sample_name)
@@ -69,7 +70,7 @@ class Test_cnn_classifier(unittest.TestCase):
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
         # augment = HRndAugmentation()
 
-        cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
+        cnn.train_model(samples_name=("P0430","T2_P0430_4000_256"), augment_func = None,
                         batch_size=40, loss_weight=0.001, epochs = 10)
         # cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"),
         #                                   check_samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
@@ -80,10 +81,10 @@ class Test_cnn_classifier(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        model_name = "se_densenet_40"
+        # model_name = "se_densenet_40"
         # sample_name = "x_256"
         # model_name = "simple_cnn"
-        # model_name = "densenet_22"
+        model_name = "densenet_22"
         sample_name = "4000_256"
 
         # normal = HistNormalization("match_hist", hist_target ="hist_templates_2048.npy",
@@ -94,12 +95,12 @@ class Test_cnn_classifier(unittest.TestCase):
         #                           target_std=(0.1860, 0.1884, 0.2482),
         #                           source_mean=(-0.0676, 0.4088, 0.3710),
         #                           source_std=(0.1254, 0.1247, 0.1988))
-        # normal = HSDNormalization("hsd_norm", target_mean=( -0.2574, 0.2353, 0.3893),
-        #                           target_std=(0.1860, 0.1884, 0.2482),
-        #                           source_mean=(-0.1635, 0.3508, 0.3752),
-        #                           source_std=(0.1860, 0.1884, 0.2482))
-        # normal = RndAugmentation()
-        normal = None
+        normal = ReinhardNormalization("reinhard", target_mean=(72.66, 16.89, -9.979),
+                                    target_std=(13.42, 5.767, 4.891),
+                                    source_mean=(72.45, 17.63, -17.77),
+                                    source_std=(10.77, 7.064, 6.50))
+
+        # normal = None
         # normal = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
 
@@ -134,11 +135,11 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.evaluate_model(samples_name=("P0330", "T_NC_Simple0330_4000_256_test.txt"),
         #                    model_file=None, batch_size=60, max_count=None)
 
-        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"), # T_NC_Simple0404_4000_256_test
-        #                    model_file=None,
-        #                    batch_size=20, max_count=None)
-        cnn.evaluate_model(samples_name=("P0430", "Check_P0430_4000_256_test.txt"), # Check_P0430_4000_256_test, T1_P0430_4000_256_train
-                           model_file=None, batch_size=100, max_count=None )
+        cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"), # T_NC_Simple0404_4000_256_test
+                           model_file=None,
+                           batch_size=20, max_count=None)
+        # cnn.evaluate_model(samples_name=("P0430", "Check_P0430_4000_256_test.txt"), # Check_P0430_4000_256_test, T1_P0430_4000_256_train
+        #                    model_file=None, batch_size=100, max_count=None )
 
     def test_evaluate_model2(self):
         c = Params()
@@ -154,24 +155,27 @@ class Test_cnn_classifier(unittest.TestCase):
 
         cnn = Simple_Classifier(c, model_name, sample_name, normalization=normal, special_norm= -1)
 
-        cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
-                           model_file=None, batch_size=20, max_count=600)
+        # cnn.evaluate_model(samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
+        #                    model_file=None, batch_size=20, max_count=600)
 
         # Check_P0430_4000_256_test, T1_P0430_4000_256_train
-        # Xtest, Ytest, predicted_tags, features = cnn.evaluate_model(
-        #     samples_name=("P0430", "Check_P0430_4000_256_test.txt"),
-        #     model_file=None, batch_size=20, max_count=None)
-        # # cnn.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
+        Xtest, Ytest, predicted_tags, features = cnn.evaluate_model(
+            samples_name=("P0430", "Check_P0430_4000_256_test.txt"),
+            model_file=None, batch_size=20, max_count=2000)
+        cnn.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
         # cnn.visualize_features(features, Ytest, predicted_tags)
+
+        #the center of Label  0  =  [ 1.4759356 -1.5035709]
+        #the center of Label  1  =  [-1.5735501  1.5415243]
 
     def test_evaluate_model3(self):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        model_name = "se_densenet_40"
+        # model_name = "se_densenet_40"
         # model_name = "simple_cnn"
         # model_name = "resnet_18"
-        # model_name = "densenet_22"
+        model_name = "densenet_22"
         sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name, normalization=None, special_norm= -1)
@@ -228,9 +232,6 @@ class Test_cnn_classifier(unittest.TestCase):
         result = cnn.predict_on_batch(imgCone, 40, 256, seeds, 2)
         print(result)
 
-        # features = np.array(result)[:, 2]
-        features = result[2]
-        print(features)
 
     def test_Image_Dataset(self):
         c = Params()

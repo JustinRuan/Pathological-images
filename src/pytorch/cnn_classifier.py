@@ -289,11 +289,6 @@ class BaseClassifier(object, metaclass=ABCMeta):
             endtime = datetime.datetime.now()
             remaining_time = (test_data_len - step) * (endtime - starttime).seconds / (step + 1)
             print('predicting => %d / %d , remaining time: %d (s)' % (step + 1, test_data_len, remaining_time))
-            #for debug
-            # probs = probs.cpu().numpy()
-            # mean = np.mean(probs)
-            # std = np.std(probs)
-            # print("mean of prob = ", mean, std)
 
         Ytest = np.array(Ytest)
         predicted_tags = np.array(predicted_tags)
@@ -316,7 +311,6 @@ class BaseClassifier(object, metaclass=ABCMeta):
         loss = []
         train_accuracy = []
         test_accuracy = []
-
 
         for model_file in os.listdir(model_directory):
             file_name = os.path.splitext(model_file)[0]
@@ -413,25 +407,24 @@ class BaseClassifier(object, metaclass=ABCMeta):
         if len_seeds % batch_size > 0:
             data_len += 1
 
-        results = []
-
+        probability = []
+        prediction = []
+        low_dim_features = []
         for step, x in enumerate(seeds_itor):
             b_x = Variable(x.to(self.device))
 
             output = self.model(b_x) # model最后不包括一个softmax层
             output_softmax = nn.functional.softmax(output, dim =1)
             probs, preds = torch.max(output_softmax, 1)
-            for prob, pred, feature in zip(probs.cpu().numpy(), preds.cpu().numpy(), output.cpu().numpy()):
-                results.append((pred, prob, tuple(feature)))
+            # for prob, pred, feature in zip(probs.cpu().numpy(), preds.cpu().numpy(), output.cpu().numpy()):
+            #     results.append((pred, prob, tuple(feature)))
+
+            low_dim_features.extend(output.cpu().numpy())
+            probability.extend(probs.cpu().numpy())
+            prediction.extend(preds.cpu().numpy())
             print('predicting => %d / %d ' % (step + 1, data_len))
 
-            # for debug
-            # probs = probs.cpu().numpy()
-            # mean = np.mean(probs)
-            # std = np.std(probs)
-            # print("mean of prob = ", mean, std)
-
-        return results
+        return probability, prediction, low_dim_features
 
     @abstractmethod
     def load_pretrained_model_on_predict(self):
@@ -470,10 +463,11 @@ class BaseClassifier(object, metaclass=ABCMeta):
             w.add_graph(torch_model, (x, ))
 
     def visualize_features(self, features, true_labels, predicted_tags):
-        c = ['#ff0000', '#00ff00', '#ffff00', '#00ffff', '#0000ff',
-             '#ff00ff', '#999900', '#999900', '#009900', '#009999']
-        plt.clf()
         features = np.array(features)
+
+        c = ['#00ff00', '#ff0000', '#ffff00', '#00ffff', '#0000ff',
+             '#99ff00', '#ff0099', '#999900', '#009900', '#009999']
+        plt.clf()
         for i in range(2):
             # feat = features[np.logical_and(true_labels == i, true_labels == predicted_tags)]
             # plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i])
@@ -481,10 +475,13 @@ class BaseClassifier(object, metaclass=ABCMeta):
             # feat = features[np.logical_and(true_labels == i, true_labels != predicted_tags)]
             # plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i + 5])
             feat = features[true_labels == i]
+            center = np.mean(feat, axis=0)
             plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i], alpha=0.6)
+            print("the center of Label ", i, " = ",center)
+            plt.plot(center[0], center[1], '*', c=c[i + 5], markersize=16)
 
         # plt.legend(['true_cancer', 'false_cancer', 'true_normal', 'false_normal'], loc='upper right')
-        plt.legend(['cancer', 'normal',], loc='upper right')
+        plt.legend(['normal', 'center of normal ', 'cancer', 'center of cancer ',], loc='upper right')
         plt.show()
 
 
@@ -707,6 +704,54 @@ class SingleTask_Classifier(Simple_Classifier):
                 self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc),
                        )
         return
+
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return: 预测结果与概率
+        '''
+
+        seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
+                                           normalization=self.normal_func)
+
+        if self.model is None:
+            self.model = self.load_pretrained_model_on_predict()
+            self.model.to(self.device)
+            self.model.eval()
+
+        len_seeds = len(seeds)
+        data_len = len(seeds) // batch_size
+        if len_seeds % batch_size > 0:
+            data_len += 1
+
+        probability = []
+        prediction = []
+        high_dim_features = []
+        low_dim_features = []
+        for step, x in enumerate(seeds_itor):
+            b_x = Variable(x.to(self.device))
+
+            output = self.model(b_x) # model最后不包括一个softmax层
+            output_softmax = nn.functional.softmax(output, dim =1)
+            probs, preds = torch.max(output_softmax, 1)
+            # for prob, pred, feature, in zip(probs.cpu().numpy(), preds.cpu().numpy(), output.cpu().numpy()):
+            #     results.append((pred, prob, tuple(feature)))
+
+            high_dim_features.extend(self.out_feature.cpu().numpy())
+            low_dim_features.extend(output.cpu().numpy())
+            probability.extend(probs.cpu().numpy())
+            prediction.extend(preds.cpu().numpy())
+            print('predicting => %d / %d ' % (step + 1, data_len))
+
+        # for i in range(2):
+        #     feat = features[true_labels == i]
+        #     center = np.mean(feat, axis=0)
+
+        return probability, prediction, low_dim_features
 
 ######################################################################################################################
 ############       multi task            #########

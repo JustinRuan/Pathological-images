@@ -15,7 +15,7 @@ import numpy as np
 import cv2
 
 from preparation.normalization import RGBNormalization, ReinhardNormalization, HistNormalization, \
-    ImageNormalizationTool, HSDNormalization, ACDNormalization, ACDNormalization_tf
+    ImageNormalizationTool, HSDNormalization, ACDNormalization #ACDNormalization_tf
 JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
@@ -208,45 +208,45 @@ class TestNormalization(unittest.TestCase):
         plt.show()
 
 
-    def test_acd_method_tf(self):
-        c = Params()
-        c.load_config_file(JSON_PATH)
-
-        normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
-
-        # filename = "T_NC_Simple0404_4000_256_test.txt"
-        # patch_path = c.PATCHS_ROOT_PATH["P0404"]
-
-        filename = "T_NC_Simple0330_4000_256_test.txt"
-        patch_path = c.PATCHS_ROOT_PATH["P0330"]
-        all_file_list, _ = util.read_csv_file(patch_path, "{}/{}".format(patch_path, filename))
-
-        N = 20
-        rnd = random.randint(0, len(all_file_list) // N)
-        rnd = 0
-        file_list = all_file_list[rnd:rnd + N]
-
-        images = []
-        for index, filename in enumerate(file_list):
-            # img = imread(filename)
-            img = cv2.imread(filename)
-            images.append(img)
-
-        results = normal.normalize_on_batch(images)
-
-        fig = plt.figure(figsize=(16, 10), dpi=100)
-        for index, (result, img) in enumerate(zip(results, images)):
-            plt.subplot(5, 2 * N / 5, 2 * index + 1)
-            plt.imshow(img)
-
-            plt.axis("off")
-            plt.subplot(5, 2 * N / 5, 2 * index + 2)
-            plt.axis("off")
-            plt.imshow(result)
-
-        fig.tight_layout()  # 调整整体空白
-        plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
-        plt.show()
+    # def test_acd_method_tf(self):
+    #     c = Params()
+    #     c.load_config_file(JSON_PATH)
+    #
+    #     normal = ACDNormalization_tf("acd", dc_txt="dc.txt", w_txt="w.txt", template_path="template_normal")
+    #
+    #     # filename = "T_NC_Simple0404_4000_256_test.txt"
+    #     # patch_path = c.PATCHS_ROOT_PATH["P0404"]
+    #
+    #     filename = "T_NC_Simple0330_4000_256_test.txt"
+    #     patch_path = c.PATCHS_ROOT_PATH["P0330"]
+    #     all_file_list, _ = util.read_csv_file(patch_path, "{}/{}".format(patch_path, filename))
+    #
+    #     N = 20
+    #     rnd = random.randint(0, len(all_file_list) // N)
+    #     rnd = 0
+    #     file_list = all_file_list[rnd:rnd + N]
+    #
+    #     images = []
+    #     for index, filename in enumerate(file_list):
+    #         # img = imread(filename)
+    #         img = cv2.imread(filename)
+    #         images.append(img)
+    #
+    #     results = normal.normalize_on_batch(images)
+    #
+    #     fig = plt.figure(figsize=(16, 10), dpi=100)
+    #     for index, (result, img) in enumerate(zip(results, images)):
+    #         plt.subplot(5, 2 * N / 5, 2 * index + 1)
+    #         plt.imshow(img)
+    #
+    #         plt.axis("off")
+    #         plt.subplot(5, 2 * N / 5, 2 * index + 2)
+    #         plt.axis("off")
+    #         plt.imshow(result)
+    #
+    #     fig.tight_layout()  # 调整整体空白
+    #     plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
+    #     plt.show()
 
     def test_normalize_dataset(self):
         c = Params()

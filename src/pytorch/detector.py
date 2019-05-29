@@ -516,7 +516,40 @@ class AdaptiveDetector(BaseDetector):
             x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
         return tuple(zip(x, y))
 
-    def post_process(self, cancer_map, bias, thresh=(0.7, 0.5)):
+    # def post_process(self, cancer_map, bias, thresh=(0.85, 0.5)):
+    #     '''
+    #     后处理，对低概率区域进行抑制，对高概率区域进行膨胀
+    #     :param cancer_map: 癌症概率 图
+    #     :param bias: 形态学运算的模板大小
+    #     :param thresh: 高低概率的阈值
+    #     :return: 概率图
+    #     '''
+    #     # 1 / (1 + math.exp(-x))
+    #     cancer_map = 1 / (1 + np.exp(-cancer_map))
+    #
+    #     high_region = cancer_map > thresh[0] # 高概率
+    #     low_region = cancer_map > thresh[1] # 低概率
+    #
+    #     candidated_tag, num_tag = morphology.label(low_region, neighbors=8, return_num=True)
+    #
+    #     for index in range(1, num_tag + 1):
+    #         selected_region = candidated_tag == index
+    #         total = np.sum(high_region[selected_region] == True)
+    #
+    #         # 高概率区域面积过小，则抑制
+    #         if total < 4 * 64:  # 256 / (40 /1.25) = 8
+    #             selected_cancer_map = cancer_map.copy()
+    #             temp = erosion(selected_cancer_map, square(2 * bias))
+    #             temp = erosion(temp, square(2 * bias))
+    #             cancer_map[selected_region] = temp[selected_region]
+    #
+    #     temp = erosion(cancer_map, square(bias))
+    #     result = dilation(temp, square(bias))
+    #     result = dilation(result, square(bias))
+    #
+    #     return result
+
+    def post_process(self, cancer_map, bias, thresh):
         '''
         后处理，对低概率区域进行抑制，对高概率区域进行膨胀
         :param cancer_map: 癌症概率 图
@@ -526,28 +559,10 @@ class AdaptiveDetector(BaseDetector):
         '''
         # 1 / (1 + math.exp(-x))
         cancer_map = 1 / (1 + np.exp(-cancer_map))
+        cancer_map = morphology.closing(cancer_map, square(4 * bias))
+        cancer_map = morphology.dilation(cancer_map, square(2 * bias))
 
-        high_region = cancer_map > thresh[0] # 高概率
-        low_region = cancer_map > thresh[1] # 低概率
-
-        candidated_tag, num_tag = morphology.label(low_region, neighbors=8, return_num=True)
-
-        for index in range(1, num_tag + 1):
-            selected_region = candidated_tag == index
-            total = np.sum(high_region[selected_region] == True)
-
-            # 高概率区域面积过小，则抑制
-            if total < 2 * 64:  # 256 / (40 /1.25) = 8
-                selected_cancer_map = cancer_map.copy()
-                temp = erosion(selected_cancer_map, square(2 * bias))
-                temp = erosion(temp, square(2 * bias))
-                cancer_map[selected_region] = temp[selected_region]
-
-        temp = erosion(cancer_map, square(bias))
-        result = dilation(temp, square(bias))
-        result = dilation(result, square(bias))
-
-        return result
+        return cancer_map
 
     def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
         extract_scale = kwargs["extract_scale"]
@@ -661,8 +676,8 @@ class AdaptiveDetector(BaseDetector):
             # 单倍镜下进行检测
             if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn"]:
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
-                predictions = self.cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
-                probs = self.get_cancer_feature(predictions)
+                probability, prediction, low_dim_features = self.cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
+                probs = np.array(low_dim_features)[:,1]
 
             #######################################################################################
             t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
@@ -707,10 +722,9 @@ class AdaptiveDetector(BaseDetector):
 
         if use_post:
             amplify = extract_scale / seeds_scale
-            bias = int(0.25 * patch_size / amplify)
-            interpolate_img = self.post_process(interpolate_img, bias)
+            selem_size = int(0.25 * patch_size / amplify)
+            interpolate_img = self.post_process(interpolate_img, selem_size, threshold)
 
-        # np.savez("detect.npz", interpolate_img, history)
         return interpolate_img, history
 
     def cacl_sampling_density(self, x1, y1, new_seeds, old_seeds, r = 8):
