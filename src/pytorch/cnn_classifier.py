@@ -772,6 +772,8 @@ class SingleTask_Classifier(Simple_Classifier):
                   "normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
         else:
             cancer_interval = [-3, 0]
+            cancer_mean = -1.5
+            cancer_std = 1.0
             normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
             print("normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
 
