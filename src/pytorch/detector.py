@@ -70,7 +70,7 @@ class BaseDetector(object, metaclass=ABCMeta):
         self.valid_map = np.zeros((self.ImageHeight, self.ImageWidth), dtype=np.bool)
         return
 
-    def evaluate(self, threshold, cancer_map, true_mask):
+    def evaluate(self, cancer_map, true_mask, levels):
         '''
         癌变概率矩阵进行阈值分割后，与人工标记真值进行 评估
         :param threshold: 分割的阈值
@@ -78,22 +78,29 @@ class BaseDetector(object, metaclass=ABCMeta):
         :param true_mask: 人工标记真值
         :return: ROC曲线
         '''
-        cancer_tag = np.array(cancer_map > threshold).ravel()
+        # 计算ROC曲线
         mask_tag = np.array(true_mask).ravel()
-        predicted_tags = cancer_tag >= threshold
-
-        print("Classification report for classifier:\n%s\n"
-              % (metrics.classification_report(mask_tag, predicted_tags, digits=4)))
-        print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
-
         false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, np.array(cancer_map).ravel())
         roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
         print("\n ROC auc: %s" % roc_auc)
 
-        dice = self.calculate_dice_coef(mask_tag, cancer_tag)
-        print("dice coef = {}".format(dice))
+        dice_result = []
+        for threshold in levels:
+            cancer_tag = np.array(cancer_map > threshold).ravel()
+            predicted_tags = cancer_tag >= threshold
+            dice = self.calculate_dice_coef(mask_tag, cancer_tag)
+
+            print("Threshold = {:.3f}, Classification report for classifier: \n{}".format(threshold,
+                                            metrics.classification_report(mask_tag, predicted_tags, digits=4)))
+            print("############################################################")
+            # print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
+
+            dice_result.append((threshold, dice))
+
+        for t, value in dice_result:
+            print("when threshold = {:.3f}, dice coef = {:.6f}".format(t, value))
         print("############################################################")
-        return false_positive_rate, true_positive_rate, roc_auc, dice
+        return false_positive_rate, true_positive_rate, roc_auc, dice_result
 
     def calculate_dice_coef(self, y_true, y_pred):
         smooth = 1.

@@ -431,8 +431,9 @@ class Test_detector(unittest.TestCase):
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
-        t1 = 0.5
-        false_positive_rate, true_positive_rate, roc_auc, dice = detector.evaluate(t1, cancer_map, mask_img)
+        # t1 = 0.5
+        levels = [0.2, 0.3, 0.5, 0.6]
+        false_positive_rate, true_positive_rate, roc_auc, dice = detector.evaluate(cancer_map, mask_img, levels)
 
         from visdom import Visdom
         viz = Visdom(env="main")
@@ -474,8 +475,11 @@ class Test_detector(unittest.TestCase):
 
         ax[2].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
         ax[2].imshow(cancer_map, alpha=0.3)
-        ax[2].contour(cancer_map, cmap=plt.cm.hot, levels=[0.2, 0.3, 0.5, 0.6])
-        ax[2].set_title("cancer_map, t = {}, dice = {:.6f}".format(t1, dice))
+        ax[2].contour(cancer_map, cmap=plt.cm.hot, levels=levels)
+        label = "cancer_map, "
+        for t, value in dice:
+            label += "t:{:.1f} d:{:.4f}, ".format(t, value)
+        ax[2].set_title(label)
 
         point = np.array(list(history.keys()))
         ax[3].imshow(mask_img)
@@ -494,4 +498,4 @@ class Test_detector(unittest.TestCase):
         plt.show()
 
 
-        detector.save(x1, y1, 1.25, cancer_map, [0.2, 0.3, 0.5, 0.6])
+        detector.save(x1, y1, 1.25, cancer_map, levels)
