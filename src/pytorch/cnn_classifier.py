@@ -598,7 +598,7 @@ class Simple_Classifier(BaseClassifier):
 class SingleTask_Classifier(Simple_Classifier):
     def __init__(self, params, model_name, patch_type, **kwargs):
         super(SingleTask_Classifier, self).__init__(params, model_name, patch_type,**kwargs)
-
+        self.features = []
         return
 
 
@@ -738,20 +738,57 @@ class SingleTask_Classifier(Simple_Classifier):
             output = self.model(b_x) # model最后不包括一个softmax层
             output_softmax = nn.functional.softmax(output, dim =1)
             probs, preds = torch.max(output_softmax, 1)
-            # for prob, pred, feature, in zip(probs.cpu().numpy(), preds.cpu().numpy(), output.cpu().numpy()):
-            #     results.append((pred, prob, tuple(feature)))
 
-            high_dim_features.extend(self.out_feature.cpu().numpy())
+            high_dim_features.extend(self.model.out_feature.cpu().numpy())
             low_dim_features.extend(output.cpu().numpy())
             probability.extend(probs.cpu().numpy())
             prediction.extend(preds.cpu().numpy())
             print('predicting => %d / %d ' % (step + 1, data_len))
 
-        # for i in range(2):
-        #     feat = features[true_labels == i]
-        #     center = np.mean(feat, axis=0)
+        low_dim_features = np.array(low_dim_features)
+        prediction = np.array(prediction)
+        probability = np.array(probability)
 
-        return probability, prediction, low_dim_features
+        # new_features = self.correct(low_dim_features, prediction)
+
+        return probability, prediction, low_dim_features #new_features #low_dim_features
+
+    def correct(self, features, prediction):
+        features_0 = features[:,0]
+        feat = features_0[prediction == 1]
+        cancer_mean = np.mean(feat)
+        cancer_std = np.std(feat)
+
+        feat = features_0[prediction == 0]
+        normal_mean = np.mean(feat)
+        normal_std = np.std(feat)
+
+        print("normal : {:.4f} {:.4f}".format(normal_mean, normal_std),
+              " cancer : {:.4f} {:.4f}".format(cancer_mean, cancer_std))
+
+        normal_edge = normal_mean - 2 * normal_std
+        cancer_edge = cancer_mean + 2 * cancer_std
+
+        tag = np.zeros(prediction.shape, dtype=np.bool)
+        if normal_edge <= 0:
+            normal_edge = normal_mean - normal_std
+            if normal_edge <= 0:
+                normal_edge = normal_mean
+            tag[features_0 > normal_edge] = True
+        else:
+            tag[features_0 > 0] = True
+
+        if cancer_edge >= 0:
+            cancer_edge = cancer_mean + cancer_std
+            if cancer_edge >= 0:
+                cancer_edge = cancer_mean
+            tag[features_0 < cancer_edge] = True
+        else:
+            tag[features_0 < 0] = True
+
+        features[~tag] = np.array([None, None])
+
+        return features
 
 ######################################################################################################################
 ############       multi task            #########

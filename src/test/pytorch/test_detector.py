@@ -366,12 +366,12 @@ class Test_detector(unittest.TestCase):
 
     def test_adaptive_detect_region_test(self):
         # test test
-        test_set = {1: ("001", 100, 100, 2600, 2700),  # 检测 dice =0.671216, 0.76084
-                    1.1: ("001", 800, 1600, 1600, 2300),  # dice = 0.91547
-                    16: ("016", 0, 200, 3250, 2900),  # dice = 0.89606
+        test_set = {1: ("001", 100, 100, 2600, 2700),  # 检测 dice =0.7811
+                    1.1: ("001", 800, 1600, 1600, 2300),  # dice = 0.76084
+                    16: ("016", 0, 200, 3250, 2900),  # dice = 0.92056
                     21: ("021", 0, 0, 0, 0),  # dice = 0.93743
                     26: ("026", 0, 0, 0, 0),  # 检测，dice c3= 0.7601
-                    61: ("061", 0, 0, 0, 0),  # 检测, c3 = 0.1905
+                    61: ("061", 0, 0, 0, 0),  # 检测, c3 = 0.75468
                     4: ("004", 0, 0, 0, 0),  # 检测，c3 = 2.5917e-05， 检测区域太小
                     8: ("008", 0, 0, 0, 0),  # 检测，c3 = 0.003159
                     10: ("010", 0, 0, 0, 0),  # 检测,c3 = 3.7647e-05
@@ -397,6 +397,7 @@ class Test_detector(unittest.TestCase):
                     }
 
         id = 1.1
+
         roi = test_set[id]
         slice_id = roi[0]
         x1 = roi[1]
@@ -425,7 +426,7 @@ class Test_detector(unittest.TestCase):
 
         cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale = 40, patch_size = 256,
                                                max_iter_nums=50, batch_size=100,
-                                               limit_sampling_density=20, use_post=True)
+                                               limit_sampling_density=10, use_post=True)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -473,7 +474,7 @@ class Test_detector(unittest.TestCase):
 
         ax[2].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
         ax[2].imshow(cancer_map, alpha=0.3)
-        ax[2].contour(cancer_map >= t1, alpha=0.6)
+        ax[2].contour(cancer_map, cmap=plt.cm.hot, levels=[0.2, 0.3, 0.5, 0.6])
         ax[2].set_title("cancer_map, t = {}, dice = {:.6f}".format(t1, dice))
 
         point = np.array(list(history.keys()))
@@ -489,5 +490,8 @@ class Test_detector(unittest.TestCase):
             a.axis('off')
         # ax[0].axis("on")
 
+        plt.savefig("result.png", dpi=150, format="png")
         plt.show()
-        detector.save(x1, y1, 1.25, cancer_map, t1)
+
+
+        detector.save(x1, y1, 1.25, cancer_map, [0.2, 0.3, 0.5, 0.6])

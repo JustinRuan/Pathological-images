@@ -11,7 +11,8 @@ import numpy as np
 from scipy.interpolate import griddata
 from skimage import morphology
 from skimage.draw import rectangle  # 需要skimage 0.14及以上版本
-from skimage.measure import find_contours
+from skimage.measure import find_contours, approximate_polygon, \
+    subdivide_polygon
 from skimage.morphology import square, dilation, erosion
 from sklearn import metrics
 from sklearn.cluster import MiniBatchKMeans
@@ -19,7 +20,7 @@ from visdom import Visdom
 
 from core import Random_Gen
 from core.util import get_seeds, transform_coordinate
-from pytorch.cnn_classifier import Simple_Classifier, MultiTask_Classifier, MSC_Classifier
+from pytorch.cnn_classifier import Simple_Classifier, MultiTask_Classifier, MSC_Classifier, SingleTask_Classifier
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
@@ -142,21 +143,26 @@ class BaseDetector(object, metaclass=ABCMeta):
     def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
         pass
 
-    def save(self, x1, y1, coordinate_scale, cancer_map, threshold):
-        cancer_tag = np.array(cancer_map > threshold)
-        contours = measure.find_contours(cancer_tag, 0.5)
-
+    def save(self, x1, y1, coordinate_scale, cancer_map, threshold_list):
         scale = int(40 / self._params.GLOBAL_SCALE)
         scale2 = int(40 / coordinate_scale)
 
-        contours_x40 = []
-        for n, contour in enumerate(contours):
-            c = scale * np.array(np.array(contour))  + np.array([y1, x1]) * scale2
-            contours_x40.append(c)
+        contours_set = {}
+        for threshold in threshold_list:
+            cancer_tag = np.array(cancer_map > threshold)
+            contours = measure.find_contours(cancer_tag, 0.5)
 
-        self.write_xml(contours_x40)
+            contours_x40 = []
+            for n, contour in enumerate(contours):
+                contour = approximate_polygon(np.array(contour), tolerance=0.01)
+                c = scale * np.array(contour)  + np.array([y1, x1]) * scale2
+                contours_x40.append(c)
 
-    def write_xml(self, contours):
+            contours_set[threshold] = contours_x40
+
+        self.write_xml(contours_set)
+
+    def write_xml(self, contours_set):
         from xml.dom import minidom
         doc = minidom.Document()
         rootNode = doc.createElement("ASAP_Annotations")
@@ -164,33 +170,39 @@ class BaseDetector(object, metaclass=ABCMeta):
 
         AnnotationsNode = doc.createElement("Annotations")
         rootNode.appendChild(AnnotationsNode)
-        Code = "_99"
-        for i, contour in enumerate(contours):
-            # one contour
-            AnnotationNode = doc.createElement("Annotation")
-            AnnotationNode.setAttribute("Name", str(i))
-            AnnotationNode.setAttribute("Type", "Polygon")
-            AnnotationNode.setAttribute("PartOfGroup", Code)
-            AnnotationNode.setAttribute("Color", "#F4FA00")
-            AnnotationsNode.appendChild(AnnotationNode)
 
-            CoordinatesNode = doc.createElement("Coordinates")
-            AnnotationNode.appendChild(CoordinatesNode)
+        colors = ["#00BB00", "#00FF00", "#FFFF00", "#FF0000"]
+        for k, (key, contours) in enumerate(contours_set.items()):
+            Code = "{:.2f}".format(key)
+            for i, contour in enumerate(contours):
+                # one contour
+                AnnotationNode = doc.createElement("Annotation")
+                AnnotationNode.setAttribute("Name", str(i))
+                AnnotationNode.setAttribute("Type", "Polygon")
+                AnnotationNode.setAttribute("PartOfGroup", Code)
+                AnnotationNode.setAttribute("Color", colors[k])
+                AnnotationsNode.appendChild(AnnotationNode)
 
-            for n, (y, x) in enumerate(contour):
-                CoordinateNode = doc.createElement("Coordinate")
-                CoordinateNode.setAttribute("Order", str(n))
-                CoordinateNode.setAttribute("X", str(x))
-                CoordinateNode.setAttribute("Y", str(y))
-                CoordinatesNode.appendChild(CoordinateNode)
+                CoordinatesNode = doc.createElement("Coordinates")
+                AnnotationNode.appendChild(CoordinatesNode)
+
+                for n, (y, x) in enumerate(contour):
+                    CoordinateNode = doc.createElement("Coordinate")
+                    CoordinateNode.setAttribute("Order", str(n))
+                    CoordinateNode.setAttribute("X", str(x))
+                    CoordinateNode.setAttribute("Y", str(y))
+                    CoordinatesNode.appendChild(CoordinateNode)
 
         AnnotationGroups_Node = doc.createElement("AnnotationGroups")
         rootNode.appendChild(AnnotationGroups_Node)
-        GroupNode = doc.createElement("Group")
-        GroupNode.setAttribute("Name", Code)
-        GroupNode.setAttribute("PartOfGroup", "None")
-        GroupNode.setAttribute("Color", "#00ffBB")
-        AnnotationGroups_Node.appendChild(GroupNode)
+
+        for k, (key, _) in enumerate(contours_set.items()):
+            Code = "{:.2f}".format(key)
+            GroupNode = doc.createElement("Group")
+            GroupNode.setAttribute("Name", Code)
+            GroupNode.setAttribute("PartOfGroup", "None")
+            GroupNode.setAttribute("Color", colors[k])
+            AnnotationGroups_Node.appendChild(GroupNode)
 
         f = open("{}/results/{}_output.xml".format(self._params.PROJECT_ROOT, self._imgCone.slice_id), "w")
         doc.writexml(f, encoding="utf-8")
@@ -586,7 +598,8 @@ class AdaptiveDetector(BaseDetector):
         # model_name = "se_densenet_40"
         self.model_name = "densenet_22"
         self.sample_name = "4000_256"
-        self.cnn = Simple_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
+        # self.cnn = Simple_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
+        self.cnn = SingleTask_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
 
         return self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, limit_sampling_density, use_post=True)
@@ -697,7 +710,7 @@ class AdaptiveDetector(BaseDetector):
                 xx = x - x1
                 yy = y - y1
 
-                if not history.__contains__((xx, yy)):
+                if not history.__contains__((xx, yy)) and np.isreal(pred):
                     history[(xx, yy)] = pred
 
             value = list(history.values())
