@@ -432,7 +432,7 @@ class Test_detector(unittest.TestCase):
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
         # t1 = 0.5
-        levels = [0.2, 0.3, 0.5, 0.6]
+        levels = [0.2, 0.3, 0.5, 0.6, 0.8]
         false_positive_rate, true_positive_rate, roc_auc, dice = detector.evaluate(cancer_map, mask_img, levels)
 
         from visdom import Visdom
@@ -496,6 +496,5 @@ class Test_detector(unittest.TestCase):
 
         plt.savefig("result.png", dpi=150, format="png")
         plt.show()
-
 
         detector.save(x1, y1, 1.25, cancer_map, levels)

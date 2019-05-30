@@ -30,7 +30,7 @@ from core import Block
 import matplotlib.pyplot as plt
 import pandas as pd
 from torchvision import models
-
+from scipy import stats
 from pytorch.loss_function import CenterLoss
 
 class BaseClassifier(object, metaclass=ABCMeta):
@@ -576,7 +576,7 @@ class Simple_Classifier(BaseClassifier):
         '''
         net_file = {
             "simple_cnn_4000_256": "simple_cnn_cps-0010-0.1799-0.9308.pth",
-            "densenet_22_4000_256": "densenet_22_4000_256_cp-0006-0.1814-0.9301.pth",
+            "densenet_22_4000_256": "densenet_22_4000_256_cp-0005-0.1423-0.9486.pth",
             "se_densenet_22_4000_256":"se_densenet_22_cp-0001-0.1922-0.9223-0.9094.pth",
             "se_densenet_40_4000_256":"se_densenet_40_4000_256_cp-0002-0.1575-0.9436.pth"
         }
@@ -631,8 +631,8 @@ class SingleTask_Classifier(Simple_Classifier):
             center_loss.to(self.device)
 
         # optimzer4nn
-        classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
-        # optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
+        classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
         # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
@@ -749,44 +749,52 @@ class SingleTask_Classifier(Simple_Classifier):
         prediction = np.array(prediction)
         probability = np.array(probability)
 
-        # new_features = self.correct(low_dim_features, prediction)
+        new_features = self.correct(low_dim_features, prediction)
 
-        return probability, prediction, low_dim_features #new_features #low_dim_features
+        return probability, prediction, new_features #new_features #low_dim_features
 
     def correct(self, features, prediction):
         features_0 = features[:,0]
         feat = features_0[prediction == 1]
         cancer_mean = np.mean(feat)
         cancer_std = np.std(feat)
+        cancer_count = len(feat)
 
         feat = features_0[prediction == 0]
         normal_mean = np.mean(feat)
         normal_std = np.std(feat)
 
-        print("normal : {:.4f} {:.4f}".format(normal_mean, normal_std),
-              " cancer : {:.4f} {:.4f}".format(cancer_mean, cancer_std))
+        if cancer_count > 3 :
+            cancer_interval = stats.t.interval(0.95, cancer_count - 1, cancer_mean, cancer_std)
+            normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
 
-        normal_edge = normal_mean - 2 * normal_std
-        cancer_edge = cancer_mean + 2 * cancer_std
-
-        tag = np.zeros(prediction.shape, dtype=np.bool)
-        if normal_edge <= 0:
-            normal_edge = normal_mean - normal_std
-            if normal_edge <= 0:
-                normal_edge = normal_mean
-            tag[features_0 > normal_edge] = True
+            print(" cancer intervel: {:.4f} {:.4f}, ".format(cancer_interval[0], cancer_interval[1]),
+                  "normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
         else:
-            tag[features_0 > 0] = True
+            cancer_interval = [-3, 0]
+            normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
+            print("normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
 
-        if cancer_edge >= 0:
-            cancer_edge = cancer_mean + cancer_std
-            if cancer_edge >= 0:
-                cancer_edge = cancer_mean
-            tag[features_0 < cancer_edge] = True
+        normal_edge = normal_interval[0]
+        cancer_edge = cancer_interval[1]
+
+        tag = np.ones(prediction.shape, dtype=np.bool)
+        if normal_edge > cancer_edge:
+            # 两个类中心完全分离,
+            return features
+        elif normal_edge + normal_std > cancer_edge - cancer_std:
+            # 发生的重叠情况
+            normal_edge = normal_edge + normal_std
+            cancer_edge = cancer_edge - cancer_std
         else:
-            tag[features_0 < 0] = True
+            # 严重重叠
+            normal_edge = normal_mean
+            cancer_edge = cancer_mean
 
-        features[~tag] = np.array([None, None])
+        tag[features_0 > normal_edge] = False
+        tag[features_0 < cancer_edge] = False
+        features[tag] = np.array([None, None])
+        print(">>>> Exclude some suspicious : ", np.sum(tag == False))
 
         return features
 

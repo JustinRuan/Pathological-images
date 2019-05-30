@@ -17,8 +17,8 @@ from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAug
 from pytorch.image_dataset import Image_Dataset
 import pandas as pd
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
@@ -70,7 +70,7 @@ class Test_cnn_classifier(unittest.TestCase):
         #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
         # augment = HRndAugmentation()
 
-        cnn.train_model(samples_name=("P0430","T2_P0430_4000_256"), augment_func = None,
+        cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
                         batch_size=40, loss_weight=0.001, epochs = 10)
         # cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"),
         #                                   check_samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),

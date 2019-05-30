@@ -179,7 +179,7 @@ class BaseDetector(object, metaclass=ABCMeta):
         AnnotationsNode = doc.createElement("Annotations")
         rootNode.appendChild(AnnotationsNode)
 
-        colors = ["#00BB00", "#00FF00", "#FFFF00", "#FF0000"]
+        colors = ["#00BB00", "#00FF00", "#FFFF00", "#BB0000", "#FF0000"]
         for k, (key, contours) in enumerate(contours_set.items()):
             Code = "{:.2f}".format(key)
             for i, contour in enumerate(contours):
@@ -718,7 +718,7 @@ class AdaptiveDetector(BaseDetector):
                 xx = x - x1
                 yy = y - y1
 
-                if not history.__contains__((xx, yy)) and np.isreal(pred):
+                if not history.__contains__((xx, yy)) and not np.isnan(pred):
                     history[(xx, yy)] = pred
 
             value = list(history.values())
