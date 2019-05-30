@@ -78,11 +78,8 @@ class BaseDetector(object, metaclass=ABCMeta):
         :param true_mask: 人工标记真值
         :return: ROC曲线
         '''
-        # 计算ROC曲线
+
         mask_tag = np.array(true_mask).ravel()
-        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, np.array(cancer_map).ravel())
-        roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
-        print("\n ROC auc: %s" % roc_auc)
 
         dice_result = []
         for threshold in levels:
@@ -100,6 +97,10 @@ class BaseDetector(object, metaclass=ABCMeta):
         for t, value in dice_result:
             print("when threshold = {:.3f}, dice coef = {:.6f}".format(t, value))
         print("############################################################")
+        # 计算ROC曲线
+        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, np.array(cancer_map).ravel())
+        roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
+        print("\n ROC auc: %s" % roc_auc)
         return false_positive_rate, true_positive_rate, roc_auc, dice_result
 
     def calculate_dice_coef(self, y_true, y_pred):
