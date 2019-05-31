@@ -396,7 +396,7 @@ class Test_detector(unittest.TestCase):
                     73: ("073", 0, 0, 0, 0), # 检测,c3 =
                     }
 
-        id = 1
+        id = 1.1
 
         roi = test_set[id]
         slice_id = roi[0]

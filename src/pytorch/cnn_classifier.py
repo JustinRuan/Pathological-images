@@ -416,8 +416,6 @@ class BaseClassifier(object, metaclass=ABCMeta):
             output = self.model(b_x) # model最后不包括一个softmax层
             output_softmax = nn.functional.softmax(output, dim =1)
             probs, preds = torch.max(output_softmax, 1)
-            # for prob, pred, feature in zip(probs.cpu().numpy(), preds.cpu().numpy(), output.cpu().numpy()):
-            #     results.append((pred, prob, tuple(feature)))
 
             low_dim_features.extend(output.cpu().numpy())
             probability.extend(probs.cpu().numpy())
@@ -590,18 +588,6 @@ class Simple_Classifier(BaseClassifier):
             param.requires_grad = False
         return model
 
-
-######################################################################################################################
-# 输入为RGB三通道图像，单输出的分类器
-############       single task  with custom loss function         #########
-######################################################################################################################
-class SingleTask_Classifier(Simple_Classifier):
-    def __init__(self, params, model_name, patch_type, **kwargs):
-        super(SingleTask_Classifier, self).__init__(params, model_name, patch_type,**kwargs)
-        self.features = []
-        return
-
-
     def train_model(self, samples_name, augment_func, batch_size, loss_weight, epochs):
         '''
         训练模型
@@ -704,6 +690,121 @@ class SingleTask_Classifier(Simple_Classifier):
                 self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc),
                        )
         return
+
+
+######################################################################################################################
+# 输入为RGB三通道图像，单输出的分类器
+############       single task  with custom loss function         #########
+######################################################################################################################
+class SingleTask_Classifier(Simple_Classifier):
+    def __init__(self, params, model_name, patch_type, **kwargs):
+        super(SingleTask_Classifier, self).__init__(params, model_name, patch_type,**kwargs)
+        self.features = []
+        return
+
+
+    # def train_model(self, samples_name, augment_func, batch_size, loss_weight, epochs):
+    #     '''
+    #     训练模型
+    #     :param samples_name: 自制训练集的代号
+    #     :param batch_size: 每批的图片数量
+    #     :param epochs:epoch数量
+    #     :return:
+    #     '''
+    #     if self.patch_type in ["cifar10", "cifar100"]:
+    #         train_data, test_data = self.load_cifar_data(self.patch_type)
+    #     else:
+    #         train_data, test_data = self.load_custom_data(samples_name, augment_func=augment_func)
+    #
+    #     train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
+    #                                    num_workers=self.NUM_WORKERS)
+    #     test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
+    #                                   num_workers=self.NUM_WORKERS)
+    #
+    #     model = self.load_model(model_file=None)
+    #     print(model)
+    #
+    #     classifi_loss= nn.CrossEntropyLoss()
+    #     center_loss = CenterLoss(2, 2)
+    #     if self.use_GPU:
+    #         model.to(self.device)
+    #         classifi_loss.to(self.device)
+    #         center_loss.to(self.device)
+    #
+    #     # optimzer4nn
+    #     # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
+    #     classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    #     # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
+    #     # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
+    #     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
+    #     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(classifi_optimizer, mode='min',
+    #                                                            factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
+    #     # optimzer4center
+    #     optimzer4center = torch.optim.SGD(center_loss.parameters(), lr=0.5)
+    #
+    #     # training and testing
+    #     for epoch in range(epochs):
+    #         print('Epoch {}/{}'.format(epoch + 1, epochs))
+    #         print('-' * 80)
+    #
+    #         model.train()
+    #         # 开始训练
+    #         train_data_len = len(train_loader)
+    #         total_loss = 0
+    #
+    #         starttime = datetime.datetime.now()
+    #         for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
+    #             b_x = Variable(x.to(self.device))
+    #             b_y = Variable(y.to(self.device))
+    #
+    #             output = model(b_x)  # cnn output is features, not logits
+    #             # cross entropy loss + center loss
+    #             loss = classifi_loss(output, b_y) + loss_weight * center_loss(b_y, output)
+    #
+    #             classifi_optimizer.zero_grad()  # clear gradients for this training step
+    #             optimzer4center.zero_grad()
+    #             loss.backward()  # backpropagation, compute gradients
+    #             classifi_optimizer.step()
+    #             optimzer4center.step()
+    #
+    #             # 数据统计
+    #             _, preds = torch.max(output, 1)
+    #
+    #             running_loss = loss.item()
+    #             running_corrects = torch.sum(preds == b_y.data)
+    #             total_loss += running_loss
+    #
+    #             if step % 5 == 0:
+    #                 endtime = datetime.datetime.now()
+    #                 remaining_time = (train_data_len - step)* (endtime - starttime).seconds / (step + 1)
+    #                 print('%d / %d ==> Loss: %.4f | Acc: %.4f ,  remaining time: %d (s)'
+    #                       % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0), remaining_time))
+    #
+    #         scheduler.step(total_loss)
+    #
+    #         running_loss=0.0
+    #         running_corrects=0
+    #         model.eval()
+    #         # 开始评估
+    #         for x, y in test_loader:
+    #             b_x = Variable(x.to(self.device))
+    #             b_y = Variable(y.to(self.device))
+    #
+    #             output = model(b_x)
+    #             loss = classifi_loss(output, b_y)
+    #
+    #             _, preds = torch.max(output, 1)
+    #             running_loss += loss.item() * b_x.size(0)
+    #             running_corrects += torch.sum(preds == b_y.data)
+    #
+    #         test_data_len = test_data.__len__()
+    #         epoch_loss=running_loss / test_data_len
+    #         epoch_acc=running_corrects.double() / test_data_len
+    #
+    #         torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}.pth".format(
+    #             self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc),
+    #                    )
+    #     return
 
     def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
         '''

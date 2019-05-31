@@ -41,8 +41,8 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # model_name = "simple_cnn"
         # model_name = "se_densenet_40"
-        # model_name = "densenet_22"
-        model_name = "resnet_18"
+        model_name = "densenet_22"
+        # model_name = "resnet_18"
         sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name)
@@ -53,7 +53,7 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.train_model(samples_name=("P0430","P0430_4000_256"), augment_func = None,
         #                 batch_size=40, epochs = 10)
         cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
-                                          batch_size=40, epochs = 10)
+                        batch_size=40, loss_weight=0.001, epochs = 10)
 
     def test_train_model_patholImg_SingleTask_Classifier(self):
         c = Params()
