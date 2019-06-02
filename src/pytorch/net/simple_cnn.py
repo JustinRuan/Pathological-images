@@ -60,7 +60,7 @@ class Simple_CNN(nn.Module):
             nn.Linear(64, 256),
             nn.ReLU(256),
         )
-        self.out = nn.Sequential(
+        self.classifier = nn.Sequential(
             nn.Linear(256, num_classes),
             # nn.Softmax(dim=1)
         )
@@ -73,7 +73,7 @@ class Simple_CNN(nn.Module):
         x = x.view(x.size(0), -1) # 展平多维的卷积图成 (batch_size, .....)
         x = self.dense(x)
 
-        output = self.out(x)
+        output = self.classifier(x)
         return output
 
 

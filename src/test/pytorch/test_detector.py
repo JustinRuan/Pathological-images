@@ -13,8 +13,8 @@ from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_detector(unittest.TestCase):
@@ -396,7 +396,7 @@ class Test_detector(unittest.TestCase):
                     73: ("073", 0, 0, 0, 0), # 检测,c3 =
                     }
 
-        id = 1.1
+        id = 27
 
         roi = test_set[id]
         slice_id = roi[0]
@@ -425,7 +425,7 @@ class Test_detector(unittest.TestCase):
             x1 = 100
 
         cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale = 40, patch_size = 256,
-                                               max_iter_nums=50, batch_size=100,
+                                               max_iter_nums=100, batch_size=100,
                                                limit_sampling_density=10, use_post=True)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -466,35 +466,37 @@ class Test_detector(unittest.TestCase):
             update='insert',
         )
 
-        fig, axes = plt.subplots(2, 2, figsize=(15, 20), dpi=100)
-        ax = axes.ravel()
+    # 存盘输出部分
+        if False:
+            fig, axes = plt.subplots(2, 2, figsize=(15, 20), dpi=100)
+            ax = axes.ravel()
 
-        ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
-        shape = src_img.shape
-        ax[1].set_title("slice id:{},  src_img {} x {}".format(slice_id, shape[0], shape[1]))
+            ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
+            shape = src_img.shape
+            ax[1].set_title("slice id:{},  src_img {} x {}".format(slice_id, shape[0], shape[1]))
 
-        ax[2].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
-        ax[2].imshow(cancer_map, alpha=0.3)
-        ax[2].contour(cancer_map, cmap=plt.cm.hot, levels=levels)
-        label = "cancer_map, "
-        for t, value in dice:
-            label += "t:{:.1f} d:{:.4f}, ".format(t, value)
-        ax[2].set_title(label)
+            ax[2].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
+            ax[2].imshow(cancer_map, alpha=0.3)
+            ax[2].contour(cancer_map, cmap=plt.cm.hot, levels=levels)
+            label = "cancer_map, "
+            for t, value in dice:
+                label += "t:{:.1f} d:{:.4f}, ".format(t, value)
+            ax[2].set_title(label)
 
-        point = np.array(list(history.keys()))
-        ax[3].imshow(mask_img)
-        ax[3].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9)
-        total = shape[0] * shape[1]
-        count = len(point)
-        disp_text = "history, count = {:d}, ratio = {:.4e}".format(count, count / total)
-        ax[3].set_title(disp_text)
-        print(disp_text)
+            point = np.array(list(history.keys()))
+            ax[3].imshow(mask_img)
+            ax[3].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9)
+            total = shape[0] * shape[1]
+            count = len(point)
+            disp_text = "history, count = {:d}, ratio = {:.4e}".format(count, count / total)
+            ax[3].set_title(disp_text)
+            print(disp_text)
 
-        for a in ax.ravel():
-            a.axis('off')
-        # ax[0].axis("on")
+            for a in ax.ravel():
+                a.axis('off')
+            # ax[0].axis("on")
 
-        plt.savefig("result.png", dpi=150, format="png")
-        plt.show()
+            plt.savefig("result.png", dpi=150, format="png")
+            plt.show()
 
-        detector.save(x1, y1, 1.25, cancer_map, levels)
+            detector.save(x1, y1, 1.25, cancer_map, levels)

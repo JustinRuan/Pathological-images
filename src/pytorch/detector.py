@@ -25,6 +25,7 @@ from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
 from skimage import measure
+from pytorch.elastic_classifier import Elastic_Classifier
 
 class BaseDetector(object, metaclass=ABCMeta):
     def __init__(self, params, src_image):
@@ -606,8 +607,8 @@ class AdaptiveDetector(BaseDetector):
         # model_name = "se_densenet_40"
         self.model_name = "densenet_22"
         self.sample_name = "4000_256"
-        # self.cnn = Simple_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
-        self.cnn = SingleTask_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
+        # self.cnn = SingleTask_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
+        self.cnn = Elastic_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
 
         return self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, limit_sampling_density, use_post=True)

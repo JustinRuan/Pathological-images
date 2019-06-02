@@ -16,10 +16,10 @@ from preparation.normalization import HistNormalization, HSDNormalization, ACDNo
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
 from pytorch.image_dataset import Image_Dataset
 import pandas as pd
+from pytorch.elastic_classifier import Elastic_Classifier
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
-
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -54,27 +54,6 @@ class Test_cnn_classifier(unittest.TestCase):
         #                 batch_size=40, epochs = 10)
         cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
                         batch_size=40, loss_weight=0.001, epochs = 10)
-
-    def test_train_model_patholImg_SingleTask_Classifier(self):
-        c = Params()
-        c.load_config_file(JSON_PATH)
-
-        # model_name = "simple_cnn"
-        # model_name = "se_densenet_40"
-        model_name = "densenet_22"
-        # model_name = "resnet_18"
-        sample_name = "4000_256"
-
-        cnn = SingleTask_Classifier(c, model_name, sample_name)
-        # augment = ImageAugmentation(l_range = (0.95, 1.05), a_range = (0.95, 1.05),
-        #                            b_range = (0.95, 1.05), constant_range = (-10, 10))
-        # augment = HRndAugmentation()
-
-        cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
-                        batch_size=40, loss_weight=0.001, epochs = 10)
-        # cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"),
-        #                                   check_samples_name=("P0404", "T_NC_Simple0404_4000_256_test.txt"),
-        #                                   batch_size=40, epochs = 10)
 
 
     def test_evaluate_model(self):
@@ -229,6 +208,24 @@ class Test_cnn_classifier(unittest.TestCase):
         tag = imgCone.open_slide("Train_Tumor/Tumor_004.tif",
                                  None, "Tumor_004")
         seeds = [(69400, 98400), (70800, 98400), (27200, 113600)] # C, C, S,
+        result = cnn.predict_on_batch(imgCone, 40, 256, seeds, 2)
+        print(result)
+
+    def test_predict_on_batch_Elastic(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "densenet_22"
+        sample_name = "4000_256"
+
+        cnn = Elastic_Classifier(c, model_name, sample_name)
+
+        imgCone = ImageCone(c, Open_Slide())
+
+        # 读取数字全扫描切片图像
+        tag = imgCone.open_slide("Train_Tumor/Tumor_004.tif",
+                                 None, "Tumor_004")
+        seeds = [(69400, 98400), (70800, 98400), (27200, 113600)]  # C, C, S,
         result = cnn.predict_on_batch(imgCone, 40, 256, seeds, 2)
         print(result)
 
