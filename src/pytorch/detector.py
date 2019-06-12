@@ -5,6 +5,7 @@ __author__ = 'Justin'
 __mtime__ = '2018-10-26'
 
 """
+import time
 from abc import ABCMeta, abstractmethod
 import cv2
 import numpy as np
@@ -20,7 +21,7 @@ from visdom import Visdom
 
 from core import Random_Gen
 from core.util import get_seeds, transform_coordinate
-from pytorch.cnn_classifier import Simple_Classifier, MultiTask_Classifier, MSC_Classifier, SingleTask_Classifier
+from pytorch.cnn_classifier import Simple_Classifier, MultiTask_Classifier, MSC_Classifier
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
@@ -152,7 +153,12 @@ class BaseDetector(object, metaclass=ABCMeta):
     def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
         pass
 
-    def save(self, x1, y1, coordinate_scale, cancer_map, threshold_list):
+    def save_result_cancer_map(self,  x1, y1, coordinate_scale, cancer_map):
+        save_filename = "{}/results/{}_cancer_map.npz".format(self._params.PROJECT_ROOT, self._imgCone.slice_id)
+        np.savez(save_filename, {"x1":x1, "y1":y1, "scale":coordinate_scale, "cancer_map":cancer_map})
+        print(">>> >>> ", save_filename," saved!")
+
+    def save_result_xml(self, x1, y1, coordinate_scale, cancer_map, threshold_list):
         scale = int(40 / self._params.GLOBAL_SCALE)
         scale2 = int(40 / coordinate_scale)
 
@@ -463,7 +469,7 @@ class AdaptiveDetector(BaseDetector):
 
         self.random_gen = Random_Gen("halton")  # random, sobol, halton
         self.cluster_centers = None
-
+        self.enable_viz = False
         self.search_therhold = 0.03 # 0.015
 
     def get_cancer_feature(self, predictions):
@@ -593,22 +599,22 @@ class AdaptiveDetector(BaseDetector):
         limit_sampling_density = kwargs["limit_sampling_density"]
 
         normal_func = None
-        # normal_func = HistNormalization("match_hist", hist_target ="hist_templates.npy", hist_source = None)
-
-        # model_name = "se_densenet_22"
-        # sample_name = "x_256"
-        # cnn = MultiTask_Classifier(self._params, model_name, sample_name, normalization=normal_func)
-
-        #         # sample_name = "msc_256"
-        # model_name = "se_densenet_22"
-        # model_name = "se_densenet_c9_22"
-
-        # model_name = "simple_cnn"
-        # model_name = "se_densenet_40"
-        self.model_name = "densenet_22"
-        self.sample_name = "4000_256"
-        # self.cnn = SingleTask_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
-        self.cnn = Elastic_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
+        select = 1
+        if select == 4:
+            model_name = "msc_256"
+            sample_name = "x_256"
+            # cnn = MultiTask_Classifier(self._params, model_name, sample_name, normalization=normal_func)
+        elif select == 1:
+            # self.model_name = "se_densenet_22"
+            # self.model_name = "simple_cnn"
+            # self.model_name = "se_densenet_40"
+            self.model_name = "densenet_22"
+            self.sample_name = "4000_256"
+            self.cnn = Simple_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
+        elif select == 2:
+            self.model_name = "e_densenet_22"
+            self.sample_name = "4000_256"
+            self.cnn = Elastic_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
 
         return self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, limit_sampling_density, use_post=True)
@@ -654,21 +660,10 @@ class AdaptiveDetector(BaseDetector):
         N = 400
 
         #########################################################################################################
-        viz = Visdom(env="main")
-        pic_thresh = None
-        pic_points = None
-        pic_density = None
-        mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
-        c_mask = find_contours(np.array(mask_img).astype(int), level=0.5)
-        for i, contour in enumerate(c_mask):
-            contour = np.abs(np.array(contour - [y2 - y1, 0]))
-            c_name = "GT {}".format(i)
-            if pic_points is None:
-                pic_points = viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name,
-                                      opts={'linecolor': np.array([[0, 0, 0], ]), 'showlegend': True, })
-            else:
-                viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name, win=pic_points, update='append',
-                         opts={'linecolor': np.array([[0, 0, 0], ])})
+        if self.enable_viz:
+            viz = Visualizer()
+            mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
+            viz.draw_mask(mask_img, y1, y2)
         #########################################################################################################
 
         threshold = 0.0 # 边缘区域与平坦区域的分割阈值
@@ -688,32 +683,12 @@ class AdaptiveDetector(BaseDetector):
 
             sampling_density = self.cacl_sampling_density(x1, y1, new_seeds, list(history.keys()), r=8)
             print("Current sampling density = ", sampling_density)
-            ########################################################################################
-            if pic_density is None:
-                pic_density = viz.line(Y=[sampling_density], X=[total_step], opts=dict(title='sampling density', caption='sampling density'))
-            else:
-                pic_density = viz.line(Y=[sampling_density], X=[total_step], win=pic_density, update="append")
-            ########################################################################################
 
             # 单倍镜下进行检测
-            if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn"]:
+            if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn", "e_densenet_22"]:
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
                 probability, prediction, low_dim_features = self.cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
                 probs = np.array(low_dim_features)[:,1]
-
-            #######################################################################################
-            t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
-            len_seed = len(new_seeds)
-            random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed, 1))
-            step_name = "Round {}".format(total_step)
-            # text_labels = []
-            # for item in probs:
-            #     text_labels.append("{:.2f}".format(item))
-
-            viz.scatter(X=t_seeds, name=step_name, win=pic_points, update="append",
-                        opts=dict(title='seeds', caption='seeds', showlegend=True,  #textlabels=text_labels,
-                                  markercolor=random_color, markersize=8))
-            ########################################################################################
 
             for (x, y), pred in zip(new_seeds, probs):
                 xx = x - x1
@@ -730,12 +705,12 @@ class AdaptiveDetector(BaseDetector):
             sobel_img, threshold = self.calc_sobel(interpolate_img)
 
             ########################################################################################################
-
-            if pic_thresh is None:
-                pic_thresh = viz.line(Y=[threshold], X=[total_step], opts=dict(title='treshold', caption='treshold'))
-            else:
-                pic_thresh = viz.line(Y=[threshold], X=[total_step], win=pic_thresh, update="append")
-
+            if self.enable_viz:
+                viz.draw_density(sampling_density, total_step)
+                time.sleep(0.1)
+                viz.draw_points(x1, y2, new_seeds, total_step)
+                time.sleep(0.1)
+                viz.draw_thresh(threshold, total_step)
             #########################################################################################################
             total_step += 1
 
@@ -1055,3 +1030,79 @@ class AdaptiveDetector(BaseDetector):
     #         effi_seeds.add((xx, yy))
     #
     #     return effi_seeds
+
+class Visualizer(object):
+    def __init__(self,):
+        self.viz = Visdom(env="main")
+        self.pic_thresh = None
+        self.pic_points = None
+        self.pic_density = None
+
+    def draw_mask(self, mask_img, y1, y2,):
+        mask_img = np.array(mask_img).astype(int)
+        c_mask = find_contours(mask_img, level=0.5)
+        for i, contour in enumerate(c_mask):
+            contour = np.abs(np.array(contour - [y2 - y1, 0]))
+            c_name = "GT {}".format(i)
+            if self.pic_points is None:
+                self.pic_points = self.viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name,
+                                      opts={'linecolor': np.array([[0, 0, 0], ]), 'showlegend': True, })
+            else:
+                self.viz.line(Y=contour[:, 0], X=contour[:, 1], name=c_name, win=self.pic_points, update='append',
+                         opts={'linecolor': np.array([[0, 0, 0], ])})
+
+    def draw_density(self, sampling_density, total_step):
+        if self.pic_density is None:
+            self.pic_density = self.viz.line(Y=[sampling_density], X=[total_step],
+                                   opts=dict(title='sampling density', caption='sampling density'))
+        else:
+            self.pic_density = self.viz.line(Y=[sampling_density], X=[total_step], win=self.pic_density, update="append")
+
+    def draw_points(self, x1,y2, new_seeds, total_step):
+        t_seeds = np.abs(np.array(list(new_seeds)) - [x1, y2])  # 坐标原点移动，并翻转
+        len_seed = len(new_seeds)
+        random_color = np.tile(np.random.randint(0, 255, (1, 3,)), (len_seed, 1))
+        step_name = "Round {}".format(total_step)
+        # text_labels = []
+        # for item in probs:
+        #     text_labels.append("{:.2f}".format(item))
+
+        self.viz.scatter(X=t_seeds, name=step_name, win=self.pic_points, update="append",
+                    opts=dict(title='seeds', caption='seeds', showlegend=True,  # textlabels=text_labels,
+                              markercolor=random_color, markersize=8))
+
+    def draw_thresh(self, threshold, total_step):
+        if self.pic_thresh is None:
+            self.pic_thresh = self.viz.line(Y=[threshold], X=[total_step], opts=dict(title='treshold', caption='treshold'))
+        else:
+            self.pic_thresh = self.viz.line(Y=[threshold], X=[total_step], win=self.pic_thresh, update="append")
+
+    # def draw_auc(self, true_positive_rate, false_positive_rate, roc_auc):
+    #     pic_auc = self.viz.line(
+    #         Y=true_positive_rate,
+    #         X=false_positive_rate,
+    #         opts={
+    #             'linecolor': np.array([
+    #                 [0, 0, 255],
+    #             ]),
+    #             'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
+    #             'showlegend': True,
+    #             'legend': ['AUC = %0.6f' % roc_auc, ],
+    #             'xlabel': 'False Positive Rate',
+    #             'ylabel': 'True Positive Rate',
+    #             'title': 'Receiver Operating Characteristic',
+    #         },
+    #     )
+    #
+    #     self.viz.line(
+    #         Y=[0, 1], X=[0, 1],
+    #         opts={
+    #             'linecolor': np.array([
+    #                 [255, 0, 0],
+    #             ]),
+    #             'dash': np.array(['dot']),  # 'solid', 'dash', 'dashdot'
+    #         },
+    #         name='y = x',
+    #         win=pic_auc,
+    #         update='insert',
+    #     )

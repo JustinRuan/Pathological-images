@@ -13,8 +13,8 @@ from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_detector(unittest.TestCase):
@@ -362,7 +362,7 @@ class Test_detector(unittest.TestCase):
 
         plt.show()
 
-        detector.save(x1, y1, 1.25, cancer_map, t1)
+        detector.save_result_xml(x1, y1, 1.25, cancer_map, t1)
 
     def test_adaptive_detect_region_test(self):
         # test test
@@ -396,7 +396,7 @@ class Test_detector(unittest.TestCase):
                     73: ("073", 0, 0, 0, 0), # 检测,c3 =
                     }
 
-        id = 27
+        id = 26
 
         roi = test_set[id]
         slice_id = roi[0]
@@ -418,11 +418,9 @@ class Test_detector(unittest.TestCase):
         detector = AdaptiveDetector(c, imgCone)
 
         if x2 * y2 == 0:
-            print("y ", detector.ImageHeight, ", x ", detector.ImageWidth)
-            y2 = detector.ImageHeight - 100
-            x2 = detector.ImageWidth - 100
-            y1 = 100
-            x1 = 100
+            eff_zone = imgCone.get_effective_zone(1.25)
+            x1, y1, x2, y2 = imgCone.get_mask_min_rect(eff_zone)
+            print("x1, y1, x2, y2: ", x1, y1, x2, y2)
 
         cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale = 40, patch_size = 256,
                                                max_iter_nums=100, batch_size=100,
@@ -431,7 +429,6 @@ class Test_detector(unittest.TestCase):
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
-        # t1 = 0.5
         levels = [0.2, 0.3, 0.5, 0.6, 0.8]
         false_positive_rate, true_positive_rate, roc_auc, dice = detector.evaluate(cancer_map, mask_img, levels)
 
@@ -499,4 +496,32 @@ class Test_detector(unittest.TestCase):
             plt.savefig("result.png", dpi=150, format="png")
             plt.show()
 
-            detector.save(x1, y1, 1.25, cancer_map, levels)
+            detector.save_result_xml(x1, y1, 1.25, cancer_map, levels)
+
+
+    def test_adaptive_detect_region_train_batch(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        imgCone = ImageCone(c, Open_Slide())
+
+        for i in range(1, 2):
+            code = "{:0>3d}".format(i)
+            print("processing ", code, " ... ...")
+
+            # 读取数字全扫描切片图像
+            tag = imgCone.open_slide("Train_Tumor/Tumor_{}.tif".format(code),
+                                     'Train_Tumor/tumor_{}.xml'.format(code), "Tumor_{}".format(code))
+
+            eff_zone = imgCone.get_effective_zone(1.25)
+            x1, y1, x2, y2 = imgCone.get_mask_min_rect(eff_zone)
+            print("x1, y1, x2, y2: ", x1, y1, x2, y2)
+
+            detector = AdaptiveDetector(c, imgCone)
+            cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
+                                                   max_iter_nums=100, batch_size=100,
+                                                   limit_sampling_density=10, use_post=True)
+            detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
+
+            print("####### %s 完成 #######" % code)
+
+        return

@@ -121,17 +121,37 @@ class ImageCone(object):
         fullImg = self.get_fullimage_byScale(scale)
 
         img = color.rgb2hsv(fullImg)
-        # mask = np.ones(img.Shape, dtype=np.uint8)
+
         mask1 = (img[:, :, 2] < 0.80) & (img[:, :, 2] > 0.20)
-        mask2 = (img[:, :, 1] > 0.25)
-        # mask3 = (img[:, :, 0] < 0.95) & (img[:, :, 0] > 0.05)
-        # result = mask1 & mask2 & mask3
-        result = mask1 & mask2
+        mask2 = (img[:, :, 1] > 0.3)
+        # result = mask1 & mask2
+        mask3 = (img[:, :, 0] < 0.9) & (img[:, :, 0] > 0.05)
+        result = mask1 & mask2 & mask3
+
 
         result = morphology.binary_closing(result, square(4))
-        # result = morphology.binary_erosion(result, square(4))
-        result = morphology.binary_dilation(result, square(8))
+        result = morphology.binary_erosion(result, square(4))
+        # result = morphology.binary_dilation(result, square(8))
         return result
+
+
+    def get_mask_min_rect(self, mask_image):
+        k = 16
+        clip_mask = np.copy(mask_image)
+        clip_mask[0:k, ...] = False
+        clip_mask[-k:-1, ...] = False
+        clip_mask[..., 0:k] = False
+        clip_mask[ ..., -k:-1] = False
+
+        pos = clip_mask.nonzero()
+        y = np.array(pos[0])
+        x = np.array(pos[1])
+        xmin = np.min(x)
+        xmax = np.max(x)
+        ymin = np.min(y)
+        ymax = np.max(y)
+        # （x1, y1）, 左上角坐标， （x2, y2） 右下角坐标
+        return xmin, ymin, xmax, ymax
 
     def get_uniform_sampling_blocks(self, extract_scale, patch_size, ):
         low_scale = self._params.GLOBAL_SCALE

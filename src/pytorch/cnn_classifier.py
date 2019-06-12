@@ -21,7 +21,7 @@ from torchsummary import summary
 from core.util import latest_checkpoint
 from core.util import read_csv_file
 from pytorch.image_dataset import Image_Dataset, Image_Dataset_MSC
-from pytorch.net import DenseNet, SEDenseNet
+from pytorch.net import DenseNet, SEDenseNet,ExtendedDenseNet
 from pytorch.net import Simple_CNN
 from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_image_blocks_batch_normalize_itor, \
     get_image_file_batch_normalize_itor
@@ -32,6 +32,7 @@ import pandas as pd
 from torchvision import models
 from scipy import stats
 from pytorch.loss_function import CenterLoss
+import matplotlib
 
 class BaseClassifier(object, metaclass=ABCMeta):
     def __init__(self, params, model_name, patch_type, **kwargs):
@@ -460,26 +461,65 @@ class BaseClassifier(object, metaclass=ABCMeta):
         with SummaryWriter(comment="{}".format(self.model_name)) as w:
             w.add_graph(torch_model, (x, ))
 
-    def visualize_features(self, features, true_labels, predicted_tags):
-        features = np.array(features)
+    # def visualize_features(self, features, true_labels, predicted_tags):
+    #     features = np.array(features)
+    #
+    #     c = ['#00ff00', '#ff0000', '#ffff00', '#00ffff', '#0000ff',
+    #          '#99ff00', '#ff0099', '#999900', '#009900', '#009999']
+    #     plt.clf()
+    #     for i in range(2):
+    #         # feat = features[np.logical_and(true_labels == i, true_labels == predicted_tags)]
+    #         # plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i])
+    #         #
+    #         # feat = features[np.logical_and(true_labels == i, true_labels != predicted_tags)]
+    #         # plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i + 5])
+    #         feat = features[true_labels == i]
+    #         center = np.mean(feat, axis=0)
+    #         plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i], alpha=0.6)
+    #         print("the center of Label ", i, " = ",center)
+    #         plt.plot(center[0], center[1], '*', c=c[i + 5], markersize=16)
+    #
+    #     # plt.legend(['true_cancer', 'false_cancer', 'true_normal', 'false_normal'], loc='upper right')
+    #     plt.legend(['normal', 'center of normal ', 'cancer', 'center of cancer ',], loc='upper right')
+    #     plt.show()
 
-        c = ['#00ff00', '#ff0000', '#ffff00', '#00ffff', '#0000ff',
-             '#99ff00', '#ff0099', '#999900', '#009900', '#009999']
+    def visualize_features(self, Xtest, features, true_labels):
+        slice_cancer_result = {}
+        slice_normal_result = {}
+
+        b = Block()
+        for file_name, f, true_y in zip(Xtest, features, true_labels):
+            b.decoding(file_name, 256, 256)
+            if true_y == 0:
+                if b.slice_number in slice_normal_result.keys():
+                    slice_normal_result[b.slice_number].append(f)
+                else:
+                    slice_normal_result[b.slice_number] = [f]
+            else:
+                if b.slice_number in slice_cancer_result.keys():
+                    slice_cancer_result[b.slice_number].append(f)
+                else:
+                    slice_cancer_result[b.slice_number] = [f]
+
+        count = len(slice_cancer_result) + len(slice_normal_result)
+
+        cmap = matplotlib.cm.get_cmap('Spectral')
+        k = np.linspace(0,1.0, count)
+        random_color = cmap(k)
+
         plt.clf()
-        for i in range(2):
-            # feat = features[np.logical_and(true_labels == i, true_labels == predicted_tags)]
-            # plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i])
-            #
-            # feat = features[np.logical_and(true_labels == i, true_labels != predicted_tags)]
-            # plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i + 5])
-            feat = features[true_labels == i]
-            center = np.mean(feat, axis=0)
-            plt.plot(feat[:, 0], feat[:, 1], '.', c=c[i], alpha=0.6)
-            print("the center of Label ", i, " = ",center)
-            plt.plot(center[0], center[1], '*', c=c[i + 5], markersize=16)
+        n = 0
+        label = ["c", "n"]
+        legends = []
+        for state, result in enumerate([slice_cancer_result, slice_normal_result]):
+            for id, f in result.items():
+                f = np.array(f)
+                color = random_color[n]
+                plt.plot(f[:, 0], f[:, 1], '.', c=color, alpha=0.6)
+                n += 1
+                legends.append("{}.{}".format(label[state], id))
 
-        # plt.legend(['true_cancer', 'false_cancer', 'true_normal', 'false_normal'], loc='upper right')
-        plt.legend(['normal', 'center of normal ', 'cancer', 'center of cancer ',], loc='upper right')
+        plt.legend(legends, loc='upper right')
         plt.show()
 
 
@@ -535,6 +575,22 @@ class Simple_Classifier(BaseClassifier):
                 )
             return model
 
+        def create_e_densenet(depth, gvp_out_size):
+            # Get densenet configuration
+            if (depth - 4) % 3:
+                raise Exception('Invalid depth')
+            block_config = [(depth - 4) // 6 for _ in range(3)]
+
+            # Models
+            model = ExtendedDenseNet(
+                growth_rate=12,
+                block_config=block_config,
+                num_classes=self.num_classes,
+                drop_rate=0.2,
+                gvp_out_size=gvp_out_size,
+            )
+            return model
+
         def create_se_densenet(depth, gvp_out_size):
             # Get densenet configuration
             if (depth - 4) % 3:
@@ -564,6 +620,8 @@ class Simple_Classifier(BaseClassifier):
             model = models.resnet18(pretrained=False, num_classes=2)
         elif self.model_name =="resnet_34":
             model = models.resnet34(pretrained=False, num_classes=2)
+        elif self.model_name == "e_densenet_22":
+            model = create_e_densenet(depth=22, gvp_out_size=1)
         return model
 
     def load_pretrained_model_on_predict(self):
@@ -576,7 +634,9 @@ class Simple_Classifier(BaseClassifier):
             "simple_cnn_4000_256": "simple_cnn_cps-0010-0.1799-0.9308.pth",
             "densenet_22_4000_256": "densenet_22_4000_256_cp-0005-0.1423-0.9486.pth",
             "se_densenet_22_4000_256":"se_densenet_22_cp-0001-0.1922-0.9223-0.9094.pth",
-            "se_densenet_40_4000_256":"se_densenet_40_4000_256_cp-0002-0.1575-0.9436.pth"
+            "se_densenet_40_4000_256":"se_densenet_40_4000_256_cp-0002-0.1575-0.9436.pth",
+            "e_densenet_22_4000_256":"e_densenet_22_4000_256_cp-0009-0.1597-0.9459.pth"
+
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)
@@ -696,210 +756,210 @@ class Simple_Classifier(BaseClassifier):
 # 输入为RGB三通道图像，单输出的分类器
 ############       single task  with custom loss function         #########
 ######################################################################################################################
-class SingleTask_Classifier(Simple_Classifier):
-    def __init__(self, params, model_name, patch_type, **kwargs):
-        super(SingleTask_Classifier, self).__init__(params, model_name, patch_type,**kwargs)
-        self.features = []
-        return
-
-
-    # def train_model(self, samples_name, augment_func, batch_size, loss_weight, epochs):
-    #     '''
-    #     训练模型
-    #     :param samples_name: 自制训练集的代号
-    #     :param batch_size: 每批的图片数量
-    #     :param epochs:epoch数量
-    #     :return:
-    #     '''
-    #     if self.patch_type in ["cifar10", "cifar100"]:
-    #         train_data, test_data = self.load_cifar_data(self.patch_type)
-    #     else:
-    #         train_data, test_data = self.load_custom_data(samples_name, augment_func=augment_func)
-    #
-    #     train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
-    #                                    num_workers=self.NUM_WORKERS)
-    #     test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
-    #                                   num_workers=self.NUM_WORKERS)
-    #
-    #     model = self.load_model(model_file=None)
-    #     print(model)
-    #
-    #     classifi_loss= nn.CrossEntropyLoss()
-    #     center_loss = CenterLoss(2, 2)
-    #     if self.use_GPU:
-    #         model.to(self.device)
-    #         classifi_loss.to(self.device)
-    #         center_loss.to(self.device)
-    #
-    #     # optimzer4nn
-    #     # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
-    #     classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    #     # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
-    #     # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
-    #     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
-    #     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(classifi_optimizer, mode='min',
-    #                                                            factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
-    #     # optimzer4center
-    #     optimzer4center = torch.optim.SGD(center_loss.parameters(), lr=0.5)
-    #
-    #     # training and testing
-    #     for epoch in range(epochs):
-    #         print('Epoch {}/{}'.format(epoch + 1, epochs))
-    #         print('-' * 80)
-    #
-    #         model.train()
-    #         # 开始训练
-    #         train_data_len = len(train_loader)
-    #         total_loss = 0
-    #
-    #         starttime = datetime.datetime.now()
-    #         for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
-    #             b_x = Variable(x.to(self.device))
-    #             b_y = Variable(y.to(self.device))
-    #
-    #             output = model(b_x)  # cnn output is features, not logits
-    #             # cross entropy loss + center loss
-    #             loss = classifi_loss(output, b_y) + loss_weight * center_loss(b_y, output)
-    #
-    #             classifi_optimizer.zero_grad()  # clear gradients for this training step
-    #             optimzer4center.zero_grad()
-    #             loss.backward()  # backpropagation, compute gradients
-    #             classifi_optimizer.step()
-    #             optimzer4center.step()
-    #
-    #             # 数据统计
-    #             _, preds = torch.max(output, 1)
-    #
-    #             running_loss = loss.item()
-    #             running_corrects = torch.sum(preds == b_y.data)
-    #             total_loss += running_loss
-    #
-    #             if step % 5 == 0:
-    #                 endtime = datetime.datetime.now()
-    #                 remaining_time = (train_data_len - step)* (endtime - starttime).seconds / (step + 1)
-    #                 print('%d / %d ==> Loss: %.4f | Acc: %.4f ,  remaining time: %d (s)'
-    #                       % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0), remaining_time))
-    #
-    #         scheduler.step(total_loss)
-    #
-    #         running_loss=0.0
-    #         running_corrects=0
-    #         model.eval()
-    #         # 开始评估
-    #         for x, y in test_loader:
-    #             b_x = Variable(x.to(self.device))
-    #             b_y = Variable(y.to(self.device))
-    #
-    #             output = model(b_x)
-    #             loss = classifi_loss(output, b_y)
-    #
-    #             _, preds = torch.max(output, 1)
-    #             running_loss += loss.item() * b_x.size(0)
-    #             running_corrects += torch.sum(preds == b_y.data)
-    #
-    #         test_data_len = test_data.__len__()
-    #         epoch_loss=running_loss / test_data_len
-    #         epoch_acc=running_corrects.double() / test_data_len
-    #
-    #         torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}.pth".format(
-    #             self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc),
-    #                    )
-    #     return
-
-    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
-        '''
-        预测在种子点提取的图块
-        :param src_img: 切片图像
-        :param scale: 提取图块的倍镜数
-        :param patch_size: 图块大小
-        :param seeds: 种子点的集合
-        :return: 预测结果与概率
-        '''
-
-        seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
-                                           normalization=self.normal_func)
-
-        if self.model is None:
-            self.model = self.load_pretrained_model_on_predict()
-            self.model.to(self.device)
-            self.model.eval()
-
-        len_seeds = len(seeds)
-        data_len = len(seeds) // batch_size
-        if len_seeds % batch_size > 0:
-            data_len += 1
-
-        probability = []
-        prediction = []
-        high_dim_features = []
-        low_dim_features = []
-        for step, x in enumerate(seeds_itor):
-            b_x = Variable(x.to(self.device))
-
-            output = self.model(b_x) # model最后不包括一个softmax层
-            output_softmax = nn.functional.softmax(output, dim =1)
-            probs, preds = torch.max(output_softmax, 1)
-
-            high_dim_features.extend(self.model.out_feature.cpu().numpy())
-            low_dim_features.extend(output.cpu().numpy())
-            probability.extend(probs.cpu().numpy())
-            prediction.extend(preds.cpu().numpy())
-            print('predicting => %d / %d ' % (step + 1, data_len))
-
-        low_dim_features = np.array(low_dim_features)
-        prediction = np.array(prediction)
-        probability = np.array(probability)
-
-        new_features = self.correct(low_dim_features, prediction)
-
-        return probability, prediction, new_features #new_features #low_dim_features
-
-    def correct(self, features, prediction):
-        features_0 = features[:,0]
-        feat = features_0[prediction == 1]
-        cancer_mean = np.mean(feat)
-        cancer_std = np.std(feat)
-        cancer_count = len(feat)
-
-        feat = features_0[prediction == 0]
-        normal_mean = np.mean(feat)
-        normal_std = np.std(feat)
-
-        if cancer_count > 3 :
-            cancer_interval = stats.t.interval(0.95, cancer_count - 1, cancer_mean, cancer_std)
-            normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
-
-            print(" cancer intervel: {:.4f} {:.4f}, ".format(cancer_interval[0], cancer_interval[1]),
-                  "normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
-        else:
-            cancer_interval = [-3, 0]
-            cancer_mean = -1.5
-            cancer_std = 1.0
-            normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
-            print("normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
-
-        normal_edge = normal_interval[0]
-        cancer_edge = cancer_interval[1]
-
-        tag = np.ones(prediction.shape, dtype=np.bool)
-        if normal_edge > cancer_edge:
-            # 两个类中心完全分离,
-            return features
-        elif normal_edge + normal_std > cancer_edge - cancer_std:
-            # 发生的重叠情况
-            normal_edge = normal_edge + normal_std
-            cancer_edge = cancer_edge - cancer_std
-        else:
-            # 严重重叠
-            normal_edge = normal_mean
-            cancer_edge = cancer_mean
-
-        tag[features_0 > normal_edge] = False
-        tag[features_0 < cancer_edge] = False
-        features[tag] = np.array([None, None])
-        print(">>>> Exclude some suspicious : ", np.sum(tag == False))
-
-        return features
+# class SingleTask_Classifier(Simple_Classifier):
+#     def __init__(self, params, model_name, patch_type, **kwargs):
+#         super(SingleTask_Classifier, self).__init__(params, model_name, patch_type,**kwargs)
+#         self.features = []
+#         return
+#
+#
+#     # def train_model(self, samples_name, augment_func, batch_size, loss_weight, epochs):
+#     #     '''
+#     #     训练模型
+#     #     :param samples_name: 自制训练集的代号
+#     #     :param batch_size: 每批的图片数量
+#     #     :param epochs:epoch数量
+#     #     :return:
+#     #     '''
+#     #     if self.patch_type in ["cifar10", "cifar100"]:
+#     #         train_data, test_data = self.load_cifar_data(self.patch_type)
+#     #     else:
+#     #         train_data, test_data = self.load_custom_data(samples_name, augment_func=augment_func)
+#     #
+#     #     train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
+#     #                                    num_workers=self.NUM_WORKERS)
+#     #     test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
+#     #                                   num_workers=self.NUM_WORKERS)
+#     #
+#     #     model = self.load_model(model_file=None)
+#     #     print(model)
+#     #
+#     #     classifi_loss= nn.CrossEntropyLoss()
+#     #     center_loss = CenterLoss(2, 2)
+#     #     if self.use_GPU:
+#     #         model.to(self.device)
+#     #         classifi_loss.to(self.device)
+#     #         center_loss.to(self.device)
+#     #
+#     #     # optimzer4nn
+#     #     # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
+#     #     classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+#     #     # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
+#     #     # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
+#     #     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
+#     #     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(classifi_optimizer, mode='min',
+#     #                                                            factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
+#     #     # optimzer4center
+#     #     optimzer4center = torch.optim.SGD(center_loss.parameters(), lr=0.5)
+#     #
+#     #     # training and testing
+#     #     for epoch in range(epochs):
+#     #         print('Epoch {}/{}'.format(epoch + 1, epochs))
+#     #         print('-' * 80)
+#     #
+#     #         model.train()
+#     #         # 开始训练
+#     #         train_data_len = len(train_loader)
+#     #         total_loss = 0
+#     #
+#     #         starttime = datetime.datetime.now()
+#     #         for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
+#     #             b_x = Variable(x.to(self.device))
+#     #             b_y = Variable(y.to(self.device))
+#     #
+#     #             output = model(b_x)  # cnn output is features, not logits
+#     #             # cross entropy loss + center loss
+#     #             loss = classifi_loss(output, b_y) + loss_weight * center_loss(b_y, output)
+#     #
+#     #             classifi_optimizer.zero_grad()  # clear gradients for this training step
+#     #             optimzer4center.zero_grad()
+#     #             loss.backward()  # backpropagation, compute gradients
+#     #             classifi_optimizer.step()
+#     #             optimzer4center.step()
+#     #
+#     #             # 数据统计
+#     #             _, preds = torch.max(output, 1)
+#     #
+#     #             running_loss = loss.item()
+#     #             running_corrects = torch.sum(preds == b_y.data)
+#     #             total_loss += running_loss
+#     #
+#     #             if step % 5 == 0:
+#     #                 endtime = datetime.datetime.now()
+#     #                 remaining_time = (train_data_len - step)* (endtime - starttime).seconds / (step + 1)
+#     #                 print('%d / %d ==> Loss: %.4f | Acc: %.4f ,  remaining time: %d (s)'
+#     #                       % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0), remaining_time))
+#     #
+#     #         scheduler.step(total_loss)
+#     #
+#     #         running_loss=0.0
+#     #         running_corrects=0
+#     #         model.eval()
+#     #         # 开始评估
+#     #         for x, y in test_loader:
+#     #             b_x = Variable(x.to(self.device))
+#     #             b_y = Variable(y.to(self.device))
+#     #
+#     #             output = model(b_x)
+#     #             loss = classifi_loss(output, b_y)
+#     #
+#     #             _, preds = torch.max(output, 1)
+#     #             running_loss += loss.item() * b_x.size(0)
+#     #             running_corrects += torch.sum(preds == b_y.data)
+#     #
+#     #         test_data_len = test_data.__len__()
+#     #         epoch_loss=running_loss / test_data_len
+#     #         epoch_acc=running_corrects.double() / test_data_len
+#     #
+#     #         torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}.pth".format(
+#     #             self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc),
+#     #                    )
+#     #     return
+#
+#     def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+#         '''
+#         预测在种子点提取的图块
+#         :param src_img: 切片图像
+#         :param scale: 提取图块的倍镜数
+#         :param patch_size: 图块大小
+#         :param seeds: 种子点的集合
+#         :return: 预测结果与概率
+#         '''
+#
+#         seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
+#                                            normalization=self.normal_func)
+#
+#         if self.model is None:
+#             self.model = self.load_pretrained_model_on_predict()
+#             self.model.to(self.device)
+#             self.model.eval()
+#
+#         len_seeds = len(seeds)
+#         data_len = len(seeds) // batch_size
+#         if len_seeds % batch_size > 0:
+#             data_len += 1
+#
+#         probability = []
+#         prediction = []
+#         high_dim_features = []
+#         low_dim_features = []
+#         for step, x in enumerate(seeds_itor):
+#             b_x = Variable(x.to(self.device))
+#
+#             output = self.model(b_x) # model最后不包括一个softmax层
+#             output_softmax = nn.functional.softmax(output, dim =1)
+#             probs, preds = torch.max(output_softmax, 1)
+#
+#             high_dim_features.extend(self.model.out_feature.cpu().numpy())
+#             low_dim_features.extend(output.cpu().numpy())
+#             probability.extend(probs.cpu().numpy())
+#             prediction.extend(preds.cpu().numpy())
+#             print('predicting => %d / %d ' % (step + 1, data_len))
+#
+#         low_dim_features = np.array(low_dim_features)
+#         prediction = np.array(prediction)
+#         probability = np.array(probability)
+#
+#         new_features = self.correct(low_dim_features, prediction)
+#
+#         return probability, prediction, new_features #new_features #low_dim_features
+#
+#     def correct(self, features, prediction):
+#         features_0 = features[:,0]
+#         feat = features_0[prediction == 1]
+#         cancer_mean = np.mean(feat)
+#         cancer_std = np.std(feat)
+#         cancer_count = len(feat)
+#
+#         feat = features_0[prediction == 0]
+#         normal_mean = np.mean(feat)
+#         normal_std = np.std(feat)
+#
+#         if cancer_count > 3 :
+#             cancer_interval = stats.t.interval(0.95, cancer_count - 1, cancer_mean, cancer_std)
+#             normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
+#
+#             print(" cancer intervel: {:.4f} {:.4f}, ".format(cancer_interval[0], cancer_interval[1]),
+#                   "normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
+#         else:
+#             cancer_interval = [-3, 0]
+#             cancer_mean = -1.5
+#             cancer_std = 1.0
+#             normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
+#             print("normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
+#
+#         normal_edge = normal_interval[0]
+#         cancer_edge = cancer_interval[1]
+#
+#         tag = np.ones(prediction.shape, dtype=np.bool)
+#         if normal_edge > cancer_edge:
+#             # 两个类中心完全分离,
+#             return features
+#         elif normal_edge + normal_std > cancer_edge - cancer_std:
+#             # 发生的重叠情况
+#             normal_edge = normal_edge + normal_std
+#             cancer_edge = cancer_edge - cancer_std
+#         else:
+#             # 严重重叠
+#             normal_edge = normal_mean
+#             cancer_edge = cancer_mean
+#
+#         tag[features_0 > normal_edge] = False
+#         tag[features_0 < cancer_edge] = False
+#         features[tag] = np.array([None, None])
+#         print(">>>> Exclude some suspicious : ", np.sum(tag == False))
+#
+#         return features
 
 ######################################################################################################################
 ############       multi task            #########

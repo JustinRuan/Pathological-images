@@ -62,7 +62,7 @@ class TestImageCone(unittest.TestCase):
         # 读取数字全扫描切片图像
         # tag = imgCone.open_slide("Train_Tumor/Tumor_014.tif",
         #                          'Train_Tumor/tumor_014.xml', "Tumor_014")
-        slice_id = "001"
+        slice_id = "026"
         tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
                                  'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
         self.assertTrue(tag)

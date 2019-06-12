@@ -41,7 +41,8 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # model_name = "simple_cnn"
         # model_name = "se_densenet_40"
-        model_name = "densenet_22"
+        # model_name = "densenet_22"
+        model_name = "e_densenet_22"
         # model_name = "resnet_18"
         sample_name = "4000_256"
 
@@ -127,7 +128,7 @@ class Test_cnn_classifier(unittest.TestCase):
         # model_name = "se_densenet_40"
         # sample_name = "x_256"
         # model_name = "simple_cnn"
-        model_name = "densenet_22"
+        model_name = "e_densenet_22"
         sample_name = "4000_256"
 
         normal = None
@@ -140,9 +141,9 @@ class Test_cnn_classifier(unittest.TestCase):
         # Check_P0430_4000_256_test, T1_P0430_4000_256_train
         Xtest, Ytest, predicted_tags, features = cnn.evaluate_model(
             samples_name=("P0430", "Check_P0430_4000_256_test.txt"),
-            model_file=None, batch_size=20, max_count=2000)
-        cnn.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
-        # cnn.visualize_features(features, Ytest, predicted_tags)
+            model_file=None, batch_size=20, max_count=100)
+        # cnn.evaluate_accuracy_based_slice(Xtest, predicted_tags, Ytest)
+        cnn.visualize_features(Xtest, features, Ytest)
 
         #the center of Label  0  =  [ 1.4759356 -1.5035709]
         #the center of Label  1  =  [-1.5735501  1.5415243]
@@ -261,7 +262,7 @@ class Test_cnn_classifier(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         # model_name = "se_densenet_22"
-        model_name = "simple_cnn"
+        model_name = "e_densenet_22"
         sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name)

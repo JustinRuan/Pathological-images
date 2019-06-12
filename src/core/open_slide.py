@@ -120,7 +120,7 @@ class Open_Slide(object):
 
                 if range_type in ["_0", "_1", "Tumor"]:
                     self.ano["TUMOR"].append(posArray)
-                elif range_type == "_2":
+                elif range_type in ["_2", "Exclusion"]:
                     self.ano["NORMAL"].append(posArray)
 
         return
@@ -148,7 +148,8 @@ class Open_Slide(object):
         for contour in self.ano["NORMAL"]:
             tumor_range = np.rint(contour * scale).astype(np.int)
             rr, cc = draw.polygon(tumor_range[:, 1], tumor_range[:, 0])
-            img[rr, cc] = 0
+            # img[rr, cc] = 0
+            img[rr, cc] = ~ img[rr, cc] # 因为Normal可能出现在Tumor区域中，而且Normal中又存在小区域的Tumor
 
         C_img = img
         N_img = ~img

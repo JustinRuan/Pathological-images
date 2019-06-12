@@ -178,7 +178,7 @@ class Elastic_Classifier(Simple_Classifier):
             prediction = np.array(prediction)
             # 开启弹性调整过程
             self.shadow_classifier.train_myself(high_dim_features, prediction, weight, batch_size // 2, 0.001)
-            self.shadow_classifier.predict(high_dim_features, batch_size)
+            probability, prediction, low_dim_features = self.shadow_classifier.predict(high_dim_features, batch_size)
 
         return probability, prediction, low_dim_features #new_features #low_dim_features
 
