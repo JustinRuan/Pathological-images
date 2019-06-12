@@ -6,6 +6,7 @@ __mtime__ = '2018-10-26'
 
 """
 import time
+import os
 from abc import ABCMeta, abstractmethod
 import cv2
 import numpy as np
@@ -72,47 +73,6 @@ class BaseDetector(object, metaclass=ABCMeta):
         self.valid_map = np.zeros((self.ImageHeight, self.ImageWidth), dtype=np.bool)
         return
 
-    def evaluate(self, cancer_map, true_mask, levels):
-        '''
-        癌变概率矩阵进行阈值分割后，与人工标记真值进行 评估
-        :param threshold: 分割的阈值
-        :param cancer_map: 癌变概率矩阵
-        :param true_mask: 人工标记真值
-        :return: ROC曲线
-        '''
-
-        mask_tag = np.array(true_mask).ravel()
-
-        dice_result = []
-        for threshold in levels:
-            cancer_tag = np.array(cancer_map > threshold).ravel()
-            predicted_tags = cancer_tag >= threshold
-            dice = self.calculate_dice_coef(mask_tag, cancer_tag)
-
-            print("Threshold = {:.3f}, Classification report for classifier: \n{}".format(threshold,
-                                            metrics.classification_report(mask_tag, predicted_tags, digits=4)))
-            print("############################################################")
-            # print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
-
-            dice_result.append((threshold, dice))
-
-        for t, value in dice_result:
-            print("when threshold = {:.3f}, dice coef = {:.6f}".format(t, value))
-        print("############################################################")
-        # 计算ROC曲线
-        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, np.array(cancer_map).ravel())
-        roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
-        print("\n ROC auc: %s" % roc_auc)
-        return false_positive_rate, true_positive_rate, roc_auc, dice_result
-
-    def calculate_dice_coef(self, y_true, y_pred):
-        smooth = 1.
-        y_true_f = y_true.flatten()
-        y_pred_f = y_pred.flatten()
-        intersection = np.sum(y_true_f * y_pred_f)
-        dice = (2. * intersection + smooth) / (np.sum(y_true_f * y_true_f) + np.sum(y_pred_f * y_pred_f) + smooth)
-        return dice
-
     def get_img_in_detect_area(self, x1, y1, x2, y2, coordinate_scale, img_scale):
         '''
         得到指定的检测区域对应的图像
@@ -154,74 +114,10 @@ class BaseDetector(object, metaclass=ABCMeta):
         pass
 
     def save_result_cancer_map(self,  x1, y1, coordinate_scale, cancer_map):
-        save_filename = "{}/results/{}_cancer_map.npz".format(self._params.PROJECT_ROOT, self._imgCone.slice_id)
-        np.savez(save_filename, {"x1":x1, "y1":y1, "scale":coordinate_scale, "cancer_map":cancer_map})
+        save_filename = "{}/results/{}_cancermap.npz".format(self._params.PROJECT_ROOT, self._imgCone.slice_id)
+        # np.savez(save_filename, {"x1":x1, "y1":y1, "scale":coordinate_scale, "cancer_map":cancer_map})
+        np.savez_compressed(save_filename, x1=x1, y1=y1, scale=coordinate_scale, cancer_map=cancer_map)
         print(">>> >>> ", save_filename," saved!")
-
-    def save_result_xml(self, x1, y1, coordinate_scale, cancer_map, threshold_list):
-        scale = int(40 / self._params.GLOBAL_SCALE)
-        scale2 = int(40 / coordinate_scale)
-
-        contours_set = {}
-        for threshold in threshold_list:
-            cancer_tag = np.array(cancer_map > threshold)
-            contours = measure.find_contours(cancer_tag, 0.5)
-
-            contours_x40 = []
-            for n, contour in enumerate(contours):
-                contour = approximate_polygon(np.array(contour), tolerance=0.01)
-                c = scale * np.array(contour)  + np.array([y1, x1]) * scale2
-                contours_x40.append(c)
-
-            contours_set[threshold] = contours_x40
-
-        self.write_xml(contours_set)
-
-    def write_xml(self, contours_set):
-        from xml.dom import minidom
-        doc = minidom.Document()
-        rootNode = doc.createElement("ASAP_Annotations")
-        doc.appendChild(rootNode)
-
-        AnnotationsNode = doc.createElement("Annotations")
-        rootNode.appendChild(AnnotationsNode)
-
-        colors = ["#00BB00", "#00FF00", "#FFFF00", "#BB0000", "#FF0000"]
-        for k, (key, contours) in enumerate(contours_set.items()):
-            Code = "{:.2f}".format(key)
-            for i, contour in enumerate(contours):
-                # one contour
-                AnnotationNode = doc.createElement("Annotation")
-                AnnotationNode.setAttribute("Name", str(i))
-                AnnotationNode.setAttribute("Type", "Polygon")
-                AnnotationNode.setAttribute("PartOfGroup", Code)
-                AnnotationNode.setAttribute("Color", colors[k])
-                AnnotationsNode.appendChild(AnnotationNode)
-
-                CoordinatesNode = doc.createElement("Coordinates")
-                AnnotationNode.appendChild(CoordinatesNode)
-
-                for n, (y, x) in enumerate(contour):
-                    CoordinateNode = doc.createElement("Coordinate")
-                    CoordinateNode.setAttribute("Order", str(n))
-                    CoordinateNode.setAttribute("X", str(x))
-                    CoordinateNode.setAttribute("Y", str(y))
-                    CoordinatesNode.appendChild(CoordinateNode)
-
-        AnnotationGroups_Node = doc.createElement("AnnotationGroups")
-        rootNode.appendChild(AnnotationGroups_Node)
-
-        for k, (key, _) in enumerate(contours_set.items()):
-            Code = "{:.2f}".format(key)
-            GroupNode = doc.createElement("Group")
-            GroupNode.setAttribute("Name", Code)
-            GroupNode.setAttribute("PartOfGroup", "None")
-            GroupNode.setAttribute("Color", colors[k])
-            AnnotationGroups_Node.appendChild(GroupNode)
-
-        f = open("{}/results/{}_output.xml".format(self._params.PROJECT_ROOT, self._imgCone.slice_id), "w")
-        doc.writexml(f, encoding="utf-8")
-        f.close()
 
 class Detector(BaseDetector):
     def __init__(self, params, src_image):
@@ -584,8 +480,6 @@ class AdaptiveDetector(BaseDetector):
         :param thresh: 高低概率的阈值
         :return: 概率图
         '''
-        # 1 / (1 + math.exp(-x))
-        cancer_map = 1 / (1 + np.exp(-cancer_map))
         cancer_map = morphology.closing(cancer_map, square(4 * bias))
         cancer_map = morphology.dilation(cancer_map, square(2 * bias))
 
@@ -716,6 +610,9 @@ class AdaptiveDetector(BaseDetector):
 
             if sampling_density > limit_sampling_density:
                 break
+
+        # 1 / (1 + math.exp(-x))
+        interpolate_img = 1 / (1 + np.exp(-interpolate_img))
 
         if use_post:
             amplify = extract_scale / seeds_scale

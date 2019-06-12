@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 from core import *
 from skimage import io
-from pytorch.cnn_classifier import Simple_Classifier, SingleTask_Classifier
+from pytorch.cnn_classifier import Simple_Classifier
 import torch
 from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization,ReinhardNormalization #, ACDNormalization_tf
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation

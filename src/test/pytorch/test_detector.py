@@ -430,7 +430,7 @@ class Test_detector(unittest.TestCase):
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
         levels = [0.2, 0.3, 0.5, 0.6, 0.8]
-        false_positive_rate, true_positive_rate, roc_auc, dice = detector.evaluate(cancer_map, mask_img, levels)
+        false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map, mask_img, levels)
 
         from visdom import Visdom
         viz = Visdom(env="main")
@@ -525,3 +525,4 @@ class Test_detector(unittest.TestCase):
             print("####### %s 完成 #######" % code)
 
         return
+

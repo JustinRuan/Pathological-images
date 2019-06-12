@@ -8,8 +8,9 @@ from core.util import get_seeds, read_csv_file, transform_coordinate, get_projec
 # from core.seed_sequence import SeedSequence
 from core.open_slide import Open_Slide
 from core.random_gen import Random_Gen
+from core.Evaluation import Evaluation
 
 # __all__ = ["Params", "KFB_Slide", "Block", "ImageCone", "util", "ImageSequence", "SeedSequence",
 #            "Open_Slide"]
 __all__ = ["Params", "KFB_Slide", "Block", "ImageCone", "util",
-           "Open_Slide"]
+           "Open_Slide", "Evaluation"]
