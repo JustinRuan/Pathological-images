@@ -172,20 +172,18 @@ class PatchPack(object):
         filtered_cancer = []
         for rfile, tag in cancer_data:
             frags = rfile.split('/')
-            if frags[1] in filter_mask:
+            if frags[1] not in filter_mask:
                 filtered_cancer.append((rfile, tag))
         data_tag[1] = filtered_cancer
 
         filtered_normal = []
         for rfile, tag in normal_data:
             frags = rfile.split('/')
-            if frags[1] in filter_mask or "Normal" in frags[1]:
+            if frags[1] not in filter_mask or "Normal" in frags[1]:
                 filtered_normal.append((rfile, tag))
         data_tag[0] = filtered_normal
 
         return data_tag
-
-
 
     ###############################################################################################################
     # Multiple scale combination (MSC)

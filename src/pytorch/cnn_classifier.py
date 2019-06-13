@@ -678,14 +678,14 @@ class Simple_Classifier(BaseClassifier):
 
         # optimzer4nn
         # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
-        classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
-        # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
+        classifi_optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99, )
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(classifi_optimizer, mode='min',
                                                                factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
         # optimzer4center
-        optimzer4center = torch.optim.SGD(center_loss.parameters(), lr=0.5)
+        optimzer4center = torch.optim.SGD(center_loss.parameters(), lr=0.1)
 
         # training and testing
         for epoch in range(epochs):

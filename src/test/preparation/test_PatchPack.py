@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 from skimage.io import imread
 from core.util import read_csv_file
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestPatchPack(unittest.TestCase):
 
@@ -63,8 +63,8 @@ class TestPatchPack(unittest.TestCase):
         data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_cancer": 1, "S4000_256_normal": 0,
                                                                  "S4000_256_normal2": 0})
 
-        data_tag = pack.filtering(data_tag, filter_mask=["Tumor_020", "Tumor_033", "Tumor_034", "Tumor_044",
-                                                         "Tumor_046","Tumor_054","Tumor_061", "Tumor_075", "Tumor_095"])
+        data_tag = pack.filtering(data_tag, filter_mask=["Tumor_033", "Tumor_034",
+                                                         "Tumor_046","Tumor_054","Tumor_061"])
         # data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_cancer": 1,
         #                                                  "S4000_256_normal2": 0})
         pack.create_train_test_data(data_tag, 0.90, 0.1, "T2_P0430_4000_256", need_balance=True)

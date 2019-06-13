@@ -55,7 +55,7 @@ class Shadow_Classifier(nn.Module):
         out = self.classifier(x)
         return out
 
-    def train_myself(self, train_features, train_label, weight, batch_size, loss_weight):
+    def train_myself(self, train_features, train_label, weight, batch_size, loss_weight, epochs):
 
         train_data = torch.utils.data.TensorDataset(torch.from_numpy(train_features),
                                                     torch.from_numpy(train_label).long(),
@@ -71,7 +71,7 @@ class Shadow_Classifier(nn.Module):
 
         classifi_optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
         optimzer4center = torch.optim.SGD(center_loss.parameters(), lr=0.1)
-        epochs = 5
+        # epochs = 3
         self.train()
         for epoch in range(epochs):
             for step, (x, y, w) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
@@ -177,8 +177,8 @@ class Elastic_Classifier(Simple_Classifier):
             high_dim_features = np.array(high_dim_features)
             prediction = np.array(prediction)
             # 开启弹性调整过程
-            self.shadow_classifier.train_myself(high_dim_features, prediction, weight, batch_size // 2, 0.001)
-            probability, prediction, low_dim_features = self.shadow_classifier.predict(high_dim_features, batch_size)
+            self.shadow_classifier.train_myself(high_dim_features, prediction, weight, batch_size // 2, 0.001, 3)
+            # probability, prediction, low_dim_features = self.shadow_classifier.predict(high_dim_features, batch_size)
 
         return probability, prediction, low_dim_features #new_features #low_dim_features
 
