@@ -243,11 +243,7 @@ class ExtendedDenseNet(nn.Module):
         # Final batch norm
         self.features.add_module('norm_final', nn.BatchNorm2d(num_features))
 
-        # global avg pool
-        # self.relu_final = nn.ReLU(inplace=True)
-        # self.aap_final = nn.AdaptiveAvgPool2d(self.gvp_out_size)
-        # self.amp_final = nn.AdaptiveMaxPool2d(self.gvp_out_size)
-        # self.drop_final = nn.Dropout2d(p=0.5)
+        # global pool
         self.pool_final = _PoolBlock(self.gvp_out_size)
 
         # Linear layer
@@ -265,18 +261,16 @@ class ExtendedDenseNet(nn.Module):
             elif 'classifier' in name and 'bias' in name:
                 param.data.fill_(0)
 
-    def forward(self, x):
+    def forward(self, x, output_feature = False):
         features = self.features(x)
         pool_feature = self.pool_final(features)
-        # r = self.relu_final(features)
-        # ap_result = self.aap_final(r)
-        # mp_result = self.amp_final(r)
-        # apmp_final = torch.cat([ap_result, mp_result], 1)
-        # pool_feature = self.drop_final(apmp_final)
 
         self.out_feature = pool_feature.view(pool_feature.size(0), -1)
         out = self.classifier(self.out_feature)
-        return out
+        if output_feature:
+            return out, self.out_feature
+        else:
+            return out
 
 
 #######################################################################################################

@@ -54,7 +54,7 @@ class Test_cnn_classifier(unittest.TestCase):
         # cnn.train_model(samples_name=("P0430","P0430_4000_256"), augment_func = None,
         #                 batch_size=40, epochs = 10)
         cnn.train_model(samples_name=("P0430","T2_P0430_4000_256"), augment_func = None,
-                        batch_size=40, loss_weight=0.001, epochs = 10)
+                        batch_size=40, loss_weight=0.0001, epochs = 10)
 
 
     def test_evaluate_model(self):
