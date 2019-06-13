@@ -499,10 +499,11 @@ class AdaptiveDetector(BaseDetector):
             sample_name = "x_256"
             # cnn = MultiTask_Classifier(self._params, model_name, sample_name, normalization=normal_func)
         elif select == 1:
-            # self.model_name = "se_densenet_22"
             # self.model_name = "simple_cnn"
+            # self.model_name = "se_densenet_22"
             # self.model_name = "se_densenet_40"
-            self.model_name = "densenet_22"
+            # self.model_name = "densenet_22"
+            self.model_name = "e_densenet_22"
             self.sample_name = "4000_256"
             self.cnn = Simple_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
         elif select == 2:

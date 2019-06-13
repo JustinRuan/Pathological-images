@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 from skimage.io import imread
 from core.util import read_csv_file
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "C:/RWork/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestPatchPack(unittest.TestCase):
 
@@ -56,21 +56,18 @@ class TestPatchPack(unittest.TestCase):
 
         pack = PatchPack(c)
 
-        # data_tag = pack.initialize_sample_tags("P0330", {"S4000_256_cancer": 1, "S4000_256_normal": 0})
-        # pack.create_train_test_data(data_tag, 0, 1, "T_NC_Simple0330_4000_256")
-
-        # data_tag = pack.initialize_sample_tags("P0404", {"W4000_256_cancer": 1, "W4000_256_normal": 0})
-        # pack.create_train_test_data(data_tag, 0, 1, "W0404_4000_256", need_balance=False)
-
         # data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_T_cancer": 1, "S4000_256_T_normal": 0,
         #                                                  "S4000_256_T_normal2": 0})
         # pack.create_train_test_data(data_tag, 0, 1, "Check_P0430_4000_256", need_balance=False)
 
-        # data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_cancer": 1, "S4000_256_normal": 0,
-        #         #                                                  "S4000_256_normal2": 0})
-        data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_cancer": 1,
-                                                         "S4000_256_normal2": 0})
-        pack.create_train_test_data(data_tag, 0.95, 0.05, "T2_P0430_4000_256", need_balance=True)
+        data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_cancer": 1, "S4000_256_normal": 0,
+                                                                 "S4000_256_normal2": 0})
+
+        data_tag = pack.filtering(data_tag, filter_mask=["Tumor_020", "Tumor_033", "Tumor_034", "Tumor_044",
+                                                         "Tumor_046","Tumor_054","Tumor_061", "Tumor_075", "Tumor_095"])
+        # data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_cancer": 1,
+        #                                                  "S4000_256_normal2": 0})
+        pack.create_train_test_data(data_tag, 0.90, 0.1, "T2_P0430_4000_256", need_balance=True)
 
     #################################################################################################################
     ####################  20 x 256  ############################

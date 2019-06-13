@@ -635,7 +635,7 @@ class Simple_Classifier(BaseClassifier):
             "densenet_22_4000_256": "densenet_22_4000_256_cp-0005-0.1423-0.9486.pth",
             "se_densenet_22_4000_256":"se_densenet_22_cp-0001-0.1922-0.9223-0.9094.pth",
             "se_densenet_40_4000_256":"se_densenet_40_4000_256_cp-0002-0.1575-0.9436.pth",
-            "e_densenet_22_4000_256":"e_densenet_22_4000_256_cp-0009-0.1597-0.9459.pth"
+            "e_densenet_22_4000_256":"e_densenet_22_4000_256_cp-0004-0.1396-0.9535.pth"
 
         }
 

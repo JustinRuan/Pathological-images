@@ -171,6 +171,23 @@ class DenseNet(nn.Module):
         return out
 
 
+class _PoolBlock(nn.Module):
+    def __init__(self, gvp_out_size):
+        super(_PoolBlock, self).__init__()
+        # self.gvp_out_size = gvp_out_size
+        self.relu_final = nn.ReLU(inplace=True)
+        self.aap_final = nn.AdaptiveAvgPool2d(gvp_out_size)
+        self.amp_final = nn.AdaptiveMaxPool2d(gvp_out_size)
+        self.drop_final = nn.Dropout2d(p=0.5)
+
+    def forward(self, x):
+        r = self.relu_final(x)
+        ap_result = self.aap_final(r)
+        mp_result = self.amp_final(r)
+        apmp_final = torch.cat([ap_result, mp_result], 1)
+        pool_feature = self.drop_final(apmp_final)
+        return pool_feature
+
 class ExtendedDenseNet(nn.Module):
     r"""Densenet-BC model class, based on
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`
@@ -227,17 +244,11 @@ class ExtendedDenseNet(nn.Module):
         self.features.add_module('norm_final', nn.BatchNorm2d(num_features))
 
         # global avg pool
-        # self.pool_final = nn.Sequential(OrderedDict([
-        #     ("relu_final", nn.ReLU(inplace=True)),
-        #     # ('poool_final', nn.AdaptiveAvgPool2d(self.gvp_out_size))
-        #     ('pool_final', torch.cat([nn.AdaptiveAvgPool2d(self.gvp_out_size),
-        #                               nn.AdaptiveMaxPool2d(self.gvp_out_size)], 1)),
-        #     ('drop_final', nn.Dropout2d(p=0.5))
-        #     ]))
-        self.relu_final = nn.ReLU(inplace=True)
-        self.aap_final = nn.AdaptiveAvgPool2d(self.gvp_out_size)
-        self.amp_final = nn.AdaptiveMaxPool2d(self.gvp_out_size)
-        self.drop_final = nn.Dropout2d(p=0.5)
+        # self.relu_final = nn.ReLU(inplace=True)
+        # self.aap_final = nn.AdaptiveAvgPool2d(self.gvp_out_size)
+        # self.amp_final = nn.AdaptiveMaxPool2d(self.gvp_out_size)
+        # self.drop_final = nn.Dropout2d(p=0.5)
+        self.pool_final = _PoolBlock(self.gvp_out_size)
 
         # Linear layer
         self.classifier = nn.Linear(2 * num_features * np.sum(self.gvp_out_size), num_classes)
@@ -256,19 +267,16 @@ class ExtendedDenseNet(nn.Module):
 
     def forward(self, x):
         features = self.features(x)
-        # pool_feature = self.pool_final(features)
-        r = self.relu_final(features)
-        ap_result = self.aap_final(r)
-        mp_result = self.amp_final(r)
-        apmp_final = torch.cat([ap_result, mp_result], 1)
-        pool_feature = self.drop_final(apmp_final)
+        pool_feature = self.pool_final(features)
+        # r = self.relu_final(features)
+        # ap_result = self.aap_final(r)
+        # mp_result = self.amp_final(r)
+        # apmp_final = torch.cat([ap_result, mp_result], 1)
+        # pool_feature = self.drop_final(apmp_final)
 
         self.out_feature = pool_feature.view(pool_feature.size(0), -1)
         out = self.classifier(self.out_feature)
         return out
-
-
-
 
 
 #######################################################################################################

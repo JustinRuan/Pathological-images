@@ -35,7 +35,8 @@ class Evaluation(object):
                 cancer_map = result["cancer_map"]
                 # print("max :", np.max(cancer_map), "min :", np.min(cancer_map))
 
-                thresh_list = [0.6, 0.5, 0.4, 0.3, 0.2]
+                # thresh_list = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2]
+                thresh_list = [0.6, 0.5, 0.4]
                 points = Evaluation.search_max_points(cancer_map, thresh_list, x1, y1)
 
                 csv_filename = "{0}/{1}.csv".format(save_path, slice_id)
@@ -43,6 +44,8 @@ class Evaluation(object):
                     f_csv = csv.writer(f)
                     for item in points:
                         f_csv.writerow([item["prob"], item["x"], item["y"]])
+
+                print("完成 ", slice_id)
         return
 
     @staticmethod
@@ -64,7 +67,7 @@ class Evaluation(object):
                     k = len(pos) // 2
                     x = pos[1][k] + x_letftop
                     y = pos[0][k] + y_lefttop
-                    candidated_result.append({"x":x, "y":y, "prob":max_value})
+                    candidated_result.append({"x":32 * x, "y":32 * y, "prob":max_value})
 
             last_thresh = thresh
 
