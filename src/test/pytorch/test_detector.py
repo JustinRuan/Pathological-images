@@ -13,8 +13,8 @@ from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_detector(unittest.TestCase):
@@ -263,7 +263,7 @@ class Test_detector(unittest.TestCase):
         # y2 = roi[4]
 
         x1, y1, x2, y2 = 0, 0, 0, 0
-        i = 1
+        i = 76
         slice_id = "{:0>3d}".format(i)
 
         c = Params()
@@ -283,7 +283,7 @@ class Test_detector(unittest.TestCase):
 
         cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
                                                max_iter_nums=100, batch_size=100,
-                                               limit_sampling_density=20, use_post=True)
+                                               limit_sampling_density=10, use_post=True)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -291,7 +291,7 @@ class Test_detector(unittest.TestCase):
         levels = [0.2, 0.3, 0.5, 0.6, 0.8]
         false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map, mask_img,
                                                                                                levels)
-        # detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
+        detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
 
         enable_show = False
         # 存盘输出部分

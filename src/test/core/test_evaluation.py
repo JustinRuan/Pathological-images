@@ -24,7 +24,7 @@ class TestPatchSampler(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        i = 1
+        i = 9
         code = "Tumor_{:0>3d}".format(i)
         filename = "{}/results/{}_cancermap.npz".format( c.PROJECT_ROOT, code)
         result = np.load(filename)
@@ -33,14 +33,16 @@ class TestPatchSampler(unittest.TestCase):
         coordinate_scale = result["scale"]
         cancer_map = result["cancer_map"]
 
-        levels = [0.2, 0.3, 0.5, 0.6, 0.8]
-        Evaluation.save_result_xml(c.GLOBAL_SCALE, c.PROJECT_ROOT, code, x1, y1, coordinate_scale, cancer_map, levels)
+        # levels = [0.2, 0.3, 0.5, 0.6, 0.8]
+        levels = [0.5, 0.8]
+        eval = Evaluation(c)
+        eval.save_result_xml(code, x1, y1, coordinate_scale, cancer_map, levels)
 
     def test_search_max_points(self):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        i = 1
+        i = 9
         code = "Tumor_{:0>3d}".format(i)
         filename = "{}/results/{}_cancermap.npz".format( c.PROJECT_ROOT, code)
         result = np.load(filename)
@@ -50,7 +52,8 @@ class TestPatchSampler(unittest.TestCase):
         cancer_map = result["cancer_map"]
 
         thresh_list = [0.6, 0.5, 0.4, 0.3, 0.2]
-        result = Evaluation.search_max_points(cancer_map, thresh_list, x1, y1)
+        eval = Evaluation(c)
+        result = eval.search_max_points(cancer_map, thresh_list, x1, y1)
 
         imgCone = ImageCone(c, Open_Slide())
 
@@ -78,5 +81,5 @@ class TestPatchSampler(unittest.TestCase):
     def test_output_result_csv(self):
         c = Params()
         c.load_config_file(JSON_PATH)
-
-        Evaluation.output_result_csv(c.PROJECT_ROOT)
+        eval = Evaluation(c)
+        eval.output_result_csv(["Tumor_009"])

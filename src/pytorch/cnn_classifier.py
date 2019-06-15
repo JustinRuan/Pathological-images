@@ -635,7 +635,7 @@ class Simple_Classifier(BaseClassifier):
             "densenet_22_4000_256": "densenet_22_4000_256_cp-0005-0.1423-0.9486.pth",
             "se_densenet_22_4000_256":"se_densenet_22_cp-0001-0.1922-0.9223-0.9094.pth",
             "se_densenet_40_4000_256":"se_densenet_40_4000_256_cp-0002-0.1575-0.9436.pth",
-            "e_densenet_22_4000_256":"e_densenet_22_4000_256_cp-0004-0.1396-0.9535.pth"
+            "e_densenet_22_4000_256":"e_densenet_22_4000_256_cp-0002-0.0996-0.9634.pth"
 
         }
 
@@ -670,7 +670,7 @@ class Simple_Classifier(BaseClassifier):
         print(model)
 
         classifi_loss= nn.CrossEntropyLoss()
-        center_loss = CenterLoss(2, 2)
+        center_loss = CenterLoss(self.num_classes, 2)
         if self.use_GPU:
             model.to(self.device)
             classifi_loss.to(self.device)
@@ -773,7 +773,7 @@ class Simple_Classifier(BaseClassifier):
         print(model)
 
         classifi_loss= nn.CrossEntropyLoss()
-        lgm_loss = LGMLoss(138, 2, 1.00)
+        lgm_loss = LGMLoss(self.num_classes, 2, 1.00)
         if self.use_GPU:
             model.to(self.device)
             classifi_loss.to(self.device)
@@ -788,7 +788,7 @@ class Simple_Classifier(BaseClassifier):
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(classifi_optimizer, mode='min',
                                                                factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
         # optimzer4center
-        optimzer4center = torch.optim.SGD(lgm_loss.parameters(), lr=0.01, momentum=0.9)
+        optimzer4center = torch.optim.SGD(lgm_loss.parameters(), lr=0.1, momentum=0.9)
 
         # training and testing
         for epoch in range(epochs):
@@ -805,10 +805,10 @@ class Simple_Classifier(BaseClassifier):
                 b_x = Variable(x.to(self.device))
                 b_y = Variable(y.to(self.device))
 
-                output, feature = model(b_x, output_feature = True)  # cnn output is features, not logits
+                output = model(b_x)  # cnn output is features, not logits
                 # cross entropy loss + center loss
                 # loss = classifi_loss(output, b_y) + loss_weight * center_loss(b_y, output)
-                logits, mlogits, likelihood = lgm_loss(feature, b_y)
+                logits, mlogits, likelihood = lgm_loss(output, b_y)
                 loss = classifi_loss(mlogits, b_y) + loss_weight * likelihood
 
                 classifi_optimizer.zero_grad()  # clear gradients for this training step

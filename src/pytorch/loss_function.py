@@ -136,7 +136,6 @@ class LGMLoss(nn.Module):
         batch_size = feat.shape[0]
         log_covs = torch.unsqueeze(self.log_covs, dim=0)
 
-
         covs = torch.exp(log_covs) # 1*c*d
         tcovs = covs.repeat(batch_size, 1, 1) # n*c*d
         diff = torch.unsqueeze(feat, dim=1) - torch.unsqueeze(self.centers, dim=0)

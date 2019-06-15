@@ -149,7 +149,8 @@ class DenseNet(nn.Module):
             ]))
 
         # Linear layer
-        self.classifier = nn.Linear(num_features * np.sum(self.gvp_out_size), num_classes)
+        self.feature_dim =  num_features * np.sum(self.gvp_out_size)
+        self.classifier = nn.Linear(self.feature_dim, num_classes)
 
         # Initialization
         for name, param in self.named_parameters():
@@ -247,7 +248,8 @@ class ExtendedDenseNet(nn.Module):
         self.pool_final = _PoolBlock(self.gvp_out_size)
 
         # Linear layer
-        self.classifier = nn.Linear(2 * num_features * np.sum(self.gvp_out_size), num_classes)
+        self.feature_dim = 2 * num_features * np.sum(self.gvp_out_size)
+        self.classifier = nn.Linear(self.feature_dim, num_classes)
 
         # Initialization
         for name, param in self.named_parameters():
@@ -261,16 +263,13 @@ class ExtendedDenseNet(nn.Module):
             elif 'classifier' in name and 'bias' in name:
                 param.data.fill_(0)
 
-    def forward(self, x, output_feature = False):
+    def forward(self, x):
         features = self.features(x)
         pool_feature = self.pool_final(features)
 
         self.out_feature = pool_feature.view(pool_feature.size(0), -1)
         out = self.classifier(self.out_feature)
-        if output_feature:
-            return out, self.out_feature
-        else:
-            return out
+        return out
 
 
 #######################################################################################################
@@ -352,6 +351,7 @@ class SEDenseNet(nn.Module):
             ]))
 
         # Linear layer
+        self.feature_dim = num_features * np.sum(self.gvp_out_size)
         if self.MultiTask:
             self.out = nn.ModuleList()
             self.classifier = nn.Linear(num_features * np.sum(self.gvp_out_size), num_classes)
