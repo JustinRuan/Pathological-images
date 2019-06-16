@@ -16,7 +16,8 @@ import torch.utils.data as Data
 import torchvision  # 数据库模块
 from sklearn import metrics
 from torch.autograd import Variable
-from torchsummary import summary
+# from torchsummary import summary
+from modelsummary import summary
 
 from core.util import latest_checkpoint
 from core.util import read_csv_file
@@ -107,7 +108,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
         return model
 
     # 标准的训练过程
-    def train_model(self, samples_name, augment_func, batch_size, epochs):
+    def train_model(self, samples_name, class_weight, augment_func, batch_size, epochs):
         '''
         训练模型
         :param samples_name: 自制训练集的代号
@@ -126,9 +127,14 @@ class BaseClassifier(object, metaclass=ABCMeta):
                                       num_workers=self.NUM_WORKERS)
 
         model = self.load_model(model_file=None)
-        print(model)
+        # print(model)
+        summary(model, torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True)
+
+        class_weight = torch.FloatTensor(class_weight)
+        loss_func = nn.CrossEntropyLoss(weight=class_weight)
         if self.use_GPU:
             model.to(self.device)
+            loss_func.to(self.device)
 
         # optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -137,8 +143,6 @@ class BaseClassifier(object, metaclass=ABCMeta):
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
                                                                factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
-        loss_func = nn.CrossEntropyLoss()
-
         # training and testing
         for epoch in range(epochs):
             print('Epoch {}/{}'.format(epoch + 1, epochs))
@@ -166,7 +170,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
                 running_corrects = torch.sum(preds == b_y.data)
                 total_loss += running_loss
 
-                if step % 5 == 0:
+                if step % 50 == 0:
                     endtime = datetime.datetime.now()
                     remaining_time = (train_data_len - step)* (endtime - starttime).seconds / (step + 1)
                     print('%d / %d ==> Loss: %.4f | Acc: %.4f ,  remaining time: %d (s)'
@@ -229,7 +233,7 @@ class BaseClassifier(object, metaclass=ABCMeta):
         test_list = "{}/{}_test.txt".format(patch_root, sample_filename)
 
         Xtrain, Ytrain = read_csv_file(patch_root, train_list)
-        # Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
+        # Xtrain, Ytrain = Xtrain[:400], Ytrain[:400] # for debug
         train_data = Image_Dataset(Xtrain, Ytrain,transform = None, augm = augment_func, norm = None)
 
         Xtest, Ytest = read_csv_file(patch_root, test_list)
@@ -575,7 +579,7 @@ class Simple_Classifier(BaseClassifier):
                 )
             return model
 
-        def create_e_densenet(depth, gvp_out_size):
+        def create_e_densenet(depth, growth_rate, gvp_out_size):
             # Get densenet configuration
             if (depth - 4) % 3:
                 raise Exception('Invalid depth')
@@ -583,10 +587,10 @@ class Simple_Classifier(BaseClassifier):
 
             # Models
             model = ExtendedDenseNet(
-                growth_rate=12,
+                growth_rate=growth_rate,
                 block_config=block_config,
                 num_classes=self.num_classes,
-                drop_rate=0.2,
+                # drop_rate=0.2,
                 gvp_out_size=gvp_out_size,
             )
             return model
@@ -621,7 +625,9 @@ class Simple_Classifier(BaseClassifier):
         elif self.model_name =="resnet_34":
             model = models.resnet34(pretrained=False, num_classes=2)
         elif self.model_name == "e_densenet_22":
-            model = create_e_densenet(depth=22, gvp_out_size=1)
+            model = create_e_densenet(depth=22, growth_rate=12, gvp_out_size=1)
+        elif self.model_name == "e_densenet_40":
+            model = create_e_densenet(depth=40, growth_rate=24, gvp_out_size=1)
         return model
 
     def load_pretrained_model_on_predict(self):
@@ -648,7 +654,7 @@ class Simple_Classifier(BaseClassifier):
             param.requires_grad = False
         return model
 
-    def train_model(self, samples_name, augment_func, batch_size, loss_weight, epochs):
+    def train_model_A1(self, samples_name, class_weight, augment_func, batch_size, loss_weight, epochs):
         '''
         训练模型
         :param samples_name: 自制训练集的代号
@@ -667,9 +673,11 @@ class Simple_Classifier(BaseClassifier):
                                       num_workers=self.NUM_WORKERS)
 
         model = self.load_model(model_file=None)
-        print(model)
+        # print(model)
+        summary(model, torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True)
 
-        classifi_loss= nn.CrossEntropyLoss()
+        class_weight = torch.FloatTensor(class_weight)
+        classifi_loss = nn.CrossEntropyLoss(weight=class_weight)
         center_loss = CenterLoss(self.num_classes, 2)
         if self.use_GPU:
             model.to(self.device)
@@ -751,7 +759,7 @@ class Simple_Classifier(BaseClassifier):
                        )
         return
 
-    def train_model_A2(self, samples_name, augment_func, batch_size, loss_weight, epochs):
+    def train_model_A2(self, samples_name, class_weight, augment_func, batch_size, loss_weight, epochs):
         '''
         训练模型
         :param samples_name: 自制训练集的代号
@@ -770,9 +778,11 @@ class Simple_Classifier(BaseClassifier):
                                       num_workers=self.NUM_WORKERS)
 
         model = self.load_model(model_file=None)
-        print(model)
+        # print(model)
+        summary(model, torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True)
 
-        classifi_loss= nn.CrossEntropyLoss()
+        class_weight = torch.FloatTensor(class_weight)
+        classifi_loss = nn.CrossEntropyLoss(weight=class_weight)
         lgm_loss = LGMLoss(self.num_classes, 2, 1.00)
         if self.use_GPU:
             model.to(self.device)
@@ -781,9 +791,9 @@ class Simple_Classifier(BaseClassifier):
 
         # optimzer4nn
         # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
-        # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
-        classifi_optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99, )
+        # classifi_optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99, )
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(classifi_optimizer, mode='min',
                                                                factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
@@ -1112,7 +1122,7 @@ class MultiTask_Classifier(BaseClassifier):
                                       shuffle=False, num_workers=self.NUM_WORKERS)
 
         model = self.load_model(model_file=None)
-        summary(model, input_size=(3, self.image_size, self.image_size), device="cpu")
+        summary(model, torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True)
 
         model.to(self.device)
 
@@ -1312,7 +1322,7 @@ class MSC_Classifier(BaseClassifier):
                                       shuffle=False, num_workers=self.NUM_WORKERS)
 
         model = self.load_model(model_file=None)
-        summary(model, input_size=(9, self.image_size, self.image_size), device="cpu")
+        # summary(model, torch.zeros((1, 9, self.image_size, self.image_size)), show_input=True)
 
         model.to(self.device)
 

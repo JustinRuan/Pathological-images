@@ -87,21 +87,24 @@ class PatchPack(object):
         # normal_count = len(normal_data)
         cancer_data = data_tag[1]
 
+        cancer_count = len(cancer_data)
         if need_balance:
-            cancer_count = len(cancer_data)
             random.shuffle(normal_data)
             normal_data = normal_data[:cancer_count]
 
-        balance_data = cancer_data
-        balance_data.extend(normal_data)
-        count = len(balance_data)
+        normal_count = len(normal_data)
+
+        print("count of Cancer:", cancer_count, "count of Normal:", normal_count, "ratio:", float(cancer_count)/normal_count)
+        prepared_data = cancer_data
+        prepared_data.extend(normal_data)
+        count = len(prepared_data)
         train_count = int(train_size * count)
         test_count = int(test_size * count)
 
-        random.shuffle(balance_data)
+        random.shuffle(prepared_data)
 
-        train_data = balance_data[:train_count]
-        test_data = balance_data[train_count : train_count + test_count]
+        train_data = prepared_data[:train_count]
+        test_data = prepared_data[train_count : train_count + test_count]
 
         for file_type, data in zip(["train", "test"], [train_data, test_data]):
             if len(data) == 0:

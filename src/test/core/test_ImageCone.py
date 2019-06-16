@@ -62,15 +62,17 @@ class TestImageCone(unittest.TestCase):
         # 读取数字全扫描切片图像
         # tag = imgCone.open_slide("Train_Tumor/Tumor_014.tif",
         #                          'Train_Tumor/tumor_014.xml', "Tumor_014")
-        slice_id = "026"
-        tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
-                                 'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
+        slice_id = "009"
+        # tag = imgCone.open_slide("Testing/images/test_%s.tif" % slice_id,
+        #                          'Testing/images/test_%s.xml' % slice_id, "test_%s" % slice_id)
+        tag = imgCone.open_slide("Train_Tumor/Tumor_%s.tif" % slice_id,
+                                 'Train_Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
         self.assertTrue(tag)
 
         if tag:
             scale = c.GLOBAL_SCALE
             fullImage = imgCone.get_fullimage_byScale(scale)
-            masks = imgCone.create_mask_image(scale,8)
+            masks = imgCone.create_mask_image(scale,0)
             eff_region = imgCone.get_effective_zone(scale)
 
             fig, axes = plt.subplots(2, 3, figsize=(8, 3), dpi=200)

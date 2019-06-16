@@ -552,7 +552,7 @@ class AdaptiveDetector(BaseDetector):
         sobel_img = None
         interpolate_img = None
         history = {}
-        N = 400
+        N = 4000
 
         #########################################################################################################
         if self.enable_viz:

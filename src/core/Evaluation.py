@@ -153,7 +153,7 @@ class Evaluation(object):
 ##############   多个切片的FROC检测
 ###################################################################################################
 
-    def output_result_csv(self, chosen = None):
+    def output_result_csv(self, thresh_list, chosen = None):
         '''
         生成用于FROC检测用的CSV文件
         :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
@@ -178,7 +178,7 @@ class Evaluation(object):
                 # print("max :", np.max(cancer_map), "min :", np.min(cancer_map))
 
                 # thresh_list = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2]
-                thresh_list = [0.5]
+                # thresh_list = [0.5, 0.35]
                 points = self.search_max_points(cancer_map, thresh_list, x1, y1)
 
                 csv_filename = "{0}/{1}.csv".format(save_path, slice_id)
@@ -203,24 +203,42 @@ class Evaluation(object):
         last_thresh = 1.0
         for thresh in thresh_list:
             region = cancer_map > thresh
-            candidated_tag, num_tag = morphology.label(region, neighbors=8, return_num=True)
+            candidated_tag, num_tag = morphology.label(region, neighbors=8, return_num=True, connectivity=2)
+            properties = measure.regionprops(candidated_tag)
+            len_threshold = 30
 
             for index in range(1, num_tag + 1):
-                invert_region = candidated_tag != index
-                new_map = np.copy(cancer_map)
-                new_map[invert_region] = 0
+                # axis_len = min(properties[index - 1].major_axis_length, properties[index - 1].minor_axis_length)
+                axis_len = properties[index - 1].minor_axis_length
+                if  axis_len > len_threshold:
+                    invert_region = candidated_tag != index
+                    new_map = np.copy(cancer_map)
+                    new_map[invert_region] = 0
 
-                max_value = np.max(new_map)
-                if max_value < last_thresh:
-                    pos = np.nonzero(new_map == max_value)
-                    k = len(pos) // 2
-                    x = pos[1][k] + x_letftop
-                    y = pos[0][k] + y_lefttop
-                    candidated_result.append({"x":32 * x, "y":32 * y, "prob":max_value})
+                    max_value = np.max(new_map)
+                    if max_value < last_thresh:
+                        pos = np.nonzero(new_map == max_value)
+                        k = len(pos) // 2
+                        x = pos[1][k] + x_letftop
+                        y = pos[0][k] + y_lefttop
+                        # 坐标从1.25倍镜下变换到40倍镜下
+                        candidated_result.append({"x": 32 * x, "y": 32 * y, "prob":max_value})
+                        print("find region : x = {}, y = {}, prob = {:.4f},"
+                              " axis_len = {:.4f}/{:.4f}".format(x, y,  max_value,
+                                properties[index - 1].major_axis_length, properties[index - 1].minor_axis_length))
 
             last_thresh = thresh
 
         return candidated_result
+
+###################################################################################################
+##############   多个切片的FROC检测的计算过程
+###################################################################################################
+
+
+
+
+
 
 
 

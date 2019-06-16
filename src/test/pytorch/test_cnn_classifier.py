@@ -42,16 +42,17 @@ class Test_cnn_classifier(unittest.TestCase):
         # model_name = "simple_cnn"
         # model_name = "se_densenet_40"
         # model_name = "densenet_22"
-        model_name = "e_densenet_22"
+        # model_name = "e_densenet_22"
+        model_name = "e_densenet_40"
         # model_name = "resnet_18"
         sample_name = "4000_256"
 
         cnn = Simple_Classifier(c, model_name, sample_name)
 
-        # cnn.train_model(samples_name=("P0430","T2_P0430_4000_256"), augment_func = None,
-        #                 batch_size=40, loss_weight=0.0001, epochs = 10)
-        cnn.train_model_A2(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
-                        batch_size=40, loss_weight=0.001, epochs = 10)
+        cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), class_weight=[0.2391, 1.0],
+                        augment_func = None, batch_size=30, epochs = 10)
+        # cnn.train_model_A2(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
+        #                 batch_size=30, loss_weight=0.001, epochs = 10)
 
 
     def test_evaluate_model(self):

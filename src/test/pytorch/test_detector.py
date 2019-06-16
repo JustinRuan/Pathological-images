@@ -264,15 +264,15 @@ class Test_detector(unittest.TestCase):
 
         x1, y1, x2, y2 = 0, 0, 0, 0
         i = 76
-        slice_id = "{:0>3d}".format(i)
+        slice_id = "Tumor_{:0>3d}".format(i)
 
         c = Params()
         c.load_config_file(JSON_PATH)
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Train_Tumor/Tumor_%s.tif" % slice_id,
-                                 'Train_Tumor/tumor_%s.xml' % slice_id, "Tumor_%s" % slice_id)
+        tag = imgCone.open_slide("Train_Tumor/%s.tif" % slice_id,
+                                 'Train_Tumor/%s.xml' % slice_id, slice_id)
 
         detector = AdaptiveDetector(c, imgCone)
 
@@ -283,7 +283,7 @@ class Test_detector(unittest.TestCase):
 
         cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
                                                max_iter_nums=100, batch_size=100,
-                                               limit_sampling_density=10, use_post=True)
+                                               limit_sampling_density=20, use_post=True)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -293,13 +293,13 @@ class Test_detector(unittest.TestCase):
                                                                                                levels)
         detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
 
-        enable_show = False
+        enable_show = True
         # 存盘输出部分
         if enable_show:
             self.show_results(cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id,
                               src_img, true_positive_rate)
 
-            detector.save_result_xml(x1, y1, 1.25, cancer_map, levels)
+            # detector.save_result_xml(x1, y1, 1.25, cancer_map, levels)
 
     def test_adaptive_detect_region_test(self):
         # test test
@@ -333,7 +333,7 @@ class Test_detector(unittest.TestCase):
                     73: ("073", 0, 0, 0, 0), # 检测,c3 =
                     }
 
-        id = 26
+        id = 39
 
         roi = test_set[id]
         slice_id = roi[0]
@@ -379,35 +379,35 @@ class Test_detector(unittest.TestCase):
 
     def show_results(self, cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id, src_img,
                      true_positive_rate):
-        from visdom import Visdom
-        viz = Visdom(env="main")
-        pic_auc = viz.line(
-            Y=true_positive_rate,
-            X=false_positive_rate,
-            opts={
-                'linecolor': np.array([
-                    [0, 0, 255],
-                ]),
-                'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
-                'showlegend': True,
-                'legend': ['AUC = %0.6f' % roc_auc, ],
-                'xlabel': 'False Positive Rate',
-                'ylabel': 'True Positive Rate',
-                'title': 'Receiver Operating Characteristic',
-            },
-        )
-        viz.line(
-            Y=[0, 1], X=[0, 1],
-            opts={
-                'linecolor': np.array([
-                    [255, 0, 0],
-                ]),
-                'dash': np.array(['dot']),  # 'solid', 'dash', 'dashdot'
-            },
-            name='y = x',
-            win=pic_auc,
-            update='insert',
-        )
+        # from visdom import Visdom
+        # viz = Visdom(env="main")
+        # pic_auc = viz.line(
+        #     Y=true_positive_rate,
+        #     X=false_positive_rate,
+        #     opts={
+        #         'linecolor': np.array([
+        #             [0, 0, 255],
+        #         ]),
+        #         'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
+        #         'showlegend': True,
+        #         'legend': ['AUC = %0.6f' % roc_auc, ],
+        #         'xlabel': 'False Positive Rate',
+        #         'ylabel': 'True Positive Rate',
+        #         'title': 'Receiver Operating Characteristic',
+        #     },
+        # )
+        # viz.line(
+        #     Y=[0, 1], X=[0, 1],
+        #     opts={
+        #         'linecolor': np.array([
+        #             [255, 0, 0],
+        #         ]),
+        #         'dash': np.array(['dot']),  # 'solid', 'dash', 'dashdot'
+        #     },
+        #     name='y = x',
+        #     win=pic_auc,
+        #     update='insert',
+        # )
         fig, axes = plt.subplots(2, 2, figsize=(15, 20), dpi=100)
         ax = axes.ravel()
         ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
@@ -431,7 +431,7 @@ class Test_detector(unittest.TestCase):
         for a in ax.ravel():
             a.axis('off')
         # ax[0].axis("on")
-        plt.savefig("result.png", dpi=150, format="png")
+        plt.savefig("result_{}.png".format(slice_id), dpi=150, format="png")
         plt.show()
 
     def test_adaptive_detect_region_train_batch(self):

@@ -14,9 +14,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from skimage.segmentation import mark_boundaries
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 
 class TestPatchSampler(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestPatchSampler(unittest.TestCase):
         cancer_map = result["cancer_map"]
 
         # levels = [0.2, 0.3, 0.5, 0.6, 0.8]
-        levels = [0.5, 0.8]
+        levels = [0.5]
         eval = Evaluation(c)
         eval.save_result_xml(code, x1, y1, coordinate_scale, cancer_map, levels)
 
@@ -51,7 +51,8 @@ class TestPatchSampler(unittest.TestCase):
         coordinate_scale = result["scale"]
         cancer_map = result["cancer_map"]
 
-        thresh_list = [0.6, 0.5, 0.4, 0.3, 0.2]
+        # thresh_list = [0.6, 0.5, 0.4, 0.3, 0.2]
+        thresh_list = [0.5]
         eval = Evaluation(c)
         result = eval.search_max_points(cancer_map, thresh_list, x1, y1)
 
@@ -69,12 +70,14 @@ class TestPatchSampler(unittest.TestCase):
         y = []
         p = []
         for item in result:
-            x.append(item['x'])
-            y.append(item['y'])
+            x.append(item['x'] // 32)
+            y.append(item['y'] // 32)
             p.append(item['prob'])
 
+        plt.figure()
         plt.imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
         plt.scatter(x, y, c = p,cmap='Spectral')
+        plt.colorbar()
         plt.show()
 
 
@@ -82,4 +85,6 @@ class TestPatchSampler(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
         eval = Evaluation(c)
-        eval.output_result_csv(["Tumor_009"])
+        # eval.output_result_csv(["Tumor_009", "Tumor_011", "Tumor_016", "Tumor_026", "Tumor_039"])
+        # eval.output_result_csv(["Tumor_009"])
+        eval.output_result_csv([0.5, 0.35])
