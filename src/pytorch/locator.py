@@ -220,7 +220,6 @@ class Locator(object):
                         # 坐标从1.25倍镜下变换到40倍镜下
                     candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
 
-
                 csv_filename = "{0}/{1}.csv".format(save_path, slice_id)
                 with open(csv_filename, 'w', newline='')as f:
                     f_csv = csv.writer(f)
