@@ -136,7 +136,7 @@ class ImageCone(object):
 
 
     def get_mask_min_rect(self, mask_image):
-        k = 16
+        k = 4
         clip_mask = np.copy(mask_image)
         clip_mask[0:k, ...] = False
         clip_mask[-k:-1, ...] = False

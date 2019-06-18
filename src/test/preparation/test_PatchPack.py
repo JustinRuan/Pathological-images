@@ -67,8 +67,9 @@ class TestPatchPack(unittest.TestCase):
         #                                                  "Tumor_046","Tumor_054","Tumor_061"])
         # data_tag = pack.initialize_sample_tags("P0430", {"S4000_256_cancer": 1,
         #                                                  "S4000_256_normal2": 0})
-        pack.create_train_test_data(data_tag, 0.95, 0.05, "T1_P0430_4000_256", need_balance=False)
-        # 1: 0.2391 , T1_P0430_4000_256
+        pack.create_train_test_data(data_tag, 0.95, 0.05, "T2_P0430_4000_256", need_balance=True)
+        # 1: 0.2391 , T1_P0430_4000_256,不平衡数据集
+        # T2_P0430_4000_256, 平衡数据集
 
 
     #################################################################################################################

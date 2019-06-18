@@ -49,7 +49,9 @@ class Test_cnn_classifier(unittest.TestCase):
 
         cnn = Simple_Classifier(c, model_name, sample_name)
 
-        cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), class_weight=[0.2391, 1.0],
+        # cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), class_weight=[0.2391, 1.0],
+        #                 augment_func = None, batch_size=30, epochs = 10)
+        cnn.train_model(samples_name=("P0430","T2_P0430_4000_256"), class_weight=None,
                         augment_func = None, batch_size=30, epochs = 10)
         # cnn.train_model_A2(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
         #                 batch_size=30, loss_weight=0.001, epochs = 10)

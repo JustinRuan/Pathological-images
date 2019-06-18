@@ -130,8 +130,10 @@ class BaseClassifier(object, metaclass=ABCMeta):
         # print(model)
         summary(model, torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True)
 
-        class_weight = torch.FloatTensor(class_weight)
+        if class_weight is not None:
+            class_weight = torch.FloatTensor(class_weight)
         loss_func = nn.CrossEntropyLoss(weight=class_weight)
+
         if self.use_GPU:
             model.to(self.device)
             loss_func.to(self.device)
@@ -676,7 +678,8 @@ class Simple_Classifier(BaseClassifier):
         # print(model)
         summary(model, torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True)
 
-        class_weight = torch.FloatTensor(class_weight)
+        if class_weight is not None:
+            class_weight = torch.FloatTensor(class_weight)
         classifi_loss = nn.CrossEntropyLoss(weight=class_weight)
         center_loss = CenterLoss(self.num_classes, 2)
         if self.use_GPU:
@@ -781,7 +784,8 @@ class Simple_Classifier(BaseClassifier):
         # print(model)
         summary(model, torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True)
 
-        class_weight = torch.FloatTensor(class_weight)
+        if class_weight is not None:
+            class_weight = torch.FloatTensor(class_weight)
         classifi_loss = nn.CrossEntropyLoss(weight=class_weight)
         lgm_loss = LGMLoss(self.num_classes, 2, 1.00)
         if self.use_GPU:

@@ -133,7 +133,8 @@ class Segmentation(object):
 
     def get_seeds_at_boundaries(self, label_img, x1, y1, coordinate_scale, ):
         boundaries = find_boundaries(label_img,)
-        s = np.rint(np.sqrt(np.sum(boundaries)) / 6.0,).astype(np.int32)
+        # s = np.rint(np.sqrt(np.sum(boundaries)) / 6.0,).astype(np.int32)
+        s = 4
         temp = morphology.binary_dilation(boundaries, square(s))
         boundaries = find_boundaries(temp, )
 
@@ -148,7 +149,8 @@ class Segmentation(object):
         y = pos[0]  # row
         x = pos[1]  # col
 
-        spacing = np.rint(np.sqrt(len(y)) / 4.0)
+        # spacing = np.rint(np.sqrt(len(y)) / 4.0)
+        spacing = 60
         print("superpixels boundaries spacing", spacing)
         seeds = []
         test = set()

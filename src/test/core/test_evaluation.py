@@ -87,4 +87,5 @@ class TestPatchSampler(unittest.TestCase):
         eval = Evaluation(c)
         # eval.output_result_csv(["Tumor_009", "Tumor_011", "Tumor_016", "Tumor_026", "Tumor_039"])
         # eval.output_result_csv(["Tumor_009"])
-        eval.output_result_csv([0.5, 0.35])
+        # eval.output_result_csv([0.5], ["Tumor_009"])
+        eval.output_result_csv([0.5, 0.35], None)

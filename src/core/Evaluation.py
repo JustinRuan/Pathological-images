@@ -56,7 +56,7 @@ class Evaluation(object):
             dice_result.append((threshold, dice))
 
         for t, value in dice_result:
-            print("when threshold = {:.3f}, dice coef = {:.6f}".format(t, value))
+            print("threshold = {:.3f}, dice coef = {:.6f}".format(t, value))
         print("############################################################")
         # 计算ROC曲线
         false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_tag, np.array(cancer_map).ravel())
@@ -203,13 +203,14 @@ class Evaluation(object):
         last_thresh = 1.0
         for thresh in thresh_list:
             region = cancer_map > thresh
-            candidated_tag, num_tag = morphology.label(region, neighbors=8, return_num=True, connectivity=2)
+            candidated_tag = morphology.label(region, neighbors=8, connectivity=2)
+            num_tag = np.amax(candidated_tag)
             properties = measure.regionprops(candidated_tag)
-            len_threshold = 30
+            len_threshold = 35
 
             for index in range(1, num_tag + 1):
                 # axis_len = min(properties[index - 1].major_axis_length, properties[index - 1].minor_axis_length)
-                axis_len = properties[index - 1].minor_axis_length
+                axis_len = properties[index - 1].major_axis_length
                 if  axis_len > len_threshold:
                     invert_region = candidated_tag != index
                     new_map = np.copy(cancer_map)
@@ -218,7 +219,8 @@ class Evaluation(object):
                     max_value = np.max(new_map)
                     if max_value < last_thresh:
                         pos = np.nonzero(new_map == max_value)
-                        k = len(pos) // 2
+                        max_count = len(pos[0])
+                        k = max_count // 2
                         x = pos[1][k] + x_letftop
                         y = pos[0][k] + y_lefttop
                         # 坐标从1.25倍镜下变换到40倍镜下
