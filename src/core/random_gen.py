@@ -62,7 +62,7 @@ class Random_Gen(object):
         if self.mode == "halton":
 
             pos = np.nonzero(mask)
-            # space = 4
+            # space = 8
             # y = (np.rint(pos[0] / space) * space)  # row
             # x = (np.rint(pos[1] / space) * space)  # col
             #
@@ -82,8 +82,10 @@ class Random_Gen(object):
                 index = np.rint(np.array(self.rand_gen_1.get(n)) * (count - 1)).astype(np.int32).flatten()
                 x = x[index] + x1
                 y = y[index] + y1
-            else:
+            elif count > 0:
                 x = x + x1
                 y = y + y1
+            else:
+                x, y = None, None
 
         return x, y

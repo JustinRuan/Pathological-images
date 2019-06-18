@@ -263,7 +263,7 @@ class Test_detector(unittest.TestCase):
         # y2 = roi[4]
 
         x1, y1, x2, y2 = 0, 0, 0, 0
-        id = 9
+        id = 76
         slice_id = "Tumor_{:0>3d}".format(id)
 
         c = Params()
@@ -288,7 +288,7 @@ class Test_detector(unittest.TestCase):
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
-        levels = [0.2, 0.3, 0.5, 0.6, 0.8]
+        levels = [0.3, 0.5, 0.6, 0.8]
         false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map, mask_img,
                                                                                                levels)
         detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
@@ -305,7 +305,7 @@ class Test_detector(unittest.TestCase):
 #################################################################################################################
     def test_adaptive_detect_region_train_slice(self):
         # train set
-        train_list = [11, 16, 26, 39, 47, 58, 68, 72, 76]
+        train_list = [9, 11, 16, 26, 39, 47, 58, 68, 72, 76]
         result = {}
 
         for id in train_list:
@@ -330,12 +330,12 @@ class Test_detector(unittest.TestCase):
 
             cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
                                                    max_iter_nums=100, batch_size=100,
-                                                   limit_sampling_density=20,)
+                                                   limit_sampling_density=1,)
 
             src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
             mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
-            levels = [0.2, 0.3, 0.5, 0.6, 0.8]
+            levels = [0.3, 0.5, 0.6, 0.8]
             false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map, mask_img,
                                                                                                    levels)
             detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
@@ -420,7 +420,7 @@ class Test_detector(unittest.TestCase):
 
         cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale = 40, patch_size = 256,
                                                max_iter_nums=100, batch_size=100,
-                                               limit_sampling_density=10, use_post=True)
+                                               limit_sampling_density=1, )
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -513,7 +513,7 @@ class Test_detector(unittest.TestCase):
             detector = AdaptiveDetector(c, imgCone)
             cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
                                                    max_iter_nums=100, batch_size=100,
-                                                   limit_sampling_density=10, use_post=True)
+                                                   limit_sampling_density=1)
             detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
 
             print("####### %s 完成 #######" % code)

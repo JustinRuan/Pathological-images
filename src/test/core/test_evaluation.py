@@ -19,7 +19,7 @@ from skimage.segmentation import mark_boundaries
 JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 
-class TestPatchSampler(unittest.TestCase):
+class TestEvaluation(unittest.TestCase):
     def test_save_result_xml(self):
         c = Params()
         c.load_config_file(JSON_PATH)
@@ -54,7 +54,7 @@ class TestPatchSampler(unittest.TestCase):
         # thresh_list = [0.6, 0.5, 0.4, 0.3, 0.2]
         thresh_list = [0.5]
         eval = Evaluation(c)
-        result = eval.search_max_points(cancer_map, thresh_list, x1, y1)
+        result = eval.search_local_max_points(cancer_map, thresh_list, x1, y1)
 
         imgCone = ImageCone(c, Open_Slide())
 
@@ -81,11 +81,11 @@ class TestPatchSampler(unittest.TestCase):
         plt.show()
 
 
-    def test_output_result_csv(self):
-        c = Params()
-        c.load_config_file(JSON_PATH)
-        eval = Evaluation(c)
-        # eval.output_result_csv(["Tumor_009", "Tumor_011", "Tumor_016", "Tumor_026", "Tumor_039"])
-        # eval.output_result_csv(["Tumor_009"])
-        # eval.output_result_csv([0.5], ["Tumor_009"])
-        eval.output_result_csv([0.5, 0.35], None)
+    # def test_output_result_csv(self):
+    #     c = Params()
+    #     c.load_config_file(JSON_PATH)
+    #     eval = Evaluation(c)
+    #     # eval.output_result_csv(["Tumor_009", "Tumor_011", "Tumor_016", "Tumor_026", "Tumor_039"])
+    #     # eval.output_result_csv(["Tumor_009"])
+    #     # eval.output_result_csv([0.5], ["Tumor_009"])
+    #     eval.output_result_csv([0.5, 0.35], None)

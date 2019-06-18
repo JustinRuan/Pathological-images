@@ -992,29 +992,42 @@ class AdaptiveDetector(BaseDetector):
                         x = x[selected_tag]
                         y = y[selected_tag]
                 else:
-                    # 这里已经限定的搜索范围，则增加的搜索的随机性，搜索过程在限定范围内进行一定的发散
-                    w = 16
-                    half_w = w >> 1
-                    M = N - len(x)
-                    n = 2 * M
-                    # sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
-                    sx, sy = self.random_gen.generate_random_by_mask(n, x1, x2, y1, y2, mask=self.status_map)
-                    grad_list = []
-                    for xx, yy in zip(sx, sy):
-                        rr, cc = rectangle((yy - half_w - y0, xx - half_w - x0), extent=(w, w))
+                    m = len(x)
+                    if m < N:
+                        # 这里已经限定的搜索范围，则增加的搜索的随机性，搜索过程在限定范围内进行一定的发散
+                        w = 16
+                        half_w = w >> 1
+                        M = N - m
+                        n = 2 * M
+                        # sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
+                        # print("generate_random_by_mask, ", n)
+                        sx, sy = self.random_gen.generate_random_by_mask(n, x1, x2, y1, y2, mask=self.status_map)
+                        grad_list = []
+                        for xx, yy in zip(sx, sy):
+                            rr, cc = rectangle((yy - half_w - y0, xx - half_w - x0), extent=(w, w))
 
-                        select_y = (rr >= 0) & (rr < self.valid_area_height)
-                        select_x = (cc >= 0) & (cc < self.valid_area_width)
-                        select = select_x & select_y
-                        max_grad = np.max(sobel_img[rr[select], cc[select]])
-                        grad_list.append(max_grad)
+                            select_y = (rr >= 0) & (rr < self.valid_area_height)
+                            select_x = (cc >= 0) & (cc < self.valid_area_width)
+                            select = select_x & select_y
+                            max_grad = np.max(sobel_img[rr[select], cc[select]])
+                            grad_list.append(max_grad)
 
-                    index = np.array(grad_list).argsort()
-                    sx = sx[index[-M:]]
-                    sy = sy[index[-M:]]
+                        index = np.array(grad_list).argsort()
+                        sx = sx[index[-M:]]
+                        sy = sy[index[-M:]]
 
-                    x.extend(sx)
-                    y.extend(sy)
+                        x.extend(sx)
+                        y.extend(sy)
+                    else:
+                        x = np.array(x)
+                        y = np.array(y)
+
+                        selected_tag = np.arange(m)
+                        np.random.shuffle(selected_tag)
+                        selected_tag = selected_tag[:N]
+
+                        x = x[selected_tag]
+                        y = y[selected_tag]
 
             else:  # 大范围地随机搜索
                 w = 16

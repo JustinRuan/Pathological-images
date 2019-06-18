@@ -123,10 +123,10 @@ class ImageCone(object):
         img = color.rgb2hsv(fullImg)
 
         mask1 = (img[:, :, 2] < 0.80) & (img[:, :, 2] > 0.20)
-        mask2 = (img[:, :, 1] > 0.3)
-        # result = mask1 & mask2
-        mask3 = (img[:, :, 0] < 0.9) & (img[:, :, 0] > 0.05)
-        result = mask1 & mask2 & mask3
+        mask2 = (img[:, :, 1] > 0.1)
+        result = mask1 & mask2
+        # mask3 = (img[:, :, 0] < 0.9) & (img[:, :, 0] > 0.05)
+        # result = mask1 & mask2 & mask3
 
 
         result = morphology.binary_closing(result, square(4))
