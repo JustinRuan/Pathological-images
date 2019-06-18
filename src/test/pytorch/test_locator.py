@@ -81,12 +81,12 @@ class TestLocator(unittest.TestCase):
 
         i = 9
         code = "Tumor_{:0>3d}".format(i)
-        filename = "{}/results/{}_cancermap.npz".format(c.PROJECT_ROOT, code)
-        result = np.load(filename)
-        x1 = result["x1"]
-        y1 = result["y1"]
-        coordinate_scale = result["scale"]
-        cancer_map = result["cancer_map"]
+        # filename = "{}/results/{}_cancermap.npz".format(c.PROJECT_ROOT, code)
+        # result = np.load(filename)
+        # x1 = result["x1"]
+        # y1 = result["y1"]
+        # coordinate_scale = result["scale"]
+        # cancer_map = result["cancer_map"]
 
         csv_filename = "{}/results/{}.csv".format(c.PROJECT_ROOT, code)
         x = []

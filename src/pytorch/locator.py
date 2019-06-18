@@ -215,10 +215,14 @@ class Locator(object):
                 points = self.search_local_feature_points(cancer_map, thresh_list, x1, y1)
                 candidated_result = []
                 for (xx, yy), f in points.items():
-                    # pred = clf.decision_function([f])
-                    # if pred > -100:
-                        # 坐标从1.25倍镜下变换到40倍镜下
-                    candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
+                    # 经过分类器判别后输出
+                    pred = clf.decision_function([f])
+                    if pred > -10:
+                        #坐标从1.25倍镜下变换到40倍镜下
+                        candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
+
+                    # # 直接全部输出
+                    # candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
 
                 csv_filename = "{0}/{1}.csv".format(save_path, slice_id)
                 with open(csv_filename, 'w', newline='')as f:
