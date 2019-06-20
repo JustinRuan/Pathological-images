@@ -70,7 +70,7 @@ class Shadow_Classifier(nn.Module):
         center_loss.to(self.device)
 
         classifi_optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
-        optimzer4center = torch.optim.SGD(center_loss.parameters(), lr=0.1)
+        optimzer4center = torch.optim.SGD(center_loss.parameters(), lr=0.5)
         # epochs = 3
         self.train()
         for epoch in range(epochs):
@@ -89,6 +89,7 @@ class Shadow_Classifier(nn.Module):
                 loss.backward()  # backpropagation, compute gradients
                 classifi_optimizer.step()
                 optimzer4center.step()
+
 
     def predict(self, train_features, batch_size):
         test_data = torch.utils.data.TensorDataset(torch.from_numpy(train_features),
@@ -202,8 +203,8 @@ class Elastic_Classifier(Simple_Classifier):
             cancer_interval = stats.t.interval(0.95, cancer_count - 1, cancer_mean, cancer_std)
             normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
 
-            print(" cancer intervel: {:.4f} {:.4f}, ".format(cancer_interval[0], cancer_interval[1]),
-                  "normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
+            print(" cancer intervel: ({:.4f} {:.4f}), mean = {:.4f}".format(cancer_interval[0], cancer_interval[1], cancer_mean),
+                  "normal interval: ({:.4f} {:.4f}), mean = {:.4f}".format(normal_interval[0], normal_interval[1],normal_mean))
         # else:
         #     cancer_interval = [-3, 0]
         #     normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
@@ -212,7 +213,7 @@ class Elastic_Classifier(Simple_Classifier):
         normal_edge = normal_interval[0]
         cancer_edge = cancer_interval[1]
 
-        S = 0.01
+        S = 0.1
         weight = S * np.ones(prediction.shape, dtype=np.float)
         if normal_edge > cancer_edge:
             # 两个类中心完全分离,
@@ -232,49 +233,90 @@ class Elastic_Classifier(Simple_Classifier):
 
         return weight
 
-    # def correct(self, features, prediction):
-    #     features_0 = features[:,0]
-    #     feat = features_0[prediction == 1]
-    #     cancer_mean = np.mean(feat)
-    #     cancer_std = np.std(feat)
-    #     cancer_count = len(feat)
-    #
-    #     feat = features_0[prediction == 0]
-    #     normal_mean = np.mean(feat)
-    #     normal_std = np.std(feat)
-    #
-    #     if cancer_count > 3 :
-    #         cancer_interval = stats.t.interval(0.95, cancer_count - 1, cancer_mean, cancer_std)
-    #         normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
-    #
-    #         print(" cancer intervel: {:.4f} {:.4f}, ".format(cancer_interval[0], cancer_interval[1]),
-    #               "normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
-    #     else:
-    #         cancer_interval = [-3, 0]
-    #         cancer_mean = -1.5
-    #         cancer_std = 1.0
-    #         normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
-    #         print("normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
-    #
-    #     normal_edge = normal_interval[0]
-    #     cancer_edge = cancer_interval[1]
-    #
-    #     tag = np.ones(prediction.shape, dtype=np.bool)
-    #     if normal_edge > cancer_edge:
-    #         # 两个类中心完全分离,
-    #         return features
-    #     elif normal_edge + normal_std > cancer_edge - cancer_std:
-    #         # 发生的重叠情况
-    #         normal_edge = normal_edge + normal_std
-    #         cancer_edge = cancer_edge - cancer_std
-    #     else:
-    #         # 严重重叠
-    #         normal_edge = normal_mean
-    #         cancer_edge = cancer_mean
-    #
-    #     tag[features_0 > normal_edge] = False
-    #     tag[features_0 < cancer_edge] = False
-    #     features[tag] = np.array([None, None])
-    #     print(">>>> Exclude some suspicious : ", np.sum(tag == False))
-    #
-    #     return features
+    def evaluate_model_based_slice(self, samples_name, batch_size, max_count, slice_count):
+        test_list = "{}/{}".format(self._params.PATCHS_ROOT_PATH[samples_name[0]], samples_name[1])
+        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH[samples_name[0]], test_list)
+
+        slice_X = {}
+        slice_Y = {}
+        b = Block()
+        for file_name, true_y in zip(Xtest, Ytest):
+            b.decoding(file_name, 256, 256)
+            if b.slice_number in slice_X.keys():
+                slice_X[b.slice_number].append(file_name)
+                slice_Y[b.slice_number].append(true_y)
+            else:
+                slice_X[b.slice_number] = [file_name]
+                slice_Y[b.slice_number] = [true_y]
+
+        result = []
+        for slice_name in sorted(slice_X.keys()):
+            if "Normal" in slice_name:
+                continue
+
+            X_data = slice_X[slice_name]
+            Y_data = slice_Y[slice_name]
+
+            if max_count is not None:
+                X_data, Y_data = X_data[:max_count], Y_data[:max_count]  # for debug
+
+            test_data = Image_Dataset(X_data, Y_data, norm = None)
+            test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+                                          shuffle=False, num_workers=self.NUM_WORKERS)
+            data_len = len(test_loader)
+
+            self.model = self.load_pretrained_model_on_predict()
+            self.construct_shadow_classifier(self.model)
+
+            self.model.to(self.device)
+            self.model.eval()
+
+            probability = []
+            prediction = []
+            high_dim_features = []
+            low_dim_features = []
+            for step, (x, y) in enumerate(test_loader):
+                b_x = Variable(x.to(self.device))
+
+                output = self.model(b_x)  # model最后不包括一个softmax层
+                output_softmax = nn.functional.softmax(output, dim=1)
+                probs, preds = torch.max(output_softmax, 1)
+
+                high_dim_features.extend(self.model.out_feature.cpu().numpy())
+                low_dim_features.extend(output.detach().cpu().numpy())
+                probability.extend(probs.detach().cpu().numpy())
+                prediction.extend(preds.detach().cpu().numpy())
+                print('predicting => %d / %d ' % (step + 1, data_len))
+
+            low_dim_features = np.array(low_dim_features)
+            prediction = np.array(prediction)
+            probability = np.array(probability)
+
+            if len(prediction) > 6 and np.sum(prediction) > 3:  # 至少3个Cancer样本输入
+                # 对样本进行加权处理
+                weight = self.correct_sample_weights(low_dim_features, prediction)
+
+                high_dim_features = np.array(high_dim_features)
+                prediction = np.array(prediction)
+                # 开启弹性调整过程
+                self.shadow_classifier.train_myself(high_dim_features, prediction, weight, batch_size, 0.1, 10)
+                probability, prediction, low_dim_features = self.shadow_classifier.predict(high_dim_features, batch_size)
+
+            Ytest = np.array(Y_data)
+            predicted_tags = np.array(prediction)
+            probability = np.array(probability)
+
+            count = len(Y_data)
+            accu = float(sum(predicted_tags == Ytest)) / count
+
+            result_str = "{} => accu ={:.4f}, count = {}, mean of prob = {:.6f}".format(slice_name, accu, count, np.mean(probability))
+            print(result_str)
+
+            result.append(result_str)
+
+            if len(result) > slice_count:
+                break
+
+        # 最后一次性输出全部
+        for item in result:
+            print(item)

@@ -24,14 +24,15 @@ from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
 from preparation.normalization import HistNormalization
 from core.Block import Block
+from core.ImageCone import ImageCone
+from core.open_slide import Open_Slide
+import matplotlib.pyplot as plt
 
 class PatchPack(object):
     def __init__(self, params):
         self._params = params
+        self.patch_db = None
 
-    # "normal"     0
-    # "cancer"     1
-    # "edge"      2
     def loading_filename_tags(self, dir_code, tag):
         '''
         从包含指定字符串的目录中读取文件列表，并给定标记
@@ -46,6 +47,7 @@ class PatchPack(object):
             full_path = "{}/{}".format(root_path, dir_name)
             if dir_code == dir_name:
                 filename_tags = self.get_filename(full_path, tag)
+                # filename_tags = self.get_filename_mask_ratio(full_path, tag)
                 result.extend(filename_tags)
 
         return result
@@ -133,26 +135,26 @@ class PatchPack(object):
 
         return
 
-    def create_data_txt(self, data_tag, file_tag):
-        '''
-        生成样本文件的列表，存入txt中
-        :param data_tag: 样本集
-        :param file_tag: 生成的两个列表文件中所包含的代号
-        :return: 生成.txt文件
-        '''
-
-        root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
-
-        random.shuffle(data_tag)
-
-        full_filename = "{0}/{1}.txt".format(root_path, file_tag)
-
-        f = open(full_filename, "w")
-        for item, tag in data_tag:
-            f.write("{} {}\n".format(item, tag))
-        f.close()
-
-        return
+    # def create_data_txt(self, data_tag, file_tag):
+    #     '''
+    #     生成样本文件的列表，存入txt中
+    #     :param data_tag: 样本集
+    #     :param file_tag: 生成的两个列表文件中所包含的代号
+    #     :return: 生成.txt文件
+    #     '''
+    #
+    #     root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
+    #
+    #     # random.shuffle(data_tag)
+    #
+    #     full_filename = "{0}/{1}.txt".format(root_path, file_tag)
+    #
+    #     f = open(full_filename, "w")
+    #     for item, tag in data_tag:
+    #         f.write("{} {}\n".format(item, tag))
+    #     f.close()
+    #
+    #     return
 
     def initialize_sample_tags(self, patches_code, dir_tag_map):
         '''
@@ -236,159 +238,113 @@ class PatchPack(object):
 
         return data_tag
 
-    ################################################################################################################
 
-    #
-    # ################################################################################################################
-    # #  有待探索的
-    # ################################################################################################################
-    # def extract_feature_save_file(self, train_file_code):
-    #     pf = FeatureExtractor(self._params)
-    #     features, tag = pf.extract_features_by_file_list("{}.txt".format(train_file_code), features_name = "most")
-    #
-    #     data_filename = "{}/data/{}_features_tags".format(self._params.PROJECT_ROOT, train_file_code)
-    #     np.savez(data_filename, features, tag)
-    #     return
-    #
-    # def train_SVM(self, train_file_code):
-    #     data_filename = "{}/data/{}_features_tags.npz".format(self._params.PROJECT_ROOT, train_file_code)
-    #     D = np.load(data_filename)
-    #     features = D['arr_0']
-    #     tag = D['arr_1']
-    #
-    #     X_scaled = preprocessing.scale(features)
-    #     # min_max_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
-    #     # X_scaled = min_max_scaler.fit_transform(features)
-    #     # x_new = SelectKBest(k=12).fit_transform(X_scaled, tag)
-    #     x_train, x_test, y_train, y_test = train_test_split(X_scaled, tag, test_size=0.3, random_state=0)
-    #
-    #     clf = SVC(C=1, kernel='rbf', probability=False) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
-    #
-    #     rf = clf.fit(x_train, y_train)
-    #     predicted_tags = rf.predict(x_test)
-    #     print("Classification report for classifier:\n%s\n"
-    #           % (metrics.classification_report(y_test, predicted_tags)))
-    #     print("Confusion matrix:\n%s" % metrics.confusion_matrix(y_test, predicted_tags))
-    #
-    # def train_SVM_for_refine_sample(self, train_file_code):
-    #     '''
-    #     精炼过程：迭代过程，从已经标注的样本中寻找最典经（最容易分类正确）的样本，并用它们训练SVM
-    #     :param dir_map: 样本以及标记
-    #     :param train_code: 生成SVM的代号
-    #     :return: 得到一个能进行SC二分的分类器
-    #     '''
-    #
-    #     data_filename = "{}/data/{}_features_tags.npz".format(self._params.PROJECT_ROOT, train_file_code)
-    #     D = np.load(data_filename)
-    #     features = D['arr_0']
-    #     tag = D['arr_1']
-    #
-    #     # X_scaled = preprocessing.scale(features)
-    #     scaler = StandardScaler()
-    #     X_scaled = scaler.fit_transform(features)
-    #     features_1, features_2, tags_1, tags_2 = train_test_split(X_scaled, tag, test_size=0.5, random_state=0)
-    #
-    #     clf = SVC(C=1, kernel='rbf', probability=False) #'linear', 'poly', 'rbf', 'sigmoid', 'precomputed'
-    #
-    #     for i in range(3):
-    #         rf = clf.fit(features_1, tags_1)
-    #         predicted_tags = rf.predict(features_2)
-    #         print("Classification report for classifier:\n%s\n"
-    #               % ( metrics.classification_report(tags_2, predicted_tags)))
-    #         print("Confusion matrix:\n%s" % metrics.confusion_matrix(tags_2, predicted_tags))
-    #
-    #         simple_samples = (predicted_tags == tags_2)
-    #         features_2 = np.array(features_2)[simple_samples,:]
-    #         tags_2 = np.array(tags_2)[simple_samples]
-    #
-    #         rf = clf.fit(features_2, tags_2)
-    #         predicted_tags = rf.predict(features_1)
-    #         print("Classification report for classifier %s:\n%s\n"
-    #               % (rf, metrics.classification_report(tags_1, predicted_tags)))
-    #         print("Confusion matrix:\n%s" % metrics.confusion_matrix(tags_1, predicted_tags))
-    #
-    #         simple_samples = (predicted_tags == tags_1)
-    #         features_1 = np.array(features_1)[simple_samples,:]
-    #         tags_1 = np.array(tags_1)[simple_samples]
-    #
-    #     model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_file_code)
-    #     joblib.dump(rf, model_file)
-    #
-    #     predicted_tags = rf.predict(X_scaled)
-    #     print("Classification report for classifier %s:\n%s\n"
-    #           % (clf, metrics.classification_report(tag, predicted_tags)))
-    #     print("Confusion matrix:\n%s" % metrics.confusion_matrix(tag, predicted_tags))
-    #     return
-    #
-    # def create_refined_sample_txt(self, extract_scale, patch_size, dir_map, tag_name_map, train_file_code):
-    #     '''
-    #     用精炼SVM对样本进行分类，找出间质中的癌图块，以及癌变区域中的间质图块
-    #     :param extract_scale: 提取的倍镜数
-    #     :param SC_dir_map: 将要进行分类的S和C图块
-    #     :param train_code: 生成新的文件的代码
-    #     :param patch_size: 图块大小
-    #     :return:
-    #     '''
-    #
-    #     data_filename = "{}/data/{}_features_tags.npz".format(self._params.PROJECT_ROOT, train_file_code)
-    #     D = np.load(data_filename)
-    #     features = D['arr_0']
-    #     scaler = StandardScaler()
-    #     scaler.fit(features)
-    #
-    #     model_file = self._params.PROJECT_ROOT + "/models/svm_{}.model".format(train_file_code)
-    #     classifier = joblib.load(model_file)
-    #
-    #     fe = FeatureExtractor(self._params)
-    #     data_tag = self.initialize_sample_tags(dir_map)
-    #
-    #     count = 0
-    #     result_filenames = {}
-    #     for tag, name in tag_name_map.items():
-    #         result_filenames["True_" + name] = []
-    #         result_filenames["False_" + name] = []
-    #
-    #     Root_path = self._params.PATCHS_ROOT_PATH
-    #     for patch_file, tag in data_tag:
-    #         old_path = "{}/{}".format(Root_path, patch_file)
-    #         img = io.imread(old_path)
-    #         normal_img = ImageNormalization.normalize_mean(img)
-    #         fvector = fe.extract_feature(normal_img, "most")
-    #         f_scaled = scaler.transform([fvector])
-    #         predicted_tags = classifier.predict(f_scaled)
-    #         if (predicted_tags == tag):
-    #             result_filenames["True_" + tag_name_map[tag]].append((patch_file, tag))
-    #         else:
-    #             # result_filenames["False_" + tag_name_map[tag]].append((patch_file, predicted_tags[0]))
-    #             result_filenames["False_" + tag_name_map[tag]].append((patch_file, tag + 2))
-    #
-    #         if (0 == count%200):
-    #             print("{} predicting  >>> {}".format(time.asctime( time.localtime()), count))
-    #         count += 1
-    #
-    #     intScale = np.rint(extract_scale * 100).astype(np.int)
-    #     for name, result_list in result_filenames.items():
-    #         path = "S{}_{}_{}".format(intScale,patch_size, name)
-    #         self.create_data_txt(result_list, path)
-    #
-    #     return
-    #
-    # def packing_refined_samples(self, file_map, extract_scale, patch_size, sample_code):
-    #
-    #     root_path = self._params.PATCHS_ROOT_PATH
-    #     intScale = np.rint(extract_scale * 100).astype(np.int)
-    #
-    #     data_tag = []
-    #
-    #     for filename, tag in file_map.items():
-    #         csv_path = "{}/{}".format(root_path, filename)
-    #         f = open(csv_path, "r")
-    #         lines = f.readlines()
-    #         for line in lines:
-    #             items = line.split(" ")
-    #             tag = int(items[1])
-    #             data_tag.append((items[0], tag))
-    #
-    #     self.create_train_test_data(data_tag, 0.9, 0.1, "{}_{}_{}".format(sample_code, intScale, patch_size))
-    #
-    #     return
+    def calc_patch_cancer_ratio(self, patches_code, directory_list):
+        self.patches_code = patches_code
+        root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
+
+        slice_db = {}
+        for directory in directory_list:
+            path = "{}/{}".format(root_path, directory)
+            for (dirpath, dirnames, filenames) in os.walk(path):
+                if len(filenames) == 0:
+                    for subdir_name in dirnames:
+                        if subdir_name not in slice_db:
+                            slice_db[subdir_name] = []
+                else:
+                    slice_id = os.path.basename(dirpath)
+                    slice_db[slice_id].extend(filenames)
+
+        imgCone = ImageCone(self._params, Open_Slide())
+        b = Block()
+        patch_db = {}
+        for slice_id, filenames in slice_db.items():
+            imgCone.open_slide("Train_Tumor/%s.tif" % slice_id,
+                               'Train_Tumor/%s.xml' % slice_id, slice_id)
+            max_w, max_h = imgCone.get_image_width_height_byScale(self._params.GLOBAL_SCALE)
+            all_masks = imgCone.create_mask_image(self._params.GLOBAL_SCALE, 0)
+            mask = all_masks['C']
+            print("{}, area of mask = {}".format(slice_id, np.sum(mask)))
+
+            for file_name in filenames:
+                b.decoding(file_name, 256, 256)
+                assert b.slice_number == slice_id, "Error: slice_number <> slice_id"
+                # 提取在1.25倍镜下的中心坐标和边长
+                xx = np.rint(b.x * self._params.GLOBAL_SCALE / b.scale).astype(np.int)
+                yy = np.rint(b.y * self._params.GLOBAL_SCALE / b.scale).astype(np.int)
+                patch_size = np.rint(b.w * self._params.GLOBAL_SCALE / b.scale).astype(np.int)
+                half_w = patch_size >> 1
+
+                nx1 = max(xx - half_w, 0)
+                nx2 = min(xx + half_w, max_w)
+                ny1 = max(yy - half_w, 0)
+                ny2 = min(yy + half_w, max_h)
+                sub_mask = mask[ny1:ny2, nx1:nx2]
+
+                r = np.sum(sub_mask).astype(np.float) / (patch_size * patch_size)
+                if r > 0:
+                    patch_db[file_name] = r
+
+        np.save('{}/patch_mask_ratio.npy'.format(root_path), patch_db)
+        return
+
+    def get_filename_mask_ratio(self, full_dir,):
+        root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
+
+        if self.patch_db is None:
+            data = np.load('{}/patch_mask_ratio.npy'.format(root_path), allow_pickle=True)
+            self.patch_db = data[()]
+
+        right_len = len(root_path) + 1
+        L = []
+        for root, dirs, files in os.walk(full_dir):
+            for file in files:
+                if os.path.splitext(file)[1] in ['.jpg', '.png'] :
+                    file_path = os.path.join(root, file)
+                    rfile = file_path.replace('\\', '/')[right_len:]
+                    left = rfile.rfind("/")
+                    filename = rfile[left + 1:]
+                    mask_ratio = self.patch_db.get(filename, 0)
+                    new_tag = self._create_multidim_label(mask_ratio)
+                    L.append((rfile, new_tag))
+        return L
+
+    def _create_multidim_label(self, mask_ratio):
+        # if mask_ratio is None:
+        #     return 0
+        if mask_ratio > 0.5:
+            return 1
+        else:
+            return 0
+
+    def initialize_sample_tags_byMask(self, patches_code, directory_list):
+        '''
+        从不同文件夹中加载不同标记的样本
+        :param dir_tag_map: { "dir_code": tag }
+        :return: 已经标注的，样本的文件路径
+        '''
+        data_tag = {0:[], 1:[]}
+        self.patches_code = patches_code
+        root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
+
+        if self.patch_db is None:
+            data = np.load('{}/patch_mask_ratio.npy'.format(root_path), allow_pickle=True)
+            self.patch_db = data[()]
+
+        right_len = len(root_path) + 1
+        for directory in directory_list:
+            full_dir = "{}/{}".format(root_path, directory)
+            for root, dirs, files in os.walk(full_dir):
+                for file in files:
+                    if os.path.splitext(file)[1] in ['.jpg', '.png'] :
+                        file_path = os.path.join(root, file)
+                        rfile = file_path.replace('\\', '/')[right_len:]
+                        left = rfile.rfind("/")
+                        filename = rfile[left + 1:]
+                        mask_ratio = self.patch_db.get(filename, 0)
+                        new_tag = self._create_multidim_label(mask_ratio)
+                        if new_tag == 1:
+                            data_tag[1].append((rfile, new_tag))
+                        else:
+                            data_tag[0].append((rfile, new_tag))
+        return data_tag

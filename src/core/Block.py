@@ -29,8 +29,8 @@ class Block(object):
         self.y = y
         self.scale = scale
         self.opcode = opcode
-        self.width = w
-        self.height = h
+        self.w = w
+        self.w = h
         # self.img_file = None
         self.img = None
 
@@ -105,7 +105,7 @@ class Block(object):
         '''
         filename = '/{}.jpg'.format(self.encoding())
         save_image = Image.fromarray(np.uint8(self.img))
-        save_image.save_result_xml(path + filename)
+        save_image.save(path + filename)
         # if self.img_file == None:
         #     self.img.save(path + filename)
         # else:

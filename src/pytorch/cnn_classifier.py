@@ -629,7 +629,7 @@ class Simple_Classifier(BaseClassifier):
         elif self.model_name == "e_densenet_22":
             model = create_e_densenet(depth=22, growth_rate=12, gvp_out_size=1)
         elif self.model_name == "e_densenet_40":
-            model = create_e_densenet(depth=40, growth_rate=24, gvp_out_size=1)
+            model = create_e_densenet(depth=40, growth_rate=16, gvp_out_size=1)
         return model
 
     def load_pretrained_model_on_predict(self):

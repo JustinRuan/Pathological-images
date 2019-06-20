@@ -72,29 +72,44 @@ class PatchSampler(object):
         sum_C = np.sum(C_mask)
         sum_N = np.sum(N_mask)
         ratio = np.sqrt(sum_N / sum_C)
-        ratio = min(3, ratio)
+        ratio = min(5, ratio)
 
         if ratio > 1:
             normal_sampling_interval = np.rint(ratio * sampling_interval)
         else:
             normal_sampling_interval = sampling_interval
 
-        c_seeds = get_seeds(C_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-8)
-        ei_seeds = get_seeds(EI_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
-        eo_seeds = get_seeds(EO_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
-        n_seeds = get_seeds(N_mask, low_scale, extract_scale, patch_size, spacingHigh=normal_sampling_interval, margin=-8)
+        len_c = 0
+        len_n = 0
+        iter_count = 0
+        while ((len_n < 2000) or (len_c < 2000)) and iter_count < 6:
+            print(sourceCone.slice_id, "Cancer sampling interval:", sampling_interval, "normal sampling interval:",
+                  normal_sampling_interval)
 
-        c_seeds = set(c_seeds)
-        ei_seeds = set(ei_seeds)
-        eo_seeds = set(eo_seeds)
-        c_and_ei = c_seeds & ei_seeds
-        c_and_eo = c_seeds & eo_seeds
-        eo_and_ei = eo_seeds & ei_seeds
+            c_seeds = get_seeds(C_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=-2)
+            ei_seeds = get_seeds(EI_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+            eo_seeds = get_seeds(EO_mask, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+            n_seeds = get_seeds(N_mask, low_scale, extract_scale, patch_size, spacingHigh=normal_sampling_interval, margin=-2)
 
-        result_c = list(c_seeds - c_and_ei - c_and_eo)
-        result_ei = list(ei_seeds - eo_and_ei)
-        result_eo = list(eo_seeds - eo_and_ei)
-        result_n = list(set(n_seeds) - c_seeds - ei_seeds - eo_seeds)
+            c_seeds = set(c_seeds)
+            ei_seeds = set(ei_seeds)
+            eo_seeds = set(eo_seeds)
+            c_and_ei = c_seeds & ei_seeds
+            c_and_eo = c_seeds & eo_seeds
+            eo_and_ei = eo_seeds & ei_seeds
+
+            result_c = list(c_seeds - c_and_ei - c_and_eo)
+            result_ei = list(ei_seeds - eo_and_ei)
+            result_eo = list(eo_seeds - eo_and_ei)
+            result_n = list(set(n_seeds) - c_seeds - ei_seeds - eo_seeds)
+
+            len_c = len(result_c) + len(result_ei)
+            len_n = len(result_n) + len(result_eo)
+            if len_c < 2000:
+                sampling_interval = np.rint(0.9 * sampling_interval).astype(np.int)
+            if len_n < 2000:
+                normal_sampling_interval = np.rint(0.9 * normal_sampling_interval).astype(np.int)
+            iter_count += 1
 
         return result_c, result_ei, result_eo, result_n
 
@@ -115,11 +130,19 @@ class PatchSampler(object):
         if c_mask is not None:
             eff_region = np.bitwise_and(eff_region, np.bitwise_not(c_mask))
 
-        n_seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+        len_n = 0
+        iter_count = 0
+        while len_n < 2000 and iter_count < 6:
+            n_seeds = get_seeds(eff_region, low_scale, extract_scale, patch_size, spacingHigh=sampling_interval, margin=0)
+            len_n = len(n_seeds)
+            if len_n < 2000:
+                sampling_interval = np.rint(0.9 * sampling_interval).astype(np.int)
+            iter_count += 1
 
         return n_seeds
 
     def extract_patches_multi_scale(self, sourceCone, seeds_dict, patch_size, seeds_name, samples_dir):
         for scale, seeds in seeds_dict.items():
             self.extract_patches(sourceCone, scale, patch_size, seeds, seeds_name, samples_dir)
+
 

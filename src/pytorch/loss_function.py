@@ -38,6 +38,9 @@ class CenterLoss(nn.Module):
             raise ValueError("Center's dim: {0} should be equal to input feature's dim: {1}".format(self.feat_dim,feat.size(-1)))
         return self.centerlossfunction(feat, y, self.centers, weight)
 
+    def balance_difference(self):
+        return 0.5 * torch.sum(torch.abs(self.centers.data[0]) - torch.abs(self.centers[1])).detach()
+
 class CenterlossFunction(Function):
 
     # @staticmethod

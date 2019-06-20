@@ -72,7 +72,7 @@ class Locator(object):
                 # 提取特征
 
                 max_value = p.max_intensity
-                if max_value < last_thresh and p.major_axis_length > 35:
+                if max_value < last_thresh and p.minor_axis_length > 35:
                     centroid = p.weighted_centroid
                     # 坐标从1.25倍镜下的
                     x = np.rint(centroid[1] + x_letftop).astype(np.int)
@@ -155,7 +155,7 @@ class Locator(object):
 
         feature_num = len(X_train[0])
         for params in model_params:
-            clf = LinearSVC(**params, max_iter=max_iter, verbose=0, class_weight={0:0.1, 1:10}) # class_weight='balanced'
+            clf = LinearSVC(**params, max_iter=max_iter, verbose=0, class_weight={0:0.1, 1:1}) # class_weight='balanced'
             clf.fit(X_train, y_train)
             y_pred = clf.predict(X_train)
             score = metrics.accuracy_score(y_train, y_pred)
