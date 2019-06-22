@@ -66,6 +66,23 @@ def read_csv_file(root_path, csv_path):
         filenames_list.append(patch_file)
     return filenames_list, labels_list
 
+def read_DSC_csv_file(root_path, csv_path,):
+    filenames_list = []
+    labels_list = []
+
+    f = open(csv_path, "r")
+    lines = f.readlines()
+    for line in lines:
+        items = line.split(" ")
+        if len(items) >= 5: # 双图片输入，三个标签
+            tag = tuple(int(sub_tag) for sub_tag in items[2:])
+        labels_list.append(tag)
+
+        filenames = ("{}/{}".format(root_path, items[0]), "{}/{}".format(root_path, items[1]))
+        filenames_list.append(filenames)
+
+    return filenames_list, labels_list
+
 def latest_checkpoint(search_dir):
 
     filename = []

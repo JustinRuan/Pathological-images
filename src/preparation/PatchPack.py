@@ -190,53 +190,53 @@ class PatchPack(object):
 
         return data_tag
 
-    ###############################################################################################################
-    # Multiple scale combination (MSC)
-    ###############################################################################################################
-    def create_train_test_data_MSC(self, scale_tag, data_tag, train_size, test_size, file_tag):
-        if (train_size + test_size > 1):
-            return
-
-        dir_x10 = scale_tag[10]
-        dir_x20 = scale_tag[20]
-        dir_x40 = scale_tag[40]
-
-        dir_x10_tag = {}
-        for key, value in data_tag.items():
-            full_dir_x10 = "{}_{}".format(dir_x10, key)
-            dir_x10_tag[full_dir_x10] = value
-
-        data_x10_tag = self.initialize_sample_tags(dir_x10_tag)
-        random.shuffle(data_x10_tag)
-
-        data_x20_tag = self.get_msc_filenames(dir_x10, dir_x20, data_x10_tag, 2)
-        data_x40_tag = self.get_msc_filenames(dir_x10, dir_x40, data_x10_tag, 4)
-
-        new_file_tag = "{}_{}".format(file_tag, dir_x10)
-        self.create_train_test_data(data_x10_tag, train_size, test_size, new_file_tag, suffle=False)
-
-        new_file_tag = "{}_{}".format(file_tag, dir_x20)
-        self.create_train_test_data(data_x20_tag, train_size, test_size, new_file_tag, suffle=False)
-
-        new_file_tag = "{}_{}".format(file_tag, dir_x40)
-        self.create_train_test_data(data_x40_tag, train_size, test_size, new_file_tag, suffle=False)
-
-        return
-
-    def get_msc_filenames(self, scale_x10_tag, scale_other_tag, data_x10_tag, multiple):
-        data_tag = []
-        temp_block = Block()
-        for pathname, tag in data_x10_tag:
-            [dirname, filename]=os.path.split(pathname)
-            dirname = dirname.replace(scale_x10_tag, scale_other_tag)
-            temp_block.decoding(filename, 256, 256)
-            temp_block.x = int(multiple * temp_block.x)
-            temp_block.y = int(multiple * temp_block.y)
-            temp_block.scale = multiple * temp_block.scale
-            new_filename = "{}/{}.jpg".format(dirname, temp_block.encoding())
-            data_tag.append((new_filename, tag))
-
-        return data_tag
+    # ###############################################################################################################
+    # # Multiple scale combination (MSC)
+    # ###############################################################################################################
+    # def create_train_test_data_MSC(self, scale_tag, data_tag, train_size, test_size, file_tag):
+    #     if (train_size + test_size > 1):
+    #         return
+    #
+    #     dir_x10 = scale_tag[10]
+    #     dir_x20 = scale_tag[20]
+    #     dir_x40 = scale_tag[40]
+    #
+    #     dir_x10_tag = {}
+    #     for key, value in data_tag.items():
+    #         full_dir_x10 = "{}_{}".format(dir_x10, key)
+    #         dir_x10_tag[full_dir_x10] = value
+    #
+    #     data_x10_tag = self.initialize_sample_tags(dir_x10_tag)
+    #     random.shuffle(data_x10_tag)
+    #
+    #     data_x20_tag = self.get_msc_filenames(dir_x10, dir_x20, data_x10_tag, 2)
+    #     data_x40_tag = self.get_msc_filenames(dir_x10, dir_x40, data_x10_tag, 4)
+    #
+    #     new_file_tag = "{}_{}".format(file_tag, dir_x10)
+    #     self.create_train_test_data(data_x10_tag, train_size, test_size, new_file_tag, suffle=False)
+    #
+    #     new_file_tag = "{}_{}".format(file_tag, dir_x20)
+    #     self.create_train_test_data(data_x20_tag, train_size, test_size, new_file_tag, suffle=False)
+    #
+    #     new_file_tag = "{}_{}".format(file_tag, dir_x40)
+    #     self.create_train_test_data(data_x40_tag, train_size, test_size, new_file_tag, suffle=False)
+    #
+    #     return
+    #
+    # def get_msc_filenames(self, scale_x10_tag, scale_other_tag, data_x10_tag, multiple):
+    #     data_tag = []
+    #     temp_block = Block()
+    #     for pathname, tag in data_x10_tag:
+    #         [dirname, filename]=os.path.split(pathname)
+    #         dirname = dirname.replace(scale_x10_tag, scale_other_tag)
+    #         temp_block.decoding(filename, 256, 256)
+    #         temp_block.x = int(multiple * temp_block.x)
+    #         temp_block.y = int(multiple * temp_block.y)
+    #         temp_block.scale = multiple * temp_block.scale
+    #         new_filename = "{}/{}.jpg".format(dirname, temp_block.encoding())
+    #         data_tag.append((new_filename, tag))
+    #
+    #     return data_tag
 
 
     def calc_patch_cancer_ratio(self, patches_code, directory_list):
@@ -288,26 +288,26 @@ class PatchPack(object):
         np.save('{}/patch_mask_ratio.npy'.format(root_path), patch_db)
         return
 
-    def get_filename_mask_ratio(self, full_dir,):
-        root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
-
-        if self.patch_db is None:
-            data = np.load('{}/patch_mask_ratio.npy'.format(root_path), allow_pickle=True)
-            self.patch_db = data[()]
-
-        right_len = len(root_path) + 1
-        L = []
-        for root, dirs, files in os.walk(full_dir):
-            for file in files:
-                if os.path.splitext(file)[1] in ['.jpg', '.png'] :
-                    file_path = os.path.join(root, file)
-                    rfile = file_path.replace('\\', '/')[right_len:]
-                    left = rfile.rfind("/")
-                    filename = rfile[left + 1:]
-                    mask_ratio = self.patch_db.get(filename, 0)
-                    new_tag = self._create_multidim_label(mask_ratio)
-                    L.append((rfile, new_tag))
-        return L
+    # def get_filename_mask_ratio(self, full_dir,):
+    #     root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
+    #
+    #     if self.patch_db is None:
+    #         data = np.load('{}/patch_mask_ratio.npy'.format(root_path), allow_pickle=True)
+    #         self.patch_db = data[()]
+    #
+    #     right_len = len(root_path) + 1
+    #     L = []
+    #     for root, dirs, files in os.walk(full_dir):
+    #         for file in files:
+    #             if os.path.splitext(file)[1] in ['.jpg', '.png'] :
+    #                 file_path = os.path.join(root, file)
+    #                 rfile = file_path.replace('\\', '/')[right_len:]
+    #                 left = rfile.rfind("/")
+    #                 filename = rfile[left + 1:]
+    #                 mask_ratio = self.patch_db.get(filename, 0)
+    #                 new_tag = self._create_multidim_label(mask_ratio)
+    #                 L.append((rfile, new_tag))
+    #     return L
 
     def _create_multidim_label(self, mask_ratio):
         # if mask_ratio is None:
@@ -348,3 +348,82 @@ class PatchPack(object):
                         else:
                             data_tag[0].append((rfile, new_tag))
         return data_tag
+
+    ###############################################################################################################
+    # Double scale combination (DSC)
+    # 当x20下mask占比>= 50%，x40也 >= 50%，label = 1
+    # 当x20下mask占比 < 50%，x40 >= 50%，label = 1
+    # 当x20下mask占比 >= 50%，x40 < 50%，label = 1
+    # 当x20下mask占比 < 50%，x40也 < 50%，label = 0
+    # 执行 或 逻辑， label为三维，（x20，x40，xD）
+    '''
+    {40 : ["S4000_256_cancer", "S4000_256_normal", "S4000_256_normal2", "S4000_256_edgeinner", "S4000_256_edgeouter",],
+     20 : [S2000_256_cancer", "S2000_256_normal", "S2000_256_normal2", "S2000_256_edgeinner", "S2000_256_edgeouter" ]
+    '''
+    ###############################################################################################################
+    def create_train_test_data_DSC(self, patches_code, directory_list, sample_filename, source_scale, target_scale):
+
+        new_data_tag = self.initialize_sample_tags_byMask(patches_code, directory_list)
+
+        target_dict = {}
+        for index in range(0,2):
+            for item in new_data_tag[index]:
+                [dirname, filename] = os.path.split(item[0])
+                target_dict[filename] = (item[0], item[1])
+
+        soruce_train_filename = "{}_train.txt".format(sample_filename)
+        soruce_test_filename = "{}_test.txt".format(sample_filename)
+
+        source_scale_code = "{:0>4}".format(source_scale * 100)
+        target_scale_code = "{:0>4}_{:0>4}".format(source_scale * 100, target_scale * 100)
+
+        target_train_filename = soruce_train_filename.replace(source_scale_code, target_scale_code)
+        target_test_filename = soruce_test_filename.replace(source_scale_code, target_scale_code)
+
+        multiple = target_scale / source_scale
+        temp_block = Block()
+        root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
+        for source_filename, target_filename in [(soruce_train_filename, target_train_filename),
+                                                 (soruce_test_filename, target_test_filename)]:
+
+            source_file = open("{}/{}".format(root_path, source_filename), "r")
+            target_file = open("{}/{}".format(root_path, target_filename), "w")
+            lines = source_file.readlines()
+            for line in lines:
+                items = line.split(" ")
+                [dirname, filename] = os.path.split(items[0])
+                tag = int(items[1]) # 只能是单标签
+
+                temp_block.decoding(filename, 256, 256)
+                temp_block.x = int(multiple * temp_block.x)
+                temp_block.y = int(multiple * temp_block.y)
+                temp_block.scale = multiple * temp_block.scale
+                new_filename = "{}.jpg".format(temp_block.encoding())
+
+                another = target_dict[new_filename]
+                H_tag = np.logical_or(tag, another[1]).astype(np.int)
+                # 20倍镜下样本在前，40倍镜下样本在后，最后是混合
+                if source_scale == 40:
+                    target_file.write("{} {} {} {} {}\n".format(another[0], items[0], another[1], tag, H_tag))
+                else:
+                    target_file.write("{} {} {} {} {}\n".format(items[0], another[0], tag, another[1], H_tag))
+
+            source_file.close()
+            target_file.close()
+
+        return
+
+    # def get_msc_filenames(self, scale_x10_tag, scale_other_tag, data_x10_tag, multiple):
+    #     data_tag = []
+    #     temp_block = Block()
+    #     for pathname, tag in data_x10_tag:
+    #         [dirname, filename]=os.path.split(pathname)
+    #         dirname = dirname.replace(scale_x10_tag, scale_other_tag)
+    #         temp_block.decoding(filename, 256, 256)
+    #         temp_block.x = int(multiple * temp_block.x)
+    #         temp_block.y = int(multiple * temp_block.y)
+    #         temp_block.scale = multiple * temp_block.scale
+    #         new_filename = "{}/{}.jpg".format(dirname, temp_block.encoding())
+    #         data_tag.append((new_filename, tag))
+    #
+    #     return data_tag

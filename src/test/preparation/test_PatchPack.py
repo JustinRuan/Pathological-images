@@ -247,3 +247,15 @@ class TestPatchPack(unittest.TestCase):
         # data_tag = pack.filtering(data_tag, filter_mask=["Tumor_033", "Tumor_034",
         #                                                  "Tumor_046","Tumor_054","Tumor_061"])
         pack.create_train_test_data(data_tag, 0.95, 0.05, "A1_P0619_4k2k_256", need_balance=True)
+
+    #################################################################################################################
+    ####################  Double scale combination (DSC)  ############################
+    ##################################################################################################################
+    def test_pack_samples_DSC_256(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        pack = PatchPack(c)
+        pack.create_train_test_data_DSC("P0619", ["S2000_256_cancer", "S2000_256_normal",
+                                                         "S2000_256_normal2", "S2000_256_edgeinner",
+                                                         "S2000_256_edgeouter"], "T1_P0619_4000_256", 40, 20)

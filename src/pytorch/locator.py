@@ -191,8 +191,8 @@ class Locator(object):
         :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
         :return:
         '''
-        model_file = self._params.PROJECT_ROOT + "/models/locator_svm_0.7778_0.8491.model"
-        clf = joblib.load(model_file)
+        # model_file = self._params.PROJECT_ROOT + "/models/locator_svm_0.7778_0.8491.model"
+        # clf = joblib.load(model_file)
 
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
@@ -216,13 +216,13 @@ class Locator(object):
                 candidated_result = []
                 for (xx, yy), f in points.items():
                     # 经过分类器判别后输出
-                    pred = clf.decision_function([f])
-                    if pred > -10:
-                        #坐标从1.25倍镜下变换到40倍镜下
-                        candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
+                    # pred = clf.decision_function([f])
+                    # if pred > -10:
+                    #     #坐标从1.25倍镜下变换到40倍镜下
+                    #     candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
 
                     # # 直接全部输出
-                    # candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
+                    candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
 
                 csv_filename = "{0}/{1}.csv".format(save_path, slice_id)
                 with open(csv_filename, 'w', newline='')as f:

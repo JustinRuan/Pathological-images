@@ -22,7 +22,7 @@ from visdom import Visdom
 
 from core import Random_Gen
 from core.util import get_seeds, transform_coordinate
-from pytorch.cnn_classifier import Simple_Classifier, MultiTask_Classifier, MSC_Classifier
+from pytorch.cnn_classifier import Simple_Classifier#, MultiTask_Classifier, MSC_Classifier
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
@@ -493,7 +493,7 @@ class AdaptiveDetector(BaseDetector):
         limit_sampling_density = kwargs["limit_sampling_density"]
 
         normal_func = None
-        select = 1
+        select = 2
         if select == 4:
             model_name = "msc_256"
             sample_name = "x_256"
@@ -503,10 +503,15 @@ class AdaptiveDetector(BaseDetector):
             # self.model_name = "se_densenet_22"
             # self.model_name = "se_densenet_40"
             # self.model_name = "densenet_22"
-            self.model_name = "e_densenet_22"
+            # self.model_name = "e_densenet_22"
+            self.model_name = "e_densenet_40"
             self.sample_name = "4000_256"
             self.cnn = Simple_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
         elif select == 2:
+            self.model_name = "e_densenet_40"
+            self.sample_name = "2000_256"
+            self.cnn = Simple_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
+        elif select == 10:
             self.model_name = "e_densenet_22"
             self.sample_name = "4000_256"
             self.cnn = Elastic_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
@@ -604,7 +609,8 @@ class AdaptiveDetector(BaseDetector):
             print("Current sampling density = ", sampling_density)
 
             # 单倍镜下进行检测
-            if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn", "e_densenet_22"]:
+            if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn",
+                                   "e_densenet_22", "e_densenet_40"]:
                 high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
                 probability, prediction, low_dim_features = self.cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
                 probs = np.array(low_dim_features)[:,1]

@@ -263,7 +263,7 @@ class Test_detector(unittest.TestCase):
         # y2 = roi[4]
 
         x1, y1, x2, y2 = 0, 0, 0, 0
-        id = 76
+        id = 9
         slice_id = "Tumor_{:0>3d}".format(id)
 
         c = Params()
@@ -281,7 +281,7 @@ class Test_detector(unittest.TestCase):
             x1, y1, x2, y2 = imgCone.get_mask_min_rect(eff_zone)
             print("x1, y1, x2, y2: ", x1, y1, x2, y2)
 
-        cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
+        cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=20, patch_size=256,
                                                max_iter_nums=100, batch_size=100,
                                                limit_sampling_density=1,)
 
@@ -305,7 +305,8 @@ class Test_detector(unittest.TestCase):
 #################################################################################################################
     def test_adaptive_detect_region_train_slice(self):
         # train set
-        train_list = [9, 11, 16, 26, 39, 47, 58, 68, 72, 76]
+        # train_list = [9, 11, 16, 26, 39, 47, 58, 68, 72, 76]
+        train_list = [11, 16, 26, 39, 47, 58, 68, 72, 76]
         result = {}
 
         for id in train_list:

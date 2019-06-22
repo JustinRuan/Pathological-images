@@ -6,34 +6,34 @@ __mtime__ = '2018-12-13'
 
 """
 
+import datetime
 import os
 from abc import ABCMeta, abstractmethod
 
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.utils.data as Data
 import torchvision  # 数据库模块
-from sklearn import metrics
-from torch.autograd import Variable
 # from torchsummary import summary
 from modelsummary import summary
-
-from core.util import latest_checkpoint
-from core.util import read_csv_file
-from pytorch.image_dataset import Image_Dataset, Image_Dataset_MSC
-from pytorch.net import DenseNet, SEDenseNet,ExtendedDenseNet
-from pytorch.net import Simple_CNN
-from pytorch.util import get_image_blocks_itor, get_image_blocks_msc_itor, get_image_blocks_batch_normalize_itor, \
-    get_image_file_batch_normalize_itor
-import datetime
-from core import Block
-import matplotlib.pyplot as plt
-import pandas as pd
+from sklearn import metrics
+from torch.autograd import Variable
 from torchvision import models
-from scipy import stats
-from pytorch.loss_function import CenterLoss, LGMLoss_v0, LGMLoss
-import matplotlib
+
+from core import Block
+from core.util import latest_checkpoint
+from core.util import read_csv_file,read_DSC_csv_file
+from pytorch.image_dataset import Image_Dataset, DSC_Image_Dataset
+from pytorch.loss_function import CenterLoss, LGMLoss
+from pytorch.net import DenseNet, SEDenseNet, ExtendedDenseNet, DSC_DenseNet
+from pytorch.net import Simple_CNN
+from pytorch.util import get_image_blocks_itor, get_image_blocks_batch_normalize_itor, \
+    get_image_file_batch_normalize_itor
+
 
 class BaseClassifier(object, metaclass=ABCMeta):
     def __init__(self, params, model_name, patch_type, **kwargs):
@@ -643,8 +643,8 @@ class Simple_Classifier(BaseClassifier):
             "densenet_22_4000_256": "densenet_22_4000_256_cp-0005-0.1423-0.9486.pth",
             "se_densenet_22_4000_256":"se_densenet_22_cp-0001-0.1922-0.9223-0.9094.pth",
             "se_densenet_40_4000_256":"se_densenet_40_4000_256_cp-0002-0.1575-0.9436.pth",
-            "e_densenet_22_4000_256":"e_densenet_22_4000_256_cp-0002-0.0996-0.9634.pth"
-
+            "e_densenet_22_4000_256":"e_densenet_22_4000_256_cp-0002-0.0996-0.9634.pth",
+            "e_densenet_40_2000_256":"e_densenet_40_2000_256_cp-0009-0.1141-0.9594.pth"
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)
@@ -876,720 +876,706 @@ class Simple_Classifier(BaseClassifier):
                        )
         return
 
-######################################################################################################################
-# 输入为RGB三通道图像，单输出的分类器
-############       single task  with custom loss function         #########
-######################################################################################################################
-# class SingleTask_Classifier(Simple_Classifier):
-#     def __init__(self, params, model_name, patch_type, **kwargs):
-#         super(SingleTask_Classifier, self).__init__(params, model_name, patch_type,**kwargs)
-#         self.features = []
-#         return
-#
-#
-#     # def train_model(self, samples_name, augment_func, batch_size, loss_weight, epochs):
-#     #     '''
-#     #     训练模型
-#     #     :param samples_name: 自制训练集的代号
-#     #     :param batch_size: 每批的图片数量
-#     #     :param epochs:epoch数量
-#     #     :return:
-#     #     '''
-#     #     if self.patch_type in ["cifar10", "cifar100"]:
-#     #         train_data, test_data = self.load_cifar_data(self.patch_type)
-#     #     else:
-#     #         train_data, test_data = self.load_custom_data(samples_name, augment_func=augment_func)
-#     #
-#     #     train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
-#     #                                    num_workers=self.NUM_WORKERS)
-#     #     test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
-#     #                                   num_workers=self.NUM_WORKERS)
-#     #
-#     #     model = self.load_model(model_file=None)
-#     #     print(model)
-#     #
-#     #     classifi_loss= nn.CrossEntropyLoss()
-#     #     center_loss = CenterLoss(2, 2)
-#     #     if self.use_GPU:
-#     #         model.to(self.device)
-#     #         classifi_loss.to(self.device)
-#     #         center_loss.to(self.device)
-#     #
-#     #     # optimzer4nn
-#     #     # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
-#     #     classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-#     #     # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
-#     #     # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
-#     #     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
-#     #     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(classifi_optimizer, mode='min',
-#     #                                                            factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
-#     #     # optimzer4center
-#     #     optimzer4center = torch.optim.SGD(center_loss.parameters(), lr=0.5)
-#     #
-#     #     # training and testing
-#     #     for epoch in range(epochs):
-#     #         print('Epoch {}/{}'.format(epoch + 1, epochs))
-#     #         print('-' * 80)
-#     #
-#     #         model.train()
-#     #         # 开始训练
-#     #         train_data_len = len(train_loader)
-#     #         total_loss = 0
-#     #
-#     #         starttime = datetime.datetime.now()
-#     #         for step, (x, y) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
-#     #             b_x = Variable(x.to(self.device))
-#     #             b_y = Variable(y.to(self.device))
-#     #
-#     #             output = model(b_x)  # cnn output is features, not logits
-#     #             # cross entropy loss + center loss
-#     #             loss = classifi_loss(output, b_y) + loss_weight * center_loss(b_y, output)
-#     #
-#     #             classifi_optimizer.zero_grad()  # clear gradients for this training step
-#     #             optimzer4center.zero_grad()
-#     #             loss.backward()  # backpropagation, compute gradients
-#     #             classifi_optimizer.step()
-#     #             optimzer4center.step()
-#     #
-#     #             # 数据统计
-#     #             _, preds = torch.max(output, 1)
-#     #
-#     #             running_loss = loss.item()
-#     #             running_corrects = torch.sum(preds == b_y.data)
-#     #             total_loss += running_loss
-#     #
-#     #             if step % 5 == 0:
-#     #                 endtime = datetime.datetime.now()
-#     #                 remaining_time = (train_data_len - step)* (endtime - starttime).seconds / (step + 1)
-#     #                 print('%d / %d ==> Loss: %.4f | Acc: %.4f ,  remaining time: %d (s)'
-#     #                       % (step, train_data_len, running_loss, running_corrects.double()/b_x.size(0), remaining_time))
-#     #
-#     #         scheduler.step(total_loss)
-#     #
-#     #         running_loss=0.0
-#     #         running_corrects=0
-#     #         model.eval()
-#     #         # 开始评估
-#     #         for x, y in test_loader:
-#     #             b_x = Variable(x.to(self.device))
-#     #             b_y = Variable(y.to(self.device))
-#     #
-#     #             output = model(b_x)
-#     #             loss = classifi_loss(output, b_y)
-#     #
-#     #             _, preds = torch.max(output, 1)
-#     #             running_loss += loss.item() * b_x.size(0)
-#     #             running_corrects += torch.sum(preds == b_y.data)
-#     #
-#     #         test_data_len = test_data.__len__()
-#     #         epoch_loss=running_loss / test_data_len
-#     #         epoch_acc=running_corrects.double() / test_data_len
-#     #
-#     #         torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}.pth".format(
-#     #             self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc),
-#     #                    )
-#     #     return
-#
-#     def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
-#         '''
-#         预测在种子点提取的图块
-#         :param src_img: 切片图像
-#         :param scale: 提取图块的倍镜数
-#         :param patch_size: 图块大小
-#         :param seeds: 种子点的集合
-#         :return: 预测结果与概率
-#         '''
-#
-#         seeds_itor = get_image_blocks_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,
-#                                            normalization=self.normal_func)
-#
-#         if self.model is None:
-#             self.model = self.load_pretrained_model_on_predict()
-#             self.model.to(self.device)
-#             self.model.eval()
-#
-#         len_seeds = len(seeds)
-#         data_len = len(seeds) // batch_size
-#         if len_seeds % batch_size > 0:
-#             data_len += 1
-#
-#         probability = []
-#         prediction = []
-#         high_dim_features = []
-#         low_dim_features = []
-#         for step, x in enumerate(seeds_itor):
-#             b_x = Variable(x.to(self.device))
-#
-#             output = self.model(b_x) # model最后不包括一个softmax层
-#             output_softmax = nn.functional.softmax(output, dim =1)
-#             probs, preds = torch.max(output_softmax, 1)
-#
-#             high_dim_features.extend(self.model.out_feature.cpu().numpy())
-#             low_dim_features.extend(output.cpu().numpy())
-#             probability.extend(probs.cpu().numpy())
-#             prediction.extend(preds.cpu().numpy())
-#             print('predicting => %d / %d ' % (step + 1, data_len))
-#
-#         low_dim_features = np.array(low_dim_features)
-#         prediction = np.array(prediction)
-#         probability = np.array(probability)
-#
-#         new_features = self.correct(low_dim_features, prediction)
-#
-#         return probability, prediction, new_features #new_features #low_dim_features
-#
-#     def correct(self, features, prediction):
-#         features_0 = features[:,0]
-#         feat = features_0[prediction == 1]
-#         cancer_mean = np.mean(feat)
-#         cancer_std = np.std(feat)
-#         cancer_count = len(feat)
-#
-#         feat = features_0[prediction == 0]
-#         normal_mean = np.mean(feat)
-#         normal_std = np.std(feat)
-#
-#         if cancer_count > 3 :
-#             cancer_interval = stats.t.interval(0.95, cancer_count - 1, cancer_mean, cancer_std)
-#             normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
-#
-#             print(" cancer intervel: {:.4f} {:.4f}, ".format(cancer_interval[0], cancer_interval[1]),
-#                   "normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
-#         else:
-#             cancer_interval = [-3, 0]
-#             cancer_mean = -1.5
-#             cancer_std = 1.0
-#             normal_interval = stats.norm.interval(0.95, loc=normal_mean, scale=normal_std)
-#             print("normal interval: {:.4f} {:.4f}".format(normal_interval[0], normal_interval[1]))
-#
-#         normal_edge = normal_interval[0]
-#         cancer_edge = cancer_interval[1]
-#
-#         tag = np.ones(prediction.shape, dtype=np.bool)
-#         if normal_edge > cancer_edge:
-#             # 两个类中心完全分离,
-#             return features
-#         elif normal_edge + normal_std > cancer_edge - cancer_std:
-#             # 发生的重叠情况
-#             normal_edge = normal_edge + normal_std
-#             cancer_edge = cancer_edge - cancer_std
-#         else:
-#             # 严重重叠
-#             normal_edge = normal_mean
-#             cancer_edge = cancer_mean
-#
-#         tag[features_0 > normal_edge] = False
-#         tag[features_0 < cancer_edge] = False
-#         features[tag] = np.array([None, None])
-#         print(">>>> Exclude some suspicious : ", np.sum(tag == False))
-#
-#         return features
 
-######################################################################################################################
-############       multi task            #########
-######################################################################################################################
-class MultiTask_Classifier(BaseClassifier):
+class DSC_Classifier(BaseClassifier):
     def __init__(self, params, model_name, patch_type, **kwargs):
-        super(MultiTask_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
+        super(DSC_Classifier, self).__init__(params, model_name, patch_type,**kwargs)
 
-        self.num_classes = (2, 3)
-        self.image_size = 256
+        if self.patch_type in ["2040_256"]:
+            self.num_classes = 2
+            self.image_size = 256
 
     def create_initial_model(self):
-        def create_se_densenet(self, depth):
+        def create_dsc_densenet(depth, growth_rate, gvp_out_size):
             # Get densenet configuration
             if (depth - 4) % 3:
                 raise Exception('Invalid depth')
             block_config = [(depth - 4) // 6 for _ in range(3)]
 
             # Models
-            model = SEDenseNet(
-                growth_rate=12,
+            model = DSC_DenseNet(
+                growth_rate=growth_rate,
                 block_config=block_config,
                 num_classes=self.num_classes,
-                gvp_out_size=1,
+                # drop_rate=0.2,
+                gvp_out_size=gvp_out_size,
+                efficient=False,
             )
             return model
 
-        if self.model_name == "se_densenet_22":
-            model = create_se_densenet(depth=22)
-        elif self.model_name == "se_densenet_40":
-            model = create_se_densenet(depth=40)
+        if self.model_name == "dsc_densenet_40":
+            model = create_dsc_densenet(depth=40, growth_rate=16, gvp_out_size=1)
 
         return model
 
-    def train_model(self, samples_name, augment_func, batch_size, epochs):
-        train_data, test_data = self.load_custom_data(samples_name)
-        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size,
-                                       shuffle=True, num_workers=self.NUM_WORKERS)
-        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
-                                      shuffle=False, num_workers=self.NUM_WORKERS)
-
-        model = self.load_model(model_file=None)
-        summary(model, torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True)
-
-        model.to(self.device)
-
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)  # 学习率为0.01的学习器
-        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-        # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-2, alpha=0.99)
-        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
-                                                               factor=0.1)  # mode为min，则loss不下降学习率乘以factor，max则反之
-        loss_func = nn.CrossEntropyLoss(reduction='mean')
-
-        beta = 0.05
-        # training and testing
-        for epoch in range(epochs):
-            print('Epoch {}/{}'.format(epoch + 1, epochs))
-            print('-' * 80)
-
-            model.train()
-
-            train_data_len = len(train_loader)  # train_data.__len__() // batch_size + 1
-            total_loss = 0
-            for step, (x, (y0, y1)) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
-
-                b_x = Variable(x.to(self.device))  # batch x
-                b_y0 = Variable(y0.to(self.device))  # batch y0
-                b_y1 = Variable(y1.to(self.device))  # batch y1
-
-                cancer_prob, magnifi_prob = model(b_x)
-                c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
-                m_loss = loss_func(magnifi_prob, b_y1)  # cross entropy loss
-                loss = (1 - beta) * c_loss + beta * m_loss
-                optimizer.zero_grad()  # clear gradients for this training step
-                loss.backward()  # backpropagation, compute gradients
-                optimizer.step()
-
-                # 数据统计
-                _, c_preds = torch.max(cancer_prob, 1)
-                _, m_preds = torch.max(magnifi_prob, 1)
-                running_loss = loss.item()
-                running_corrects1 = torch.sum(c_preds == b_y0.data)
-                running_corrects2 = torch.sum(m_preds == b_y1.data)
-
-                total_loss += running_loss
-                print('%d / %d ==> Total Loss: %.4f | Cancer Acc: %.4f | Magnifi Acc: %.4f '
-                      % (step, train_data_len, running_loss, running_corrects1.double() / b_x.size(0),
-                         running_corrects2.double() / b_x.size(0)))
-
-            scheduler.step(total_loss)
-
-            running_loss = 0.0
-            running_corrects1 = 0
-            running_corrects2 = 0
-            model.eval()
-            for x, (y0, y1) in test_loader:
-                b_x = Variable(x.to(self.device))  # batch x
-                b_y0 = Variable(y0.to(self.device))  # batch y0
-                b_y1 = Variable(y1.to(self.device))  # batch y1
-
-                cancer_prob, magnifi_prob = model(b_x)
-                c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
-                m_loss = loss_func(magnifi_prob, b_y1)  # cross entropy loss
-                loss = (1 - beta) * c_loss + beta * m_loss
-
-                _, c_preds = torch.max(cancer_prob, 1)
-                _, m_preds = torch.max(magnifi_prob, 1)
-                running_loss += loss.item() * b_x.size(0)
-                running_corrects1 += torch.sum(c_preds == b_y0.data)
-                running_corrects2 += torch.sum(m_preds == b_y1.data)
-
-            test_data_len = len(test_data)
-            epoch_loss = running_loss / test_data_len
-            epoch_acc_c = running_corrects1.double() / test_data_len
-            epoch_acc_m = running_corrects2.double() / test_data_len
-            torch.save(model.state_dict(),
-                       self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss,
-                                                                                      epoch_acc_c,
-                                                                                      epoch_acc_m))
-
-    def evaluate_model(self, samples_name, model_file, batch_size, max_count):
-
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
-        Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-        # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
-        test_data = Image_Dataset(Xtest, Ytest)
-        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
-                                      shuffle=False, num_workers=self.NUM_WORKERS)
-
-        model = self.load_model(model_file=None)
-        model.MultiTask = False
-        # 关闭求导，节约大量的显存
-        for param in model.parameters():
-            param.requires_grad = False
-        print(model)
-
-        model.to(self.device)
-        model.eval()
-
-        predicted_tags = []
-        test_data_len = len(test_loader)
-        for step, (x, _) in enumerate(test_loader):
-            b_x = Variable(x.to(self.device))  # batch x
-
-            # cancer_prob, magnifi_prob = model(b_x)
-            # _, cancer_preds = torch.max(cancer_prob, 1)
-            # _, magnifi_preds = torch.max(magnifi_prob, 1)
-            # for c_pred, m_pred in zip(cancer_preds.cpu().numpy(), magnifi_preds.cpu().numpy()):
-            #     predicted_tags.append((c_pred, m_pred))
-            cancer_prob = model(b_x)
-            _, cancer_preds = torch.max(cancer_prob, 1)
-            for c_pred in zip(cancer_preds.cpu().numpy()):
-                predicted_tags.append((c_pred))
-
-            print('predicting => %d / %d ' % (step + 1, test_data_len))
-
-        Ytest = np.array(Ytest)
-        predicted_tags = np.array(predicted_tags)
-        index_x10 = Ytest[:, 1] == 0
-        index_x20 = Ytest[:, 1] == 1
-        index_x40 = Ytest[:, 1] == 2
-        print("Classification report for classifier x all:\n%s\n"
-              % (metrics.classification_report(Ytest[:,0], predicted_tags[:,0], digits=4)))
-        print("Classification report for classifier x 10:\n%s\n"
-              % (metrics.classification_report(Ytest[index_x10,0], predicted_tags[index_x10,0], digits=4)))
-        print("Classification report for classifier x 20:\n%s\n"
-              % (metrics.classification_report(Ytest[index_x20,0], predicted_tags[index_x20,0], digits=4)))
-        print("Classification report for classifier x 40:\n%s\n"
-              % (metrics.classification_report(Ytest[index_x40,0], predicted_tags[index_x40,0], digits=4)))
-        # print("Confusion matrix:\n%s" % metrics.confusion_matrix(Ytest[:,0], predicted_tags[:,0]))
-
     def load_pretrained_model_on_predict(self):
+        '''
+        加载已经训练好的存盘网络文件
+        :param patch_type: 分类器处理图块的类型
+        :return: 网络模型
+        '''
         net_file = {
-            "se_densenet_22_x_256": "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
+            "e_densenet_40_2000_256":"e_densenet_40_2000_256_cp-0009-0.1141-0.9594.pth"
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)
         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[model_code])
         model = self.load_model(model_file=model_file)
 
-        if self.patch_type in ["x_256", "msc_256"]:
-            # 关闭多任务的其它输出
-            model.MultiTask = False
-
         # 关闭求导，节约大量的显存
         for param in model.parameters():
             param.requires_grad = False
         return model
 
-    ###############################################################################################################
-    # Multiple scale combination (MSC)
-    ###############################################################################################################
-class MSC_Classifier(BaseClassifier):
-    def __init__(self, params, model_name, patch_type, **kwargs):
-        super(MSC_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
+    def load_custom_data(self, samples_name, augment_func = None):
+        '''
+        从图片的列表文件中加载数据，到Sequence中
+        :param samples_name: 列表文件的代号
+        :return:用于train和test的两个Sequence
+        '''
+        patch_root = self._params.PATCHS_ROOT_PATH[samples_name[0]]
+        sample_filename = samples_name[1]
+        train_list = "{}/{}_train.txt".format(patch_root, sample_filename)
+        test_list = "{}/{}_test.txt".format(patch_root, sample_filename)
 
-        self.num_classes = (2, 3)
-        self.image_size = 256
+        Xtrain, Ytrain = read_DSC_csv_file(patch_root, train_list)
+        # Xtrain, Ytrain = Xtrain[:40], Ytrain[:40] # for debug
+        train_data = DSC_Image_Dataset(Xtrain, Ytrain, transform=None)
 
-    def load_msc_data(self, samples_name_dict):
-        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
-        Xtrain10, Ytrain10 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-
-        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
-        Xtrain20, Ytrain20 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-
-        train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
-        Xtrain40, Ytrain40 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
-
-        # Xtrain10, Xtrain20, Xtrain40, Ytrain10 = Xtrain10[:40], Xtrain20[:40],Xtrain40[:40],Ytrain10[:40] # for debug
-        train_data = Image_Dataset_MSC(Xtrain10, Xtrain20, Xtrain40, Ytrain10)
-
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
-        Xtest10, Ytest10 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
-        Xtest20, Ytest20 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
-        Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-
-        # Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
-        test_data = Image_Dataset_MSC(Xtest10, Xtest20, Xtest40, Ytest10)
+        Xtest, Ytest = read_DSC_csv_file(patch_root, test_list)
+        # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
+        test_data = DSC_Image_Dataset(Xtest, Ytest, transform=None)
         return train_data, test_data
 
-    def create_initial_model(self):
-        if self.model_name == "se_densenet_c9_22":
-            model = self.create_se_densenet_c9(depth=22, num_init_features=36)
-        elif self.model_name == "se_densenet_c9_40":
-            model = self.create_se_densenet_c9(depth=40, num_init_features=54)
-        return model
+    def train_model(self, samples_name, class_weight, batch_size, epochs):
+        '''
+        训练模型
+        :param samples_name: 自制训练集的代号
+        :param batch_size: 每批的图片数量
+        :param epochs:epoch数量
+        :return:
+        '''
 
-    def train_model(self, samples_name, augment_func, batch_size, epochs):
-        train_data, test_data = self.load_msc_data(samples_name)
+        train_data, test_data = self.load_custom_data(samples_name,)
 
-        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size,
-                                       shuffle=True, num_workers=self.NUM_WORKERS)
-        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
-                                      shuffle=False, num_workers=self.NUM_WORKERS)
+        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
+                                       num_workers=self.NUM_WORKERS)
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
+                                      num_workers=self.NUM_WORKERS)
 
         model = self.load_model(model_file=None)
-        # summary(model, torch.zeros((1, 9, self.image_size, self.image_size)), show_input=True)
+        # print(model)
+        summary(model, torch.zeros((1, 3, self.image_size, self.image_size)),
+                torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True, show_hierarchical=True)
 
-        model.to(self.device)
+        if class_weight is not None:
+            class_weight = torch.FloatTensor(class_weight)
+        loss_func = nn.CrossEntropyLoss(weight=class_weight)
 
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)  # 学习率为0.01的学习器
-        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-        # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-2, alpha=0.99)
+        if self.use_GPU:
+            model.to(self.device)
+            loss_func.to(self.device)
+
+        # optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
+        optimizer_x2040 = torch.optim.Adam(model.parameters(), lr=1e-3)
+        optimizer_xDS = torch.optim.Adam(model.parameters(), lr=1e-3)
+        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
+        # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
-                                                               factor=0.1)  # mode为min，则loss不下降学习率乘以factor，max则反之
-        loss_func = nn.CrossEntropyLoss(reduction='mean')
-
-        beta = 0.5
+        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
+        #                                                        factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
         # training and testing
         for epoch in range(epochs):
             print('Epoch {}/{}'.format(epoch + 1, epochs))
             print('-' * 80)
 
             model.train()
+            # 开始训练
+            train_data_len = len(train_loader)
+            starttime = datetime.datetime.now()
+            for step, ((x20, x40), (y20, y40, y)) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
+                b_x20 = Variable(x20.to(self.device))
+                b_x40 = Variable(x40.to(self.device))
+                b_y20 = Variable(y20.to(self.device))
+                b_y40 = Variable(y40.to(self.device))
+                b_y = Variable(y.to(self.device))
 
-            train_data_len = len(train_loader)  # train_data.__len__() // batch_size + 1
-            total_loss = 0
-            for step, (x, (y0, y1)) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
+                output20, output40, output = model(b_x20, b_x40)  # cnn output
+                loss1 = loss_func(output, b_y)
+                loss2 = 0.5 * (loss_func(output20, b_y20) + loss_func(output40, b_y40)) # cross entropy loss
+                optimizer_x2040.zero_grad()  # clear gradients for this training step
+                optimizer_xDS.zero_grad()
 
-                b_x = Variable(x.to(self.device))  # batch x
-                b_y0 = Variable(y0.to(self.device))  # batch y0
-                b_y1 = Variable(y1.to(self.device))  # batch y1
-
-                cancer_prob, edge_prob = model(b_x)
-                c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
-                e_loss = loss_func(edge_prob, b_y1)  # cross entropy loss
-                loss = (1 - beta) * c_loss + beta * e_loss
-                optimizer.zero_grad()  # clear gradients for this training step
-                loss.backward()  # backpropagation, compute gradients
-                optimizer.step()
+                loss1.backward(retain_graph=True)  # backpropagation, compute gradients
+                loss2.backward()
+                optimizer_x2040.step()
+                optimizer_xDS.step()
 
                 # 数据统计
-                _, c_preds = torch.max(cancer_prob, 1)
-                _, e_preds = torch.max(edge_prob, 1)
-                running_loss = loss.item()
-                running_corrects1 = torch.sum(c_preds == b_y0.data)
-                running_corrects2 = torch.sum(e_preds == b_y1.data)
+                _, preds = torch.max(output, 1)
+                _, preds_x20 = torch.max(output20, 1)
+                _, preds_x40 = torch.max(output40, 1)
 
-                total_loss += running_loss
-                if step % 5 == 0:
-                    print('%d / %d ==> Total Loss: %.4f | Cancer Acc: %.4f | Edge Acc: %.4f '
-                          % (step, train_data_len, running_loss, running_corrects1.double() / b_x.size(0),
-                             running_corrects2.double() / b_x.size(0)))
+                running_loss = loss1.item()
+                running_corrects = torch.sum(preds == b_y.data)
 
-            scheduler.step(total_loss)
+                running_loss2 = loss2.item()
+                running_corrects2 = torch.sum(preds_x20 == b_y20.data).item()
+                running_corrects4 = torch.sum(preds_x40 == b_y40.data).item()
 
-            running_loss = 0.0
-            running_corrects1 = 0
-            running_corrects2 = 0
+                if step % 50 == 0:
+                    endtime = datetime.datetime.now()
+                    remaining_time = (train_data_len - step)* (endtime - starttime).seconds / (step + 1)
+                    print('%d / %d ==> Loss1: %.4f | Acc: %.4f , Loss2: %.4f | Acc_x20: %.4f | Acc_x40: %.4f, remaining time: %d (s)'
+                          % (step, train_data_len,
+                             running_loss, float(running_corrects) / b_y.size(0),
+                             running_loss2, float(running_corrects2) / b_y.size(0), float(running_corrects4) / b_y.size(0),
+                             remaining_time))
+
+            # scheduler.step(total_loss)
+
+            running_loss=0.0
+            running_corrects=0
+            running_corrects2=0
+            running_corrects4=0
             model.eval()
-            for x, (y0, y1) in test_loader:
-                b_x = Variable(x.to(self.device))  # batch x
-                b_y0 = Variable(y0.to(self.device))  # batch y0
-                b_y1 = Variable(y1.to(self.device))  # batch y1
+            # 开始评估
+            for (x20, x40), (y20, y40, y) in test_loader:
+                b_x20 = Variable(x20.to(self.device))
+                b_x40 = Variable(x40.to(self.device))
+                b_y20 = Variable(y20.to(self.device))
+                b_y40 = Variable(y40.to(self.device))
+                b_y = Variable(y.to(self.device))
 
-                cancer_prob, edge_prob = model(b_x)
-                c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
-                e_loss = loss_func(edge_prob, b_y1)  # cross entropy loss
-                loss = (1 - beta) * c_loss + beta * e_loss
+                output20, output40, output = model(b_x20, b_x40)
+                loss1 = loss_func(output, b_y)
 
-                _, c_preds = torch.max(cancer_prob, 1)
-                _, e_preds = torch.max(edge_prob, 1)
-                running_loss += loss.item() * b_x.size(0)
-                running_corrects1 += torch.sum(c_preds == b_y0.data)
-                running_corrects2 += torch.sum(e_preds == b_y1.data)
+                _, preds = torch.max(output, 1)
+                _, preds_x20 = torch.max(output20, 1)
+                _, preds_x40 = torch.max(output40, 1)
+                running_loss += loss1.item() * b_y.size(0)
+                running_corrects += torch.sum(preds == b_y.data).item()
+                running_corrects2 += torch.sum(preds_x20 == b_y20.data).item()
+                running_corrects4 += torch.sum(preds_x40 == b_y40.data).item()
 
-            test_data_len = len(test_data)
+            test_data_len = test_data.__len__()
             epoch_loss = running_loss / test_data_len
-            epoch_acc_c = running_corrects1.double() / test_data_len
-            epoch_acc_m = running_corrects2.double() / test_data_len
-            torch.save(model.state_dict(),
-                       self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss,
-                                                                                      epoch_acc_c,
-                                                                                      epoch_acc_m))
+            epoch_acc = float(running_corrects) / test_data_len
+            epoch_acc20 = float(running_corrects2) / test_data_len
+            epoch_acc40 = float(running_corrects4) / test_data_len
 
-    def evaluate_model_msc(self, samples_name_dict=None, batch_size=100):
+            torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}-{:.4f}-{:.4f}.pth".format(
+                self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc, epoch_acc20, epoch_acc40),
+                       )
+        return
 
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
-        Xtest10, Ytest10 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
 
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
-        Xtest20, Ytest20 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
 
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
-        Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-
-        # Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
-        test_data = Image_Dataset_MSC(Xtest10, Xtest20, Xtest40, Ytest10)
-
-        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
-                                      shuffle=False, num_workers=self.NUM_WORKERS)
-
-        model = self.load_model(model_file=None)
-        model.MultiTask = True
-        # 关闭求导，节约大量的显存
-        for param in model.parameters():
-            param.requires_grad = False
-        print(model)
-
-        model.to(self.device)
-        model.eval()
-
-        predicted_tags = []
-        test_data_len = len(test_loader)
-        for step, (x, _) in enumerate(test_loader):
-            b_x = Variable(x.to(self.device))  # batch x
-
-            # cancer_prob = model(b_x)
-            # _, cancer_preds = torch.max(cancer_prob, 1)
-            # for c_pred in zip(cancer_preds.cpu().numpy()):
-            #     predicted_tags.append((c_pred))
-            cancer_prob, edge_prob = model(b_x)
-            _, cancer_preds = torch.max(cancer_prob, 1)
-            _, edge_preds = torch.max(edge_prob, 1)
-            for c_pred, m_pred in zip(cancer_preds.cpu().numpy(), edge_preds.cpu().numpy()):
-                predicted_tags.append((c_pred, m_pred))
-
-            print('predicting => %d / %d ' % (step + 1, test_data_len))
-
-        # Ytest = np.array(Ytest10[:60]) # for debug
-        Ytest = np.array(Ytest10)
-        predicted_tags = np.array(predicted_tags)
-
-        print("Classification report for classifier (normal, cancer):\n%s\n"
-              % (metrics.classification_report(Ytest[:, 0], predicted_tags[:, 0], digits=4)))
-        print("Classification report for classifier (normal, edge, cancer):\n%s\n"
-              % (metrics.classification_report(Ytest[:, 1], predicted_tags[:, 1], digits=4)))
-
-    def evaluate_model(self, samples_name, model_file, batch_size, max_count):
-        assert isinstance(samples_name, dict), "samples_name maust be a dict."
-
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name[10])
-        Xtest10, Ytest10 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name[20])
-        Xtest20, Ytest20 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-
-        test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name[40])
-        Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
-
-        # Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
-        test_data = Image_Dataset_MSC(Xtest10, Xtest20, Xtest40, Ytest10)
-
-        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
-                                      shuffle=False, num_workers=self.NUM_WORKERS)
-
-        model = self.load_model(model_file=None)
-        model.MultiTask = True
-        # 关闭求导，节约大量的显存
-        for param in model.parameters():
-            param.requires_grad = False
-        print(model)
-
-        model.to(self.device)
-        model.eval()
-
-        predicted_tags = []
-        test_data_len = len(test_loader)
-        for step, (x, _) in enumerate(test_loader):
-            b_x = Variable(x.to(self.device))  # batch x
-
-            # cancer_prob = model(b_x)
-            # _, cancer_preds = torch.max(cancer_prob, 1)
-            # for c_pred in zip(cancer_preds.cpu().numpy()):
-            #     predicted_tags.append((c_pred))
-            cancer_prob, edge_prob = model(b_x)
-            _, cancer_preds = torch.max(cancer_prob, 1)
-            _, edge_preds = torch.max(edge_prob, 1)
-            for c_pred, m_pred in zip(cancer_preds.cpu().numpy(), edge_preds.cpu().numpy()):
-                predicted_tags.append((c_pred, m_pred))
-
-            print('predicting => %d / %d ' % (step + 1, test_data_len))
-
-        # Ytest = np.array(Ytest10[:60]) # for debug
-        Ytest = np.array(Ytest10)
-        predicted_tags = np.array(predicted_tags)
-
-        print("Classification report for classifier (normal, cancer):\n%s\n"
-              % (metrics.classification_report(Ytest[:,0], predicted_tags[:,0], digits=4)))
-        print("Classification report for classifier (normal, edge, cancer):\n%s\n"
-              % (metrics.classification_report(Ytest[:,1], predicted_tags[:,1], digits=4)))
-
-    def predict_on_batch(self, src_img, patch_size, seeds_scale, seeds, batch_size):
-        '''
-        预测在种子点提取的图块
-        :param src_img: 切片图像
-        :param patch_size: 图块大小
-        :param seeds_scale: 种子点的倍镜数
-        :param seeds: 种子点的集合
-        :return: 预测结果与概率的
-        '''
-        assert self.patch_type == "msc_256", "Only accept a model based on multiple scales"
-
-        if self.model is None:
-            self.model = self.load_pretrained_model_on_predict(self.patch_type)
-            self.model.to(self.device)
-            self.model.eval()
-
-        # self.model.MultiTask = True
-
-        seeds_itor = get_image_blocks_msc_itor(src_img, seeds_scale, seeds, patch_size, patch_size, batch_size)
-
-        len_seeds = len(seeds)
-        data_len = len(seeds) // batch_size
-        if len_seeds % batch_size > 0:
-            data_len += 1
-
-        results = []
-
-        for step, x in enumerate(seeds_itor):
-            b_x = Variable(x.to(self.device))
-
-            output = self.model(b_x)
-            # cancer_prob, edge_prob = self.model(b_x)
-            output_softmax = nn.functional.softmax(output)
-            probs, preds = torch.max(output_softmax, 1)
-            for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
-                if pred == 1:
-                    results.append(prob)
-                else:
-                    results.append(1 - prob)
-            # for prob, pred, three_prob in zip(probs.cpu().numpy(), preds.cpu().numpy(), output_softmax.cpu().numpy()):
-            #     cancer_edge_prob = three_prob[1] + three_prob[-1]
-            #     if pred == 2:
-            #         results.append((1, cancer_edge_prob))
-            #     elif pred == 1:
-            #         if three_prob[-1] > 10 * three_prob[0]:
-            #             results.append((1, cancer_edge_prob))
-            #         else:
-            #             results.append((0, 1 - three_prob[-1]))
-            #     else:
-            #         results.append((0, 1 - three_prob[-1]))
-            # for three_prob in output_softmax.cpu().numpy():
-            #     if three_prob[-1] > three_prob[0]:
-            #         results.append((1, three_prob[-1] + three_prob[1]))
-            #     else:
-            #         results.append((0, three_prob[0] + three_prob[1]))
-
-            print('predicting => %d / %d ' % (step + 1, data_len))
-
-        return results
-
-    def load_pretrained_model_on_predict(self):
-        net_file = {
-            "se_densenet_c9_22_msc_256":  "se_densenet_c9_22_msc_256_0030-0.2319-0.9775-0.6928.pth",
-        }
-
-        model_code = "{}_{}".format(self.model_name, self.patch_type)
-        model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[model_code])
-        model = self.load_model(model_file=model_file)
-
-        if self.patch_type in ["x_256", "msc_256"]:
-            # 关闭多任务的其它输出
-            model.MultiTask = False
-
-        # 关闭求导，节约大量的显存
-        for param in model.parameters():
-            param.requires_grad = False
-        return model
+# ######################################################################################################################
+# ############       multi task            #########
+# ######################################################################################################################
+# class MultiTask_Classifier(BaseClassifier):
+#     def __init__(self, params, model_name, patch_type, **kwargs):
+#         super(MultiTask_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
+#
+#         self.num_classes = (2, 3)
+#         self.image_size = 256
+#
+#     def create_initial_model(self):
+#         def create_se_densenet(self, depth):
+#             # Get densenet configuration
+#             if (depth - 4) % 3:
+#                 raise Exception('Invalid depth')
+#             block_config = [(depth - 4) // 6 for _ in range(3)]
+#
+#             # Models
+#             model = SEDenseNet(
+#                 growth_rate=12,
+#                 block_config=block_config,
+#                 num_classes=self.num_classes,
+#                 gvp_out_size=1,
+#             )
+#             return model
+#
+#         if self.model_name == "se_densenet_22":
+#             model = create_se_densenet(depth=22)
+#         elif self.model_name == "se_densenet_40":
+#             model = create_se_densenet(depth=40)
+#
+#         return model
+#
+#     def train_model(self, samples_name, augment_func, batch_size, epochs):
+#         train_data, test_data = self.load_custom_data(samples_name)
+#         train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size,
+#                                        shuffle=True, num_workers=self.NUM_WORKERS)
+#         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+#                                       shuffle=False, num_workers=self.NUM_WORKERS)
+#
+#         model = self.load_model(model_file=None)
+#         summary(model, torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True)
+#
+#         model.to(self.device)
+#
+#         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)  # 学习率为0.01的学习器
+#         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+#         # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-2, alpha=0.99)
+#         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
+#         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
+#                                                                factor=0.1)  # mode为min，则loss不下降学习率乘以factor，max则反之
+#         loss_func = nn.CrossEntropyLoss(reduction='mean')
+#
+#         beta = 0.05
+#         # training and testing
+#         for epoch in range(epochs):
+#             print('Epoch {}/{}'.format(epoch + 1, epochs))
+#             print('-' * 80)
+#
+#             model.train()
+#
+#             train_data_len = len(train_loader)  # train_data.__len__() // batch_size + 1
+#             total_loss = 0
+#             for step, (x, (y0, y1)) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
+#
+#                 b_x = Variable(x.to(self.device))  # batch x
+#                 b_y0 = Variable(y0.to(self.device))  # batch y0
+#                 b_y1 = Variable(y1.to(self.device))  # batch y1
+#
+#                 cancer_prob, magnifi_prob = model(b_x)
+#                 c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
+#                 m_loss = loss_func(magnifi_prob, b_y1)  # cross entropy loss
+#                 loss = (1 - beta) * c_loss + beta * m_loss
+#                 optimizer.zero_grad()  # clear gradients for this training step
+#                 loss.backward()  # backpropagation, compute gradients
+#                 optimizer.step()
+#
+#                 # 数据统计
+#                 _, c_preds = torch.max(cancer_prob, 1)
+#                 _, m_preds = torch.max(magnifi_prob, 1)
+#                 running_loss = loss.item()
+#                 running_corrects1 = torch.sum(c_preds == b_y0.data)
+#                 running_corrects2 = torch.sum(m_preds == b_y1.data)
+#
+#                 total_loss += running_loss
+#                 print('%d / %d ==> Total Loss: %.4f | Cancer Acc: %.4f | Magnifi Acc: %.4f '
+#                       % (step, train_data_len, running_loss, running_corrects1.double() / b_x.size(0),
+#                          running_corrects2.double() / b_x.size(0)))
+#
+#             scheduler.step(total_loss)
+#
+#             running_loss = 0.0
+#             running_corrects1 = 0
+#             running_corrects2 = 0
+#             model.eval()
+#             for x, (y0, y1) in test_loader:
+#                 b_x = Variable(x.to(self.device))  # batch x
+#                 b_y0 = Variable(y0.to(self.device))  # batch y0
+#                 b_y1 = Variable(y1.to(self.device))  # batch y1
+#
+#                 cancer_prob, magnifi_prob = model(b_x)
+#                 c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
+#                 m_loss = loss_func(magnifi_prob, b_y1)  # cross entropy loss
+#                 loss = (1 - beta) * c_loss + beta * m_loss
+#
+#                 _, c_preds = torch.max(cancer_prob, 1)
+#                 _, m_preds = torch.max(magnifi_prob, 1)
+#                 running_loss += loss.item() * b_x.size(0)
+#                 running_corrects1 += torch.sum(c_preds == b_y0.data)
+#                 running_corrects2 += torch.sum(m_preds == b_y1.data)
+#
+#             test_data_len = len(test_data)
+#             epoch_loss = running_loss / test_data_len
+#             epoch_acc_c = running_corrects1.double() / test_data_len
+#             epoch_acc_m = running_corrects2.double() / test_data_len
+#             torch.save(model.state_dict(),
+#                        self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss,
+#                                                                                       epoch_acc_c,
+#                                                                                       epoch_acc_m))
+#
+#     def evaluate_model(self, samples_name, model_file, batch_size, max_count):
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name)
+#         Xtest, Ytest = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#         # Xtest, Ytest = Xtest[:60], Ytest[:60]  # for debug
+#         test_data = Image_Dataset(Xtest, Ytest)
+#         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+#                                       shuffle=False, num_workers=self.NUM_WORKERS)
+#
+#         model = self.load_model(model_file=None)
+#         model.MultiTask = False
+#         # 关闭求导，节约大量的显存
+#         for param in model.parameters():
+#             param.requires_grad = False
+#         print(model)
+#
+#         model.to(self.device)
+#         model.eval()
+#
+#         predicted_tags = []
+#         test_data_len = len(test_loader)
+#         for step, (x, _) in enumerate(test_loader):
+#             b_x = Variable(x.to(self.device))  # batch x
+#
+#             # cancer_prob, magnifi_prob = model(b_x)
+#             # _, cancer_preds = torch.max(cancer_prob, 1)
+#             # _, magnifi_preds = torch.max(magnifi_prob, 1)
+#             # for c_pred, m_pred in zip(cancer_preds.cpu().numpy(), magnifi_preds.cpu().numpy()):
+#             #     predicted_tags.append((c_pred, m_pred))
+#             cancer_prob = model(b_x)
+#             _, cancer_preds = torch.max(cancer_prob, 1)
+#             for c_pred in zip(cancer_preds.cpu().numpy()):
+#                 predicted_tags.append((c_pred))
+#
+#             print('predicting => %d / %d ' % (step + 1, test_data_len))
+#
+#         Ytest = np.array(Ytest)
+#         predicted_tags = np.array(predicted_tags)
+#         index_x10 = Ytest[:, 1] == 0
+#         index_x20 = Ytest[:, 1] == 1
+#         index_x40 = Ytest[:, 1] == 2
+#         print("Classification report for classifier x all:\n%s\n"
+#               % (metrics.classification_report(Ytest[:,0], predicted_tags[:,0], digits=4)))
+#         print("Classification report for classifier x 10:\n%s\n"
+#               % (metrics.classification_report(Ytest[index_x10,0], predicted_tags[index_x10,0], digits=4)))
+#         print("Classification report for classifier x 20:\n%s\n"
+#               % (metrics.classification_report(Ytest[index_x20,0], predicted_tags[index_x20,0], digits=4)))
+#         print("Classification report for classifier x 40:\n%s\n"
+#               % (metrics.classification_report(Ytest[index_x40,0], predicted_tags[index_x40,0], digits=4)))
+#         # print("Confusion matrix:\n%s" % metrics.confusion_matrix(Ytest[:,0], predicted_tags[:,0]))
+#
+#     def load_pretrained_model_on_predict(self):
+#         net_file = {
+#             "se_densenet_22_x_256": "se_densenet_22_x_256-cp-0022-0.0908-0.9642-0.9978.pth",
+#         }
+#
+#         model_code = "{}_{}".format(self.model_name, self.patch_type)
+#         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[model_code])
+#         model = self.load_model(model_file=model_file)
+#
+#         if self.patch_type in ["x_256", "msc_256"]:
+#             # 关闭多任务的其它输出
+#             model.MultiTask = False
+#
+#         # 关闭求导，节约大量的显存
+#         for param in model.parameters():
+#             param.requires_grad = False
+#         return model
+#
+#     ###############################################################################################################
+#     # Multiple scale combination (MSC)
+#     ###############################################################################################################
+# class MSC_Classifier(BaseClassifier):
+#     def __init__(self, params, model_name, patch_type, **kwargs):
+#         super(MSC_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
+#
+#         self.num_classes = (2, 3)
+#         self.image_size = 256
+#
+#     def load_msc_data(self, samples_name_dict):
+#         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
+#         Xtrain10, Ytrain10 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+#
+#         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
+#         Xtrain20, Ytrain20 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+#
+#         train_list = "{}/{}_train.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
+#         Xtrain40, Ytrain40 = read_csv_file(self._params.PATCHS_ROOT_PATH, train_list)
+#
+#         # Xtrain10, Xtrain20, Xtrain40, Ytrain10 = Xtrain10[:40], Xtrain20[:40],Xtrain40[:40],Ytrain10[:40] # for debug
+#         train_data = Image_Dataset_MSC(Xtrain10, Xtrain20, Xtrain40, Ytrain10)
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
+#         Xtest10, Ytest10 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
+#         Xtest20, Ytest20 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
+#         Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#
+#         # Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
+#         test_data = Image_Dataset_MSC(Xtest10, Xtest20, Xtest40, Ytest10)
+#         return train_data, test_data
+#
+#     def create_initial_model(self):
+#         if self.model_name == "se_densenet_c9_22":
+#             model = self.create_se_densenet_c9(depth=22, num_init_features=36)
+#         elif self.model_name == "se_densenet_c9_40":
+#             model = self.create_se_densenet_c9(depth=40, num_init_features=54)
+#         return model
+#
+#     def train_model(self, samples_name, augment_func, batch_size, epochs):
+#         train_data, test_data = self.load_msc_data(samples_name)
+#
+#         train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size,
+#                                        shuffle=True, num_workers=self.NUM_WORKERS)
+#         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+#                                       shuffle=False, num_workers=self.NUM_WORKERS)
+#
+#         model = self.load_model(model_file=None)
+#         # summary(model, torch.zeros((1, 9, self.image_size, self.image_size)), show_input=True)
+#
+#         model.to(self.device)
+#
+#         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)  # 学习率为0.01的学习器
+#         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+#         # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-2, alpha=0.99)
+#         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
+#         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
+#                                                                factor=0.1)  # mode为min，则loss不下降学习率乘以factor，max则反之
+#         loss_func = nn.CrossEntropyLoss(reduction='mean')
+#
+#         beta = 0.5
+#         # training and testing
+#         for epoch in range(epochs):
+#             print('Epoch {}/{}'.format(epoch + 1, epochs))
+#             print('-' * 80)
+#
+#             model.train()
+#
+#             train_data_len = len(train_loader)  # train_data.__len__() // batch_size + 1
+#             total_loss = 0
+#             for step, (x, (y0, y1)) in enumerate(train_loader):  # 分配 batch data, normalize x when iterate train_loader
+#
+#                 b_x = Variable(x.to(self.device))  # batch x
+#                 b_y0 = Variable(y0.to(self.device))  # batch y0
+#                 b_y1 = Variable(y1.to(self.device))  # batch y1
+#
+#                 cancer_prob, edge_prob = model(b_x)
+#                 c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
+#                 e_loss = loss_func(edge_prob, b_y1)  # cross entropy loss
+#                 loss = (1 - beta) * c_loss + beta * e_loss
+#                 optimizer.zero_grad()  # clear gradients for this training step
+#                 loss.backward()  # backpropagation, compute gradients
+#                 optimizer.step()
+#
+#                 # 数据统计
+#                 _, c_preds = torch.max(cancer_prob, 1)
+#                 _, e_preds = torch.max(edge_prob, 1)
+#                 running_loss = loss.item()
+#                 running_corrects1 = torch.sum(c_preds == b_y0.data)
+#                 running_corrects2 = torch.sum(e_preds == b_y1.data)
+#
+#                 total_loss += running_loss
+#                 if step % 5 == 0:
+#                     print('%d / %d ==> Total Loss: %.4f | Cancer Acc: %.4f | Edge Acc: %.4f '
+#                           % (step, train_data_len, running_loss, running_corrects1.double() / b_x.size(0),
+#                              running_corrects2.double() / b_x.size(0)))
+#
+#             scheduler.step(total_loss)
+#
+#             running_loss = 0.0
+#             running_corrects1 = 0
+#             running_corrects2 = 0
+#             model.eval()
+#             for x, (y0, y1) in test_loader:
+#                 b_x = Variable(x.to(self.device))  # batch x
+#                 b_y0 = Variable(y0.to(self.device))  # batch y0
+#                 b_y1 = Variable(y1.to(self.device))  # batch y1
+#
+#                 cancer_prob, edge_prob = model(b_x)
+#                 c_loss = loss_func(cancer_prob, b_y0)  # cross entropy loss
+#                 e_loss = loss_func(edge_prob, b_y1)  # cross entropy loss
+#                 loss = (1 - beta) * c_loss + beta * e_loss
+#
+#                 _, c_preds = torch.max(cancer_prob, 1)
+#                 _, e_preds = torch.max(edge_prob, 1)
+#                 running_loss += loss.item() * b_x.size(0)
+#                 running_corrects1 += torch.sum(c_preds == b_y0.data)
+#                 running_corrects2 += torch.sum(e_preds == b_y1.data)
+#
+#             test_data_len = len(test_data)
+#             epoch_loss = running_loss / test_data_len
+#             epoch_acc_c = running_corrects1.double() / test_data_len
+#             epoch_acc_m = running_corrects2.double() / test_data_len
+#             torch.save(model.state_dict(),
+#                        self.model_root + "/cp-{:04d}-{:.4f}-{:.4f}-{:.4f}.pth".format(epoch + 1, epoch_loss,
+#                                                                                       epoch_acc_c,
+#                                                                                       epoch_acc_m))
+#
+#     def evaluate_model_msc(self, samples_name_dict=None, batch_size=100):
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[10])
+#         Xtest10, Ytest10 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[20])
+#         Xtest20, Ytest20 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name_dict[40])
+#         Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#
+#         # Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
+#         test_data = Image_Dataset_MSC(Xtest10, Xtest20, Xtest40, Ytest10)
+#
+#         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+#                                       shuffle=False, num_workers=self.NUM_WORKERS)
+#
+#         model = self.load_model(model_file=None)
+#         model.MultiTask = True
+#         # 关闭求导，节约大量的显存
+#         for param in model.parameters():
+#             param.requires_grad = False
+#         print(model)
+#
+#         model.to(self.device)
+#         model.eval()
+#
+#         predicted_tags = []
+#         test_data_len = len(test_loader)
+#         for step, (x, _) in enumerate(test_loader):
+#             b_x = Variable(x.to(self.device))  # batch x
+#
+#             # cancer_prob = model(b_x)
+#             # _, cancer_preds = torch.max(cancer_prob, 1)
+#             # for c_pred in zip(cancer_preds.cpu().numpy()):
+#             #     predicted_tags.append((c_pred))
+#             cancer_prob, edge_prob = model(b_x)
+#             _, cancer_preds = torch.max(cancer_prob, 1)
+#             _, edge_preds = torch.max(edge_prob, 1)
+#             for c_pred, m_pred in zip(cancer_preds.cpu().numpy(), edge_preds.cpu().numpy()):
+#                 predicted_tags.append((c_pred, m_pred))
+#
+#             print('predicting => %d / %d ' % (step + 1, test_data_len))
+#
+#         # Ytest = np.array(Ytest10[:60]) # for debug
+#         Ytest = np.array(Ytest10)
+#         predicted_tags = np.array(predicted_tags)
+#
+#         print("Classification report for classifier (normal, cancer):\n%s\n"
+#               % (metrics.classification_report(Ytest[:, 0], predicted_tags[:, 0], digits=4)))
+#         print("Classification report for classifier (normal, edge, cancer):\n%s\n"
+#               % (metrics.classification_report(Ytest[:, 1], predicted_tags[:, 1], digits=4)))
+#
+#     def evaluate_model(self, samples_name, model_file, batch_size, max_count):
+#         assert isinstance(samples_name, dict), "samples_name maust be a dict."
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name[10])
+#         Xtest10, Ytest10 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name[20])
+#         Xtest20, Ytest20 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#
+#         test_list = "{}/{}_test.txt".format(self._params.PATCHS_ROOT_PATH, samples_name[40])
+#         Xtest40, Ytest40 = read_csv_file(self._params.PATCHS_ROOT_PATH, test_list)
+#
+#         # Xtest10, Xtest20, Xtest40, Ytest10 = Xtest10[:60], Xtest20[:60], Xtest40[:60], Ytest10[:60]  # for debug
+#         test_data = Image_Dataset_MSC(Xtest10, Xtest20, Xtest40, Ytest10)
+#
+#         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size,
+#                                       shuffle=False, num_workers=self.NUM_WORKERS)
+#
+#         model = self.load_model(model_file=None)
+#         model.MultiTask = True
+#         # 关闭求导，节约大量的显存
+#         for param in model.parameters():
+#             param.requires_grad = False
+#         print(model)
+#
+#         model.to(self.device)
+#         model.eval()
+#
+#         predicted_tags = []
+#         test_data_len = len(test_loader)
+#         for step, (x, _) in enumerate(test_loader):
+#             b_x = Variable(x.to(self.device))  # batch x
+#
+#             # cancer_prob = model(b_x)
+#             # _, cancer_preds = torch.max(cancer_prob, 1)
+#             # for c_pred in zip(cancer_preds.cpu().numpy()):
+#             #     predicted_tags.append((c_pred))
+#             cancer_prob, edge_prob = model(b_x)
+#             _, cancer_preds = torch.max(cancer_prob, 1)
+#             _, edge_preds = torch.max(edge_prob, 1)
+#             for c_pred, m_pred in zip(cancer_preds.cpu().numpy(), edge_preds.cpu().numpy()):
+#                 predicted_tags.append((c_pred, m_pred))
+#
+#             print('predicting => %d / %d ' % (step + 1, test_data_len))
+#
+#         # Ytest = np.array(Ytest10[:60]) # for debug
+#         Ytest = np.array(Ytest10)
+#         predicted_tags = np.array(predicted_tags)
+#
+#         print("Classification report for classifier (normal, cancer):\n%s\n"
+#               % (metrics.classification_report(Ytest[:,0], predicted_tags[:,0], digits=4)))
+#         print("Classification report for classifier (normal, edge, cancer):\n%s\n"
+#               % (metrics.classification_report(Ytest[:,1], predicted_tags[:,1], digits=4)))
+#
+#     def predict_on_batch(self, src_img, patch_size, seeds_scale, seeds, batch_size):
+#         '''
+#         预测在种子点提取的图块
+#         :param src_img: 切片图像
+#         :param patch_size: 图块大小
+#         :param seeds_scale: 种子点的倍镜数
+#         :param seeds: 种子点的集合
+#         :return: 预测结果与概率的
+#         '''
+#         assert self.patch_type == "msc_256", "Only accept a model based on multiple scales"
+#
+#         if self.model is None:
+#             self.model = self.load_pretrained_model_on_predict(self.patch_type)
+#             self.model.to(self.device)
+#             self.model.eval()
+#
+#         # self.model.MultiTask = True
+#
+#         seeds_itor = get_image_blocks_msc_itor(src_img, seeds_scale, seeds, patch_size, patch_size, batch_size)
+#
+#         len_seeds = len(seeds)
+#         data_len = len(seeds) // batch_size
+#         if len_seeds % batch_size > 0:
+#             data_len += 1
+#
+#         results = []
+#
+#         for step, x in enumerate(seeds_itor):
+#             b_x = Variable(x.to(self.device))
+#
+#             output = self.model(b_x)
+#             # cancer_prob, edge_prob = self.model(b_x)
+#             output_softmax = nn.functional.softmax(output)
+#             probs, preds = torch.max(output_softmax, 1)
+#             for prob, pred in zip(probs.cpu().numpy(), preds.cpu().numpy()):
+#                 if pred == 1:
+#                     results.append(prob)
+#                 else:
+#                     results.append(1 - prob)
+#             # for prob, pred, three_prob in zip(probs.cpu().numpy(), preds.cpu().numpy(), output_softmax.cpu().numpy()):
+#             #     cancer_edge_prob = three_prob[1] + three_prob[-1]
+#             #     if pred == 2:
+#             #         results.append((1, cancer_edge_prob))
+#             #     elif pred == 1:
+#             #         if three_prob[-1] > 10 * three_prob[0]:
+#             #             results.append((1, cancer_edge_prob))
+#             #         else:
+#             #             results.append((0, 1 - three_prob[-1]))
+#             #     else:
+#             #         results.append((0, 1 - three_prob[-1]))
+#             # for three_prob in output_softmax.cpu().numpy():
+#             #     if three_prob[-1] > three_prob[0]:
+#             #         results.append((1, three_prob[-1] + three_prob[1]))
+#             #     else:
+#             #         results.append((0, three_prob[0] + three_prob[1]))
+#
+#             print('predicting => %d / %d ' % (step + 1, data_len))
+#
+#         return results
+#
+#     def load_pretrained_model_on_predict(self):
+#         net_file = {
+#             "se_densenet_c9_22_msc_256":  "se_densenet_c9_22_msc_256_0030-0.2319-0.9775-0.6928.pth",
+#         }
+#
+#         model_code = "{}_{}".format(self.model_name, self.patch_type)
+#         model_file = "{}/models/pytorch/trained/{}".format(self._params.PROJECT_ROOT, net_file[model_code])
+#         model = self.load_model(model_file=model_file)
+#
+#         if self.patch_type in ["x_256", "msc_256"]:
+#             # 关闭多任务的其它输出
+#             model.MultiTask = False
+#
+#         # 关闭求导，节约大量的显存
+#         for param in model.parameters():
+#             param.requires_grad = False
+#         return model
 
 
 

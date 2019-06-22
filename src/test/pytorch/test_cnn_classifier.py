@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 from core import *
 from skimage import io
-from pytorch.cnn_classifier import Simple_Classifier
+from pytorch.cnn_classifier import Simple_Classifier, DSC_Classifier
 import torch
 from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization,ReinhardNormalization #, ACDNormalization_tf
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
@@ -73,10 +73,10 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # cnn.train_model(samples_name=("P0430","T1_P0430_4000_256"), class_weight=[0.2391, 1.0],
         #                 augment_func = None, batch_size=30, epochs = 10)
-        cnn.train_model(samples_name=samples[1], class_weight=None,
-                        augment_func = None, batch_size=30, epochs = 10)
-        # cnn.train_model_A2(samples_name=("P0430","T1_P0430_4000_256"), augment_func = None,
-        #                 batch_size=30, loss_weight=0.001, epochs = 10)
+        # cnn.train_model(samples_name=samples[1], cl ass_weight=None,
+        #                 augment_func = None, batch_size=30, epochs = 10)
+        cnn.train_model_A2(samples_name=samples[1], augment_func = None, class_weight=None,
+                        batch_size=30, loss_weight=0.001, epochs = 10)
 
 
     def test_evaluate_model(self):
@@ -290,6 +290,20 @@ class Test_cnn_classifier(unittest.TestCase):
 
         cnn.export_ONNX_model()
         # cnn.export_tensorboard_model()
+
+    def test_DSC_train_model(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "dsc_densenet_40"
+        sample_name = "2040_256"
+
+        samples = [("P0619","T1_P0619_4000_2000_256"),  # 平衡样本集
+                    ]
+        cnn = DSC_Classifier(c, model_name, sample_name)
+
+        cnn.train_model(samples_name=samples[0], class_weight=None,
+                        batch_size=20, epochs = 10)
 
 
     # def test_train_model_multi_task(self):

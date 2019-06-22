@@ -63,39 +63,60 @@ class Image_Dataset(Dataset):
     def __len__(self):
         return len(self.x)
 
-class Image_Dataset_MSC(Dataset):
-    def __init__(self, x10_set, x20_set, x40_set, y_set, transform = None):
-        self.y = y_set
-        self.x10 = x10_set
-        self.x20 = x20_set
-        self.x40 = x40_set
-
+class DSC_Image_Dataset(Dataset):
+    def __init__(self, x_set, y_set, transform = None):
+        self.x, self.y = x_set, y_set
         if transform is None:
             self.transform = torchvision.transforms.ToTensor()
         else:
             self.transform = transform
 
     def __getitem__(self, index):
-        file_name10 = self.x10[index]
-        file_name20 = self.x20[index]
-        file_name40 = self.x40[index]
+        file_names = self.x[index]
         label = self.y[index]
 
-        # img10 = ImageNormalization.normalize_mean(imread(file_name10)) / 255
-        # img20 = ImageNormalization.normalize_mean(imread(file_name20)) / 255
-        # img40 = ImageNormalization.normalize_mean(imread(file_name40)) / 255
-        img10 = imread(file_name10) / 255
-        img20 = imread(file_name20) / 255
-        img40 = imread(file_name40) / 255
-
-        img = np.concatenate((img10, img20, img40), axis=-1)
-
-        img = self.transform(img).type(torch.FloatTensor)
-
-        return img, label
+        img_x20 = imread(file_names[0]) / 255.0
+        img_x40 = imread(file_names[1]) / 255.0
+        img_x20_tensor = self.transform(img_x20).type(torch.FloatTensor)
+        img_x40_tensor = self.transform(img_x40).type(torch.FloatTensor)
+        return (img_x20_tensor, img_x40_tensor), label
 
     def __len__(self):
-        return len(self.y)
+        return len(self.x)
+
+# class Image_Dataset_MSC(Dataset):
+#     def __init__(self, x10_set, x20_set, x40_set, y_set, transform = None):
+#         self.y = y_set
+#         self.x10 = x10_set
+#         self.x20 = x20_set
+#         self.x40 = x40_set
+#
+#         if transform is None:
+#             self.transform = torchvision.transforms.ToTensor()
+#         else:
+#             self.transform = transform
+#
+#     def __getitem__(self, index):
+#         file_name10 = self.x10[index]
+#         file_name20 = self.x20[index]
+#         file_name40 = self.x40[index]
+#         label = self.y[index]
+#
+#         # img10 = ImageNormalization.normalize_mean(imread(file_name10)) / 255
+#         # img20 = ImageNormalization.normalize_mean(imread(file_name20)) / 255
+#         # img40 = ImageNormalization.normalize_mean(imread(file_name40)) / 255
+#         img10 = imread(file_name10) / 255
+#         img20 = imread(file_name20) / 255
+#         img40 = imread(file_name40) / 255
+#
+#         img = np.concatenate((img10, img20, img40), axis=-1)
+#
+#         img = self.transform(img).type(torch.FloatTensor)
+#
+#         return img, label
+#
+#     def __len__(self):
+#         return len(self.y)
 
 
 # class Image_Dataset2(Dataset):
