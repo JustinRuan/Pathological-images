@@ -302,9 +302,10 @@ class Test_cnn_classifier(unittest.TestCase):
                     ]
         cnn = DSC_Classifier(c, model_name, sample_name)
 
-        cnn.train_model(samples_name=samples[0], class_weight=None,
-                        batch_size=20, epochs = 10)
-
+        # cnn.train_model(samples_name=samples[0], class_weight=None,
+        #                 batch_size=20, epochs = 10)
+        cnn.train_model_A2(samples_name=samples[0], class_weight=None,
+                        batch_size=20, loss_weight=0.001, epochs = 1)
 
     # def test_train_model_multi_task(self):
     #     c = Params()
