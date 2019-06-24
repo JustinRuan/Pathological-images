@@ -22,7 +22,7 @@ from visdom import Visdom
 
 from core import Random_Gen
 from core.util import get_seeds, transform_coordinate
-from pytorch.cnn_classifier import Simple_Classifier#, MultiTask_Classifier, MSC_Classifier
+from pytorch.cnn_classifier import Simple_Classifier, DSC_Classifier
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
@@ -493,12 +493,8 @@ class AdaptiveDetector(BaseDetector):
         limit_sampling_density = kwargs["limit_sampling_density"]
 
         normal_func = None
-        select = 2
-        if select == 4:
-            model_name = "msc_256"
-            sample_name = "x_256"
-            # cnn = MultiTask_Classifier(self._params, model_name, sample_name, normalization=normal_func)
-        elif select == 1:
+        select = 3
+        if select == 1:
             # self.model_name = "simple_cnn"
             # self.model_name = "se_densenet_22"
             # self.model_name = "se_densenet_40"
@@ -511,6 +507,10 @@ class AdaptiveDetector(BaseDetector):
             self.model_name = "e_densenet_40"
             self.sample_name = "2000_256"
             self.cnn = Simple_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
+        elif select == 3:
+            self.model_name = "dsc_densenet_40"
+            self.sample_name = "2040_256"
+            self.cnn = DSC_Classifier(self._params, self.model_name, self.sample_name)
         elif select == 10:
             self.model_name = "e_densenet_22"
             self.sample_name = "4000_256"
@@ -609,11 +609,11 @@ class AdaptiveDetector(BaseDetector):
             print("Current sampling density = ", sampling_density)
 
             # 单倍镜下进行检测
-            if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn",
-                                   "e_densenet_22", "e_densenet_40"]:
-                high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
-                probability, prediction, low_dim_features = self.cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
-                probs = np.array(low_dim_features)[:,1]
+            # if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn",
+            #                        "e_densenet_22", "e_densenet_40"]:
+            high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
+            probability, prediction, low_dim_features = self.cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
+            probs = np.array(low_dim_features)[:,1]
 
             for (x, y), pred in zip(new_seeds, probs):
                 xx = x - x1
@@ -640,25 +640,28 @@ class AdaptiveDetector(BaseDetector):
             total_step += 1
 
             if sampling_density > limit_sampling_density:
-                region_density = self.cacl_sampling_density_with_superpixels(label_map, interpolate_img,
-                                                                             history, region_density, limit_sampling_density)
-                # 分别对应四种区域：
-                # 0：高概率低密度， HpLd
-                # 1：高概率高密度， HpHd
-                # 2：低概率低密度， LpLd
-                # 3：低概率高密度，LpHd
-                count_HpLd = len(region_density[0].keys())
-                count_HpHd = len(region_density[1].keys())
-                count_LpLd = len(region_density[2].keys())
-                count_LpHd = len(region_density[3].keys())
-                print("count of density regions: HpLd = {}, HpHd = {}, LpLd = {}, LpHd = {}".format(count_HpLd,
-                                                                                                   count_HpHd,
-                                                                                                   count_LpLd,
-                                                                                                   count_LpHd))
-                if count_HpLd > 0:
-                    self.status_map = self.update_status_map(label_map, region_density, history)
-                else:
-                    break
+                break
+
+            # if sampling_density > limit_sampling_density:
+            #     region_density = self.cacl_sampling_density_with_superpixels(label_map, interpolate_img,
+            #                                                                  history, region_density, limit_sampling_density)
+            #     # 分别对应四种区域：
+            #     # 0：高概率低密度， HpLd
+            #     # 1：高概率高密度， HpHd
+            #     # 2：低概率低密度， LpLd
+            #     # 3：低概率高密度，LpHd
+            #     count_HpLd = len(region_density[0].keys())
+            #     count_HpHd = len(region_density[1].keys())
+            #     count_LpLd = len(region_density[2].keys())
+            #     count_LpHd = len(region_density[3].keys())
+            #     print("count of density regions: HpLd = {}, HpHd = {}, LpLd = {}, LpHd = {}".format(count_HpLd,
+            #                                                                                        count_HpHd,
+            #                                                                                        count_LpLd,
+            #                                                                                        count_LpHd))
+            #     if count_HpLd > 0:
+            #         self.status_map = self.update_status_map(label_map, region_density, history)
+            #     else:
+            #         break
 
         return history
 

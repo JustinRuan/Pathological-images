@@ -32,7 +32,7 @@ from pytorch.loss_function import CenterLoss, LGMLoss
 from pytorch.net import DenseNet, SEDenseNet, ExtendedDenseNet, DSC_DenseNet
 from pytorch.net import Simple_CNN
 from pytorch.util import get_image_blocks_itor, get_image_blocks_batch_normalize_itor, \
-    get_image_file_batch_normalize_itor
+    get_image_file_batch_normalize_itor, get_image_blocks_dsc_itor
 
 
 class BaseClassifier(object, metaclass=ABCMeta):
@@ -915,7 +915,7 @@ class DSC_Classifier(BaseClassifier):
         :return: 网络模型
         '''
         net_file = {
-            "e_densenet_40_2000_256":"e_densenet_40_2000_256_cp-0009-0.1141-0.9594.pth"
+            "dsc_densenet_40_2040_256":"dsc_densenet_40_2040_256_cp-0001-0.1201-0.9569-0.9523-0.9323.pth"
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)
@@ -1098,7 +1098,7 @@ class DSC_Classifier(BaseClassifier):
         # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
 
         # optimzer4center
-        optimzer4center = torch.optim.SGD(lgm_loss.parameters(), lr=0.1, momentum=0.9)
+        optimzer4center = torch.optim.SGD(lgm_loss.parameters(), lr=0.5, momentum=0.9)
 
         # training and testing
         for epoch in range(epochs):
@@ -1117,9 +1117,12 @@ class DSC_Classifier(BaseClassifier):
                 b_y = Variable(y.to(self.device))
 
                 output20, output40, output = model(b_x20, b_x40)  # cnn output
-
-                logits20, mlogits20, likelihood20 = lgm_loss(output20, b_y20)
-                logits40, mlogits40, likelihood40 = lgm_loss(output40, b_y40)
+                
+                output2040 = torch.cat((output20, output40),0)
+                b_y2040 = torch.cat((b_y20, b_y40), 0)
+                # logits20, mlogits20, likelihood20 = lgm_loss(output20, b_y20)
+                # logits40, mlogits40, likelihood40 = lgm_loss(output40, b_y40)
+                logits2040, mlogits2040, likelihood2040 = lgm_loss(output2040, b_y2040)
 
                 # 组合特征的分类器的loss
                 loss1 = loss_func(output, b_y)
@@ -1127,7 +1130,9 @@ class DSC_Classifier(BaseClassifier):
                 # 单个倍镜下的分类器的Loss
                 m = 0.5
                 # cross entropy loss
-                loss2 = m * loss_func(output20, b_y20) + (1 - m) * loss_func(output40, b_y40) + loss_weight * (likelihood20 + likelihood40)
+                # loss2 = m * loss_func(output20, b_y20) + (1 - m) * loss_func(output40, b_y40) + loss_weight * (likelihood20 + likelihood40)
+                loss2 = m * loss_func(output20, b_y20) + (1 - m) * loss_func(output40, b_y40) + loss_weight * likelihood2040
+
                 optimizer_x2040.zero_grad()  # clear gradients for this training step
                 optimizer_xDS.zero_grad()
                 optimzer4center.zero_grad()
@@ -1200,6 +1205,45 @@ class DSC_Classifier(BaseClassifier):
                        )
         return
 
+    def predict_on_batch(self, src_img, scale, patch_size, seeds, batch_size):
+        '''
+        预测在种子点提取的图块
+        :param src_img: 切片图像
+        :param scale: 提取图块的倍镜数
+        :param patch_size: 图块大小
+        :param seeds: 种子点的集合
+        :return: 预测结果与概率
+        '''
+        seeds_itor = get_image_blocks_dsc_itor(src_img, scale, seeds, patch_size, patch_size, batch_size,)
+
+
+        if self.model is None:
+            self.model = self.load_pretrained_model_on_predict()
+            self.model.to(self.device)
+            self.model.eval()
+
+        len_seeds = len(seeds)
+        data_len = len(seeds) // batch_size
+        if len_seeds % batch_size > 0:
+            data_len += 1
+
+        probability = []
+        prediction = []
+        low_dim_features = []
+        for step, (x20, x40) in enumerate(seeds_itor):
+            b_x20 = Variable(x20.to(self.device))
+            b_x40 = Variable(x40.to(self.device))
+
+            out20, out40, output = self.model(b_x20, b_x40) # model最后不包括一个softmax层
+            output_softmax = nn.functional.softmax(output, dim =1)
+            probs, preds = torch.max(output_softmax, 1)
+
+            low_dim_features.extend(output.cpu().numpy())
+            probability.extend(probs.cpu().numpy())
+            prediction.extend(preds.cpu().numpy())
+            print('predicting => %d / %d ' % (step + 1, data_len))
+
+        return probability, prediction, low_dim_features
 
 # ######################################################################################################################
 # ############       multi task            #########

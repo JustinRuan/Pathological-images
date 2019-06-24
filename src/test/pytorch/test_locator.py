@@ -17,9 +17,9 @@ from skimage.segmentation import mark_boundaries
 from pytorch.locator import Locator
 import csv
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestLocator(unittest.TestCase):
     def test_calcuate_location_features(self):
@@ -73,7 +73,7 @@ class TestLocator(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         loca = Locator(c)
-        loca.output_result_csv([0.5,], None)
+        loca.output_result_csv([0.5], None)
 
     def test_csv(self):
         c = Params()

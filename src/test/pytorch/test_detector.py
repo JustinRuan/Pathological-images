@@ -13,8 +13,8 @@ from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_detector(unittest.TestCase):
@@ -263,7 +263,7 @@ class Test_detector(unittest.TestCase):
         # y2 = roi[4]
 
         x1, y1, x2, y2 = 0, 0, 0, 0
-        id = 9
+        id = 76
         slice_id = "Tumor_{:0>3d}".format(id)
 
         c = Params()
@@ -282,7 +282,7 @@ class Test_detector(unittest.TestCase):
             print("x1, y1, x2, y2: ", x1, y1, x2, y2)
 
         cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=20, patch_size=256,
-                                               max_iter_nums=100, batch_size=100,
+                                               max_iter_nums=100, batch_size=20,
                                                limit_sampling_density=1,)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)

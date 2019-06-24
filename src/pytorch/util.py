@@ -196,6 +196,49 @@ def get_image_file_batch_normalize_itor(image_filenames, y_set, batch_size, norm
         y_tensor = torch.tensor(batch_y, dtype=torch.long)
         yield img_tensor, y_tensor
 
+def get_image_blocks_dsc_itor(src_img, seeds_scale, seeds, nWidth, nHeight, batch_size):
+    '''
+    获得以种子点为图块的迭代器
+    :param seeds_scale: 种子点的倍镜数
+    :param seeds: 种子点
+    :param nWidth: 图块的宽
+    :param nHeight: 图块的高
+    :param batch_size: 每批的数量
+    :return: 返回图块集合的迭代器
+    '''
+    transform = torchvision.transforms.ToTensor()
+    n = 0
+
+    r20 = 20 / seeds_scale
+    r40 = 40 / seeds_scale
+
+    images_x20 = []
+    images_x40 = []
+    for x, y in seeds:
+        block20 = src_img.get_image_block(20, int(r20 * x), int(r20 * y), nWidth, nHeight)
+        block40 = src_img.get_image_block(40, int(r40 * x), int(r40 * y), nWidth, nHeight)
+
+        img20 = block20.get_img() / 255
+        img40 = block40.get_img() / 255
+
+        images_x20.append(transform(img20).type(torch.FloatTensor))
+        images_x40.append(transform(img40).type(torch.FloatTensor))
+
+        n = n + 1
+        if n >= batch_size:
+            img_x20_tensor = torch.stack(images_x20)
+            img_x40_tensor = torch.stack(images_x40)
+            yield img_x20_tensor, img_x40_tensor
+
+            images_x20 = []
+            images_x40 = []
+            n = 0
+
+    if n > 0:
+        img_x20_tensor = torch.stack(images_x20)
+        img_x40_tensor = torch.stack(images_x40)
+        yield img_x20_tensor, img_x40_tensor
+
 
 def get_image_blocks_msc_itor(src_img, seeds_scale, seeds, nWidth, nHeight, batch_size):
     '''
