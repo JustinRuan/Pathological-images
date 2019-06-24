@@ -73,13 +73,14 @@ class TestLocator(unittest.TestCase):
         c.load_config_file(JSON_PATH)
 
         loca = Locator(c)
-        loca.output_result_csv([0.5], None)
+        # loca.output_result_csv([0.9], chosen=["Tumor_009"])
+        loca.output_result_csv([0.9,0.5], chosen=None)
 
     def test_csv(self):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        i = 9
+        i = 11
         code = "Tumor_{:0>3d}".format(i)
         # filename = "{}/results/{}_cancermap.npz".format(c.PROJECT_ROOT, code)
         # result = np.load(filename)

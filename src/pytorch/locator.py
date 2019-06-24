@@ -15,7 +15,7 @@ from sklearn import metrics
 from skimage import morphology
 import csv
 from core import *
-from sklearn.svm import LinearSVC
+from sklearn import svm
 from sklearn.model_selection import train_test_split
 import joblib
 
@@ -70,23 +70,30 @@ class Locator(object):
             for index in range(1, num_tag + 1):
                 p = properties[index - 1]
                 # 提取特征
-
                 max_value = p.max_intensity
-                if max_value < last_thresh and p.minor_axis_length > 35:
-                    centroid = p.weighted_centroid
-                    # 坐标从1.25倍镜下的
-                    x = np.rint(centroid[1] + x_letftop).astype(np.int)
-                    y = np.rint(centroid[0] + y_lefttop).astype(np.int)
+                if max_value < last_thresh and p.major_axis_length > 15:
+                    # centroid = p.weighted_centroid
+                    invert_region = candidated_tag != index
+                    new_map = np.copy(cancer_map)
+                    new_map[invert_region] = 0
 
-                    f = [p.area, p.extent, p.major_axis_length, p.minor_axis_length,
-                         p.max_intensity, p.mean_intensity]
-                    f.extend(p.weighted_moments_hu.flatten())
+                    pos = np.nonzero(new_map == max_value)
+                    max_count = len(pos[0])
+                    k = max_count // 2
+                    # 坐标从1.25倍镜下的
+                    x = pos[1][k] + x_letftop
+                    y = pos[0][k] + y_lefttop
+
+                    f = [p.max_intensity, p.mean_intensity,
+                         p.area, p.perimeter,
+                         p.major_axis_length, p.minor_axis_length, ]
 
                     features[(x, y)] = f
 
             last_thresh = thresh
         print("get points: ", len(features))
         return features
+
 
     def create_train_data(self, feature_data):
         imgCone = ImageCone(self._params, Open_Slide())
@@ -155,7 +162,7 @@ class Locator(object):
 
         feature_num = len(X_train[0])
         for params in model_params:
-            clf = LinearSVC(**params, max_iter=max_iter, verbose=0, class_weight={0:0.1, 1:1}) # class_weight='balanced'
+            clf = svm.SVC(**params, max_iter=max_iter, verbose=0, class_weight={0:1, 1:1}) # class_weight='balanced'
             clf.fit(X_train, y_train)
             y_pred = clf.predict(X_train)
             score = metrics.accuracy_score(y_train, y_pred)
@@ -191,7 +198,7 @@ class Locator(object):
         :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
         :return:
         '''
-        # model_file = self._params.PROJECT_ROOT + "/models/locator_svm_0.7778_0.8491.model"
+        # model_file = self._params.PROJECT_ROOT + "/models/locator_svm_1.0000_1.0000.model"
         # clf = joblib.load(model_file)
 
         project_root = self._params.PROJECT_ROOT
@@ -215,14 +222,14 @@ class Locator(object):
                 points = self.search_local_feature_points(cancer_map, thresh_list, x1, y1)
                 candidated_result = []
                 for (xx, yy), f in points.items():
-                    # 经过分类器判别后输出
+                    # # 经过分类器判别后输出
                     # pred = clf.decision_function([f])
-                    # if pred > -10:
+                    # if pred > -100:
                     #     #坐标从1.25倍镜下变换到40倍镜下
-                    #     candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
+                    #     candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[0]})
 
                     # # 直接全部输出
-                    candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[4]})
+                    candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[0]})
 
                 csv_filename = "{0}/{1}.csv".format(save_path, slice_id)
                 with open(csv_filename, 'w', newline='')as f:
