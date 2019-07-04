@@ -113,10 +113,10 @@ class BaseDetector(object, metaclass=ABCMeta):
     def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
         pass
 
-    def save_result_cancer_map(self,  x1, y1, coordinate_scale, cancer_map):
+    def save_result_cancer_map(self,  x1, y1, coordinate_scale, cancer_map, history):
         save_filename = "{}/results/{}_cancermap.npz".format(self._params.PROJECT_ROOT, self._imgCone.slice_id)
         # np.savez(save_filename, {"x1":x1, "y1":y1, "scale":coordinate_scale, "cancer_map":cancer_map})
-        np.savez_compressed(save_filename, x1=x1, y1=y1, scale=coordinate_scale, cancer_map=cancer_map)
+        np.savez_compressed(save_filename, x1=x1, y1=y1, scale=coordinate_scale, cancer_map=cancer_map, history=history)
         print(">>> >>> ", save_filename," saved!")
 
 class Detector(BaseDetector):
@@ -491,6 +491,7 @@ class AdaptiveDetector(BaseDetector):
         max_iter_nums = kwargs["max_iter_nums"]
         batch_size = kwargs["batch_size"]
         limit_sampling_density = kwargs["limit_sampling_density"]
+        enhanced = kwargs["enhanced"]
 
         normal_func = None
         select = 3
@@ -517,7 +518,7 @@ class AdaptiveDetector(BaseDetector):
             self.cnn = Elastic_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
 
         history =  self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
-                               max_iter_nums, batch_size, limit_sampling_density)
+                               max_iter_nums, batch_size, limit_sampling_density, enhanced)
 
         cancer_map =  self.post_process(history, extract_scale, self._params.GLOBAL_SCALE, patch_size)
         return cancer_map, history
@@ -541,7 +542,7 @@ class AdaptiveDetector(BaseDetector):
 
     # 第三版本: 增强自适应采样
     def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
-                               max_iter_nums, batch_size, limit_sampling_density = 1.0):
+                               max_iter_nums, batch_size, limit_sampling_density = 1.0, enhanced=False):
         '''
 
         :param x1: 检测区域的左上角x
@@ -639,29 +640,30 @@ class AdaptiveDetector(BaseDetector):
             #########################################################################################################
             total_step += 1
 
-            if sampling_density > limit_sampling_density:
-                break
-
-            # if sampling_density > limit_sampling_density:
-            #     region_density = self.cacl_sampling_density_with_superpixels(label_map, interpolate_img,
-            #                                                                  history, region_density, limit_sampling_density)
-            #     # 分别对应四种区域：
-            #     # 0：高概率低密度， HpLd
-            #     # 1：高概率高密度， HpHd
-            #     # 2：低概率低密度， LpLd
-            #     # 3：低概率高密度，LpHd
-            #     count_HpLd = len(region_density[0].keys())
-            #     count_HpHd = len(region_density[1].keys())
-            #     count_LpLd = len(region_density[2].keys())
-            #     count_LpHd = len(region_density[3].keys())
-            #     print("count of density regions: HpLd = {}, HpHd = {}, LpLd = {}, LpHd = {}".format(count_HpLd,
-            #                                                                                        count_HpHd,
-            #                                                                                        count_LpLd,
-            #                                                                                        count_LpHd))
-            #     if count_HpLd > 0:
-            #         self.status_map = self.update_status_map(label_map, region_density, history)
-            #     else:
-            #         break
+            if not enhanced:
+                if sampling_density > limit_sampling_density:
+                    break
+            else:
+                if sampling_density > limit_sampling_density:
+                    region_density = self.cacl_sampling_density_with_superpixels(label_map, interpolate_img,
+                                                                                 history, region_density, limit_sampling_density)
+                    # 分别对应四种区域：
+                    # 0：高概率低密度， HpLd
+                    # 1：高概率高密度， HpHd
+                    # 2：低概率低密度， LpLd
+                    # 3：低概率高密度，LpHd
+                    count_HpLd = len(region_density[0].keys())
+                    count_HpHd = len(region_density[1].keys())
+                    count_LpLd = len(region_density[2].keys())
+                    count_LpHd = len(region_density[3].keys())
+                    print("count of density regions: HpLd = {}, HpHd = {}, LpLd = {}, LpHd = {}".format(count_HpLd,
+                                                                                                       count_HpHd,
+                                                                                                       count_LpLd,
+                                                                                                       count_LpHd))
+                    if count_HpLd > 0:
+                        self.status_map = self.update_status_map(label_map, region_density, history)
+                    else:
+                        break
 
         return history
 

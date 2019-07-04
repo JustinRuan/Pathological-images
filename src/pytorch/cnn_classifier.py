@@ -915,7 +915,7 @@ class DSC_Classifier(BaseClassifier):
         :return: 网络模型
         '''
         net_file = {
-            "dsc_densenet_40_2040_256":"dsc_densenet_40_2040_256_cp-0001-0.1201-0.9569-0.9523-0.9323.pth"
+            "dsc_densenet_40_2040_256":"dsc_densenet_40_2040_256_cp-0016-0.0738-0.9724-0.9702-0.9521.pth"
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)

@@ -13,8 +13,8 @@ from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_detector(unittest.TestCase):
@@ -263,7 +263,7 @@ class Test_detector(unittest.TestCase):
         # y2 = roi[4]
 
         x1, y1, x2, y2 = 0, 0, 0, 0
-        id = 76
+        id = 11
         slice_id = "Tumor_{:0>3d}".format(id)
 
         c = Params()
@@ -282,8 +282,8 @@ class Test_detector(unittest.TestCase):
             print("x1, y1, x2, y2: ", x1, y1, x2, y2)
 
         cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=20, patch_size=256,
-                                               max_iter_nums=100, batch_size=20,
-                                               limit_sampling_density=1,)
+                                               max_iter_nums=100, batch_size=100,
+                                               limit_sampling_density=3,)
 
         src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
         mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -306,7 +306,8 @@ class Test_detector(unittest.TestCase):
     def test_adaptive_detect_region_train_slice(self):
         # train set
         # train_list = [9, 11, 16, 26, 39, 47, 58, 68, 72, 76]
-        train_list = [11, 16, 26, 39, 47, 58, 68, 72, 76]
+        # train_list = [11, 16, 26, 39, 47, 58, 68, 72, 76]
+        train_list = [2]  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
         result = {}
 
         for id in train_list:
@@ -331,7 +332,7 @@ class Test_detector(unittest.TestCase):
 
             cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
                                                    max_iter_nums=100, batch_size=100,
-                                                   limit_sampling_density=1,)
+                                                   limit_sampling_density=3,enhanced = False)
 
             src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
             mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
@@ -339,11 +340,11 @@ class Test_detector(unittest.TestCase):
             levels = [0.3, 0.5, 0.6, 0.8]
             false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map, mask_img,
                                                                                                    levels)
-            detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
+            detector.save_result_cancer_map(x1, y1, 1.25, cancer_map, history)
 
             result[slice_id] = (roc_auc, dice)
 
-            enable_show = False
+            enable_show = True
             # 存盘输出部分
             if enable_show:
                 self.show_results(cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id,
@@ -492,7 +493,7 @@ class Test_detector(unittest.TestCase):
             a.axis('off')
         # ax[0].axis("on")
         plt.savefig("result_{}.png".format(slice_id), dpi=150, format="png")
-        plt.show()
+        # plt.show()
 
     def test_adaptive_detect_region_train_batch(self):
         c = Params()
