@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
+from pytorch.cancer_map import CancerMapBuilder
 
 # JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
@@ -291,7 +292,8 @@ class Test_detector(unittest.TestCase):
         levels = [0.3, 0.5, 0.6, 0.8]
         false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map, mask_img,
                                                                                                levels)
-        detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
+        # detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
+        detector.save_result_history(x1, y1, x2, y2, 1.25, history)
 
         enable_show = True
         # 存盘输出部分
@@ -307,8 +309,10 @@ class Test_detector(unittest.TestCase):
         # train set
         # train_list = [9, 11, 16, 26, 39, 47, 58, 68, 72, 76]
         # train_list = [11, 16, 26, 39, 47, 58, 68, 72, 76]
-        train_list = [2]  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
+        train_list = range(8,11)  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
         result = {}
+        # 如果输出癌变概率图，并进行评估
+        enable_evaluate = True
 
         for id in train_list:
             x1, y1, x2, y2 = 0, 0, 0, 0
@@ -330,26 +334,28 @@ class Test_detector(unittest.TestCase):
                 x1, y1, x2, y2 = imgCone.get_mask_min_rect(eff_zone)
                 print("x1, y1, x2, y2: ", x1, y1, x2, y2)
 
-            cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
+            history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
                                                    max_iter_nums=100, batch_size=100,
                                                    limit_sampling_density=3,enhanced = False)
 
-            src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
-            mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
+            detector.save_result_history(x1, y1, x2, y2, 1.25, history)
 
-            levels = [0.3, 0.5, 0.6, 0.8]
-            false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map, mask_img,
-                                                                                                   levels)
-            detector.save_result_cancer_map(x1, y1, 1.25, cancer_map, history)
+            if enable_evaluate:
+                cmb = CancerMapBuilder(c, x1, y1, x2, y2, 1.25)
+                cancer_map = cmb.generating_probability_map(history, extract_scale=40, patch_size=256)
 
-            result[slice_id] = (roc_auc, dice)
+                src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
+                mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
 
-            enable_show = True
-            # 存盘输出部分
-            if enable_show:
+                levels = [0.3, 0.5, 0.6, 0.8]
+                false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map,
+                                                                                                       mask_img,
+                                                                                                       levels)
+                result[slice_id] = (roc_auc, dice)
+
+                # 存盘输出部分
                 self.show_results(cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id,
                                   src_img, true_positive_rate)
-
                 # detector.save_result_xml(x1, y1, 1.25, cancer_map, levels)
 
         for slice, (auc, dices) in result.items():
@@ -429,6 +435,8 @@ class Test_detector(unittest.TestCase):
 
         levels = [0.2, 0.3, 0.5, 0.6, 0.8]
         false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map, mask_img, levels)
+
+        detector.save_result_history(x1, y1, x2, y2, 1.25, history)
 
         enable_show = False
     # 存盘输出部分

@@ -19,7 +19,7 @@ from core import *
 import matplotlib.pyplot as plt
 from scipy import ndimage as nd
 from skimage.morphology import square
-
+from pytorch.cancer_map import CancerMapBuilder
 
 class Evaluation(object):
     def __init__(self, params):
@@ -160,22 +160,28 @@ class Evaluation(object):
 
         imgCone = ImageCone(self._params, Open_Slide())
         result_auc = []
+        K = len("_history.npz")
 
         for result_file in os.listdir(save_path):
             ext_name = os.path.splitext(result_file)[1]
-            slice_id = result_file[:-14]
+            slice_id = result_file[:-K]
             if chosen is not None and slice_id not in chosen:
                 continue
 
             if ext_name == ".npz":
-                print("loading dataa : {}".format(slice_id))
+                print("loading data : {}".format(slice_id))
                 result = np.load("{}/{}".format(save_path, result_file))
                 x1 = result["x1"]
                 y1 = result["y1"]
+                x2 = result["x2"]
+                y2 = result["y2"]
                 coordinate_scale = result["scale"]
                 assert coordinate_scale == 1.25, "Scale is Error!"
 
-                cancer_map = result["cancer_map"]
+                history = result["history"].item()
+
+                cmb = CancerMapBuilder(self._params, x1, y1, x2, y2, 1.25)
+                cancer_map = cmb.generating_probability_map(history, extract_scale=40, patch_size=256)
 
                 imgCone.open_slide("{}/{}.tif".format(slice_dirname, slice_id),
                                    '{}/{}.xml'.format(slice_dirname, slice_id), slice_id)
@@ -313,7 +319,7 @@ class Evaluation(object):
         max_label = np.amax(evaluation_mask)
         properties = measure.regionprops(evaluation_mask, coordinates='rc')
         Isolated_Tumor_Cells = []
-        threshold = 2.0 * 275/ (resolution * pow(2, level))
+        threshold = 1.0 * 275/ (resolution * pow(2, level))
         for i in range(0, max_label):
             if properties[i].major_axis_length < threshold:
                 Isolated_Tumor_Cells.append(i + 1)

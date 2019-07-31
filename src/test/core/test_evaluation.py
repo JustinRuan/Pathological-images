@@ -78,4 +78,5 @@ class TestEvaluation(unittest.TestCase):
         eval = Evaluation(c)
         # , "Tumor_034", "Tumor_035", "Tumor_036"
         # eval.calculate_ROC("Train_Tumor", chosen=["Tumor_040", "Tumor_041",])
-        eval.calculate_ROC("Train_Tumor", chosen=None)
+        # eval.calculate_ROC("Train_Tumor", chosen=None)
+        eval.calculate_ROC("Train_Tumor", chosen=["Tumor_001", "Tumor_002",])

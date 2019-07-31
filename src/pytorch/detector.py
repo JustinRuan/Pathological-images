@@ -113,10 +113,17 @@ class BaseDetector(object, metaclass=ABCMeta):
     def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
         pass
 
-    def save_result_cancer_map(self,  x1, y1, coordinate_scale, cancer_map, history):
+    def save_result_cancer_map(self,  x1, y1, x2, y2, coordinate_scale, cancer_map, history):
         save_filename = "{}/results/{}_cancermap.npz".format(self._params.PROJECT_ROOT, self._imgCone.slice_id)
-        # np.savez(save_filename, {"x1":x1, "y1":y1, "scale":coordinate_scale, "cancer_map":cancer_map})
-        np.savez_compressed(save_filename, x1=x1, y1=y1, scale=coordinate_scale, cancer_map=cancer_map, history=history)
+
+        np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=coordinate_scale, cancer_map=cancer_map,
+                                history=history)
+        print(">>> >>> ", save_filename," saved!")
+
+    def save_result_history(self,  x1, y1, x2, y2, coordinate_scale, history):
+        save_filename = "{}/results/{}_history.npz".format(self._params.PROJECT_ROOT, self._imgCone.slice_id)
+
+        np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=coordinate_scale, history=history)
         print(">>> >>> ", save_filename," saved!")
 
 class Detector(BaseDetector):
@@ -519,26 +526,27 @@ class AdaptiveDetector(BaseDetector):
 
         history =  self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, limit_sampling_density, enhanced)
+        return history
 
-        cancer_map =  self.post_process(history, extract_scale, self._params.GLOBAL_SCALE, patch_size)
-        return cancer_map, history
+        # cancer_map = self.generating_cancer_probability_map(history, extract_scale, self._params.GLOBAL_SCALE, patch_size)
+        # return cancer_map, history
 
-    def post_process(self, history, extract_scale, seeds_scale, patch_size):
-        amplify = extract_scale / seeds_scale
-        selem_size = int(0.5 * patch_size / amplify)
-
-        value = np.array(list(history.values()))
-        point = list(history.keys())
-        value_softmax = 1 / (1 + np.exp(-value))
-
-        # 生成坐标网格
-        grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
-        cancer_map = griddata(point, value_softmax, (grid_x, grid_y), method='linear', fill_value=0)
-
-        cancer_map = morphology.closing(cancer_map, square(2 * selem_size))
-        cancer_map = morphology.dilation(cancer_map, square(selem_size))
-
-        return cancer_map
+    # def generating_cancer_probability_map(self, history, extract_scale, seeds_scale, patch_size):
+    #     amplify = extract_scale / seeds_scale
+    #     selem_size = int(0.5 * patch_size / amplify)
+    #
+    #     value = np.array(list(history.values()))
+    #     point = list(history.keys())
+    #     value_softmax = 1 / (1 + np.exp(-value))
+    #
+    #     # 生成坐标网格
+    #     grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
+    #     cancer_map = griddata(point, value_softmax, (grid_x, grid_y), method='linear', fill_value=0)
+    #
+    #     cancer_map = morphology.closing(cancer_map, square(2 * selem_size))
+    #     cancer_map = morphology.dilation(cancer_map, square(selem_size))
+    #
+    #     return cancer_map
 
     # 第三版本: 增强自适应采样
     def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
