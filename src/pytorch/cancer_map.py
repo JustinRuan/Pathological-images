@@ -9,6 +9,8 @@ import numpy as np
 from skimage.morphology import square, dilation, erosion
 from skimage import morphology
 from scipy.interpolate import griddata
+from sklearn.ensemble import IsolationForest
+from sklearn.cluster import MiniBatchKMeans
 
 class CancerMapBuilder(object):
     def __init__(self, params, x1, y1, x2, y2, scale):
@@ -35,6 +37,35 @@ class CancerMapBuilder(object):
         cancer_map = morphology.dilation(cancer_map, square(selem_size))
 
         return cancer_map
+
+    def calc_probability_threshold(self, history):
+        value = np.array(list(history.values()))
+        # value_softmax = 1 / (1 + np.exp(-value))
+        value = np.reshape(value, (-1, 1))
+
+        clustering = MiniBatchKMeans(n_clusters=2, init='k-means++', max_iter=100, compute_labels=True,
+                                     batch_size=200, tol=1e-4).fit(value)
+        cluster_centers = clustering.cluster_centers_.ravel()
+        index = np.argmax(cluster_centers)
+
+        right_part = value[index == clustering.labels_.ravel()]
+        if cluster_centers[index] > 0:
+            low_thresh = np.min(right_part)
+        else:
+            ift = IsolationForest(behaviour='new', max_samples='auto', contamination=0.001)
+            y = ift.fit_predict(right_part)
+            outliers = right_part[y == -1]
+
+            low_thresh = np.min(outliers)
+
+        return 1 / (1 + np.exp(-low_thresh))
+
+
+
+
+
+
+
 
 
 

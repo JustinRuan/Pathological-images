@@ -15,9 +15,9 @@ from matplotlib import pyplot as plt
 from skimage.segmentation import mark_boundaries
 from skimage import color
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 
 class TestEvaluation(unittest.TestCase):
@@ -79,4 +79,10 @@ class TestEvaluation(unittest.TestCase):
         # , "Tumor_034", "Tumor_035", "Tumor_036"
         # eval.calculate_ROC("Train_Tumor", chosen=["Tumor_040", "Tumor_041",])
         # eval.calculate_ROC("Train_Tumor", chosen=None)
-        eval.calculate_ROC("Train_Tumor", chosen=["Tumor_001", "Tumor_002",])
+        eval.calculate_ROC("Train_Tumor", chosen=["Tumor_017", ])
+
+    def test_save_result_pictures(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        eval = Evaluation(c)
+        eval.save_result_pictures("Train_Tumor", chosen=["Tumor_001", ])

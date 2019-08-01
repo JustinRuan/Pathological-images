@@ -264,7 +264,7 @@ class Test_detector(unittest.TestCase):
         # y2 = roi[4]
 
         x1, y1, x2, y2 = 0, 0, 0, 0
-        id = 11
+        id = 2
         slice_id = "Tumor_{:0>3d}".format(id)
 
         c = Params()
@@ -282,26 +282,10 @@ class Test_detector(unittest.TestCase):
             x1, y1, x2, y2 = imgCone.get_mask_min_rect(eff_zone)
             print("x1, y1, x2, y2: ", x1, y1, x2, y2)
 
-        cancer_map, history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=20, patch_size=256,
-                                               max_iter_nums=100, batch_size=100,
-                                               limit_sampling_density=3,)
-
-        src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
-        mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
-
-        levels = [0.3, 0.5, 0.6, 0.8]
-        false_positive_rate, true_positive_rate, roc_auc, dice = Evaluation.evaluate_slice_map(cancer_map, mask_img,
-                                                                                               levels)
-        # detector.save_result_cancer_map(x1, y1, 1.25, cancer_map)
+        history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
+                                   max_iter_nums=100, batch_size=100,
+                                   limit_sampling_density=3, enhanced=True)
         detector.save_result_history(x1, y1, x2, y2, 1.25, history)
-
-        enable_show = True
-        # 存盘输出部分
-        if enable_show:
-            self.show_results(cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id,
-                              src_img, true_positive_rate)
-
-            # detector.save_result_xml(x1, y1, 1.25, cancer_map, levels)
 
 
 #################################################################################################################
@@ -309,7 +293,7 @@ class Test_detector(unittest.TestCase):
         # train set
         # train_list = [9, 11, 16, 26, 39, 47, 58, 68, 72, 76]
         # train_list = [11, 16, 26, 39, 47, 58, 68, 72, 76]
-        train_list = range(8,11)  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
+        train_list = [10]  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
         result = {}
         # 如果输出癌变概率图，并进行评估
         enable_evaluate = True
@@ -354,8 +338,10 @@ class Test_detector(unittest.TestCase):
                 result[slice_id] = (roc_auc, dice)
 
                 # 存盘输出部分
-                self.show_results(cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id,
-                                  src_img, true_positive_rate)
+                # self.show_results(cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id,
+                #                   src_img, true_positive_rate)
+                save_path = "{}/results/cancer_pic".format(c.PROJECT_ROOT)
+                Evaluation.save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, save_path)
                 # detector.save_result_xml(x1, y1, 1.25, cancer_map, levels)
 
         for slice, (auc, dices) in result.items():
@@ -441,67 +427,67 @@ class Test_detector(unittest.TestCase):
         enable_show = False
     # 存盘输出部分
         if enable_show:
-            self.show_results(cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id,
-                              src_img, true_positive_rate)
+            save_path = "{}/results/cancer_pic".format(c.PROJECT_ROOT)
+            Evaluation.save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, save_path)
 
             detector.save_result_xml(x1, y1, 1.25, cancer_map, levels)
 
-    def show_results(self, cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id, src_img,
-                     true_positive_rate):
-        # from visdom import Visdom
-        # viz = Visdom(env="main")
-        # pic_auc = viz.line(
-        #     Y=true_positive_rate,
-        #     X=false_positive_rate,
-        #     opts={
-        #         'linecolor': np.array([
-        #             [0, 0, 255],
-        #         ]),
-        #         'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
-        #         'showlegend': True,
-        #         'legend': ['AUC = %0.6f' % roc_auc, ],
-        #         'xlabel': 'False Positive Rate',
-        #         'ylabel': 'True Positive Rate',
-        #         'title': 'Receiver Operating Characteristic',
-        #     },
-        # )
-        # viz.line(
-        #     Y=[0, 1], X=[0, 1],
-        #     opts={
-        #         'linecolor': np.array([
-        #             [255, 0, 0],
-        #         ]),
-        #         'dash': np.array(['dot']),  # 'solid', 'dash', 'dashdot'
-        #     },
-        #     name='y = x',
-        #     win=pic_auc,
-        #     update='insert',
-        # )
-        fig, axes = plt.subplots(2, 2, figsize=(15, 20), dpi=100)
-        ax = axes.ravel()
-        ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
-        shape = src_img.shape
-        ax[1].set_title("slice id:{},  src_img {} x {}".format(slice_id, shape[0], shape[1]))
-        ax[2].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
-        ax[2].imshow(cancer_map, alpha=0.3)
-        ax[2].contour(cancer_map, cmap=plt.cm.hot, levels=levels)
-        label = "cancer_map, "
-        for t, value in dice:
-            label += "t:{:.1f} d:{:.4f}, ".format(t, value)
-        ax[2].set_title(label)
-        point = np.array(list(history.keys()))
-        ax[3].imshow(mask_img)
-        ax[3].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9)
-        total = shape[0] * shape[1]
-        count = len(point)
-        disp_text = "history, count = {:d}, ratio = {:.4e}".format(count, count / total)
-        ax[3].set_title(disp_text)
-        print(disp_text)
-        for a in ax.ravel():
-            a.axis('off')
-        # ax[0].axis("on")
-        plt.savefig("result_{}.png".format(slice_id), dpi=150, format="png")
-        # plt.show()
+    # def show_results(self, cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id, src_img,
+    #                  true_positive_rate):
+    #     # from visdom import Visdom
+    #     # viz = Visdom(env="main")
+    #     # pic_auc = viz.line(
+    #     #     Y=true_positive_rate,
+    #     #     X=false_positive_rate,
+    #     #     opts={
+    #     #         'linecolor': np.array([
+    #     #             [0, 0, 255],
+    #     #         ]),
+    #     #         'dash': np.array(['solid']),  # 'solid', 'dash', 'dashdot'
+    #     #         'showlegend': True,
+    #     #         'legend': ['AUC = %0.6f' % roc_auc, ],
+    #     #         'xlabel': 'False Positive Rate',
+    #     #         'ylabel': 'True Positive Rate',
+    #     #         'title': 'Receiver Operating Characteristic',
+    #     #     },
+    #     # )
+    #     # viz.line(
+    #     #     Y=[0, 1], X=[0, 1],
+    #     #     opts={
+    #     #         'linecolor': np.array([
+    #     #             [255, 0, 0],
+    #     #         ]),
+    #     #         'dash': np.array(['dot']),  # 'solid', 'dash', 'dashdot'
+    #     #     },
+    #     #     name='y = x',
+    #     #     win=pic_auc,
+    #     #     update='insert',
+    #     # )
+    #     fig, axes = plt.subplots(2, 2, figsize=(15, 20), dpi=100)
+    #     ax = axes.ravel()
+    #     ax[1].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
+    #     shape = src_img.shape
+    #     ax[1].set_title("slice id:{},  src_img {} x {}".format(slice_id, shape[0], shape[1]))
+    #     ax[2].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
+    #     ax[2].imshow(cancer_map, alpha=0.3)
+    #     ax[2].contour(cancer_map, cmap=plt.cm.hot, levels=levels)
+    #     label = "cancer_map, "
+    #     for t, value in dice:
+    #         label += "t:{:.1f} d:{:.4f}, ".format(t, value)
+    #     ax[2].set_title(label)
+    #     point = np.array(list(history.keys()))
+    #     ax[3].imshow(mask_img)
+    #     ax[3].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9)
+    #     total = shape[0] * shape[1]
+    #     count = len(point)
+    #     disp_text = "history, count = {:d}, ratio = {:.4e}".format(count, count / total)
+    #     ax[3].set_title(disp_text)
+    #     print(disp_text)
+    #     for a in ax.ravel():
+    #         a.axis('off')
+    #     # ax[0].axis("on")
+    #     plt.savefig("result_{}.png".format(slice_id), dpi=150, format="png")
+    #     # plt.show()
 
     def test_adaptive_detect_region_train_batch(self):
         c = Params()

@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from scipy import ndimage as nd
 from skimage.morphology import square
 from pytorch.cancer_map import CancerMapBuilder
+from skimage.segmentation import mark_boundaries
 
 class Evaluation(object):
     def __init__(self, params):
@@ -157,9 +158,98 @@ class Evaluation(object):
 
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
+        mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
 
         imgCone = ImageCone(self._params, Open_Slide())
         result_auc = []
+        K = len("_history.npz")
+
+        for result_file in os.listdir(save_path):
+            ext_name = os.path.splitext(result_file)[1]
+            slice_id = result_file[:-K]
+            if chosen is not None and slice_id not in chosen:
+                continue
+
+            if ext_name == ".npz":
+                print("loading data : {}".format(slice_id))
+                result = np.load("{}/{}".format(save_path, result_file))
+                x1 = result["x1"]
+                y1 = result["y1"]
+                x2 = result["x2"]
+                y2 = result["y2"]
+                coordinate_scale = result["scale"]
+                assert coordinate_scale == 1.25, "Scale is Error!"
+
+                history = result["history"].item()
+
+                cmb = CancerMapBuilder(self._params, x1, y1, x2, y2, 1.25)
+                cancer_map = cmb.generating_probability_map(history, extract_scale=40, patch_size=256)
+                # p_thresh = cmb.calc_probability_threshold(history)
+                p_thresh = 0.5
+                print("p_thresh = ", p_thresh)
+
+                # imgCone.open_slide("{}/{}.tif".format(slice_dirname, slice_id),
+                #                    '{}/{}.xml'.format(slice_dirname, slice_id), slice_id)
+                #
+                # mask_img = imgCone.create_mask_image(self._params.GLOBAL_SCALE, 0)
+                # mask_img = mask_img['C']
+
+                mask_img = np.load("{}/{}_true_mask.npy".format(mask_path, slice_id))
+
+                h, w = cancer_map.shape
+                mask_img = mask_img[y1:y1+h, x1:x1+w]
+                area = np.sum(mask_img)
+                _, count = morphology.label(mask_img, neighbors=8, connectivity=2, return_num=True)
+
+                false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_img.ravel(),
+                                                                                        cancer_map.ravel())
+                roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
+
+                dice = Evaluation.calculate_dice_coef(mask_img, cancer_map > p_thresh)
+
+                temp = "{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, dice, roc_auc)
+                result_auc.append(temp)
+                print(temp)
+
+        print("############################################")
+        for item in result_auc:
+            print(item)
+
+        return
+
+    @staticmethod
+    def save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, save_path):
+        fig, axes = plt.subplots(1, 2, figsize=(16, 16), dpi=300)
+        ax = axes.ravel()
+        shape = mask_img.shape
+
+        ax[0].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
+        ax[0].imshow(cancer_map, alpha=0.3)
+        ax[0].contour(cancer_map, cmap=plt.cm.hot, levels=levels)
+        ax[0].set_title("{} ({} x {}), AUC = {:.4f}".format(slice_id, shape[0], shape[1], roc_auc))
+
+        point = np.array(list(history.keys()))
+        value = np.array(list(history.values()))
+        ax[1].imshow(mask_img)
+        ax[1].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9, c=value, cmap=plt.cm.jet)
+        total = shape[0] * shape[1]
+        count = len(point)
+        disp_text = "history, count = {:d}, ratio = {:.4e}".format(count, count / total)
+        ax[1].set_title(disp_text)
+        print(disp_text)
+        for a in ax.ravel():
+            a.axis('off')
+        # ax[0].axis("on")
+        plt.savefig("{}/result_{}.png".format(save_path, slice_id), dpi=150, format="png")
+
+
+    def save_result_pictures(self, slice_dirname, chosen):
+        project_root = self._params.PROJECT_ROOT
+        save_path = "{}/results".format(project_root)
+        pic_path = "{}/results/cancer_pic".format(project_root)
+        levels = [0.3, 0.5, 0.6, 0.8]
+
+        imgCone = ImageCone(self._params, Open_Slide())
         K = len("_history.npz")
 
         for result_file in os.listdir(save_path):
@@ -190,25 +280,15 @@ class Evaluation(object):
                 mask_img = mask_img['C']
 
                 h, w = cancer_map.shape
-                mask_img = mask_img[y1:y1+h, x1:x1+w]
-                area = np.sum(mask_img)
-                _, count = morphology.label(mask_img, neighbors=8, connectivity=2, return_num=True)
+                mask_img = mask_img[y1:y1 + h, x1:x1 + w]
+
+                fullImage = np.array(imgCone.get_fullimage_byScale(self._params.GLOBAL_SCALE))
+                src_img = fullImage[y1:y1 + h, x1:x1 + w, :]
 
                 false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_img.ravel(),
                                                                                         cancer_map.ravel())
                 roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
-
-                dice = Evaluation.calculate_dice_coef(mask_img, cancer_map > 0.5)
-
-                temp = "{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, dice, roc_auc)
-                result_auc.append(temp)
-                print(temp)
-
-        print("############################################")
-        for item in result_auc:
-            print(item)
-
-        return
+                Evaluation.save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, pic_path)
 
 ###################################################################################################
 ##############   多个切片的FROC检测的计算过程

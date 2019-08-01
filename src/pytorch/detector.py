@@ -694,7 +694,7 @@ class AdaptiveDetector(BaseDetector):
 
     def cacl_sampling_density_with_superpixels(self, label_map, cancer_map, history, region_density, limit_sampling_density):
 
-        feat_thresh = -0.5 # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
+        feat_thresh = -1 # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
         tag_map = np.zeros(label_map.shape, dtype=np.bool)
         for (x, y), prob in history.items():
             tag_map[y, x] = True
