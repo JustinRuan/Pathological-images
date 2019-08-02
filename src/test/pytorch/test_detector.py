@@ -293,10 +293,10 @@ class Test_detector(unittest.TestCase):
         # train set
         # train_list = [9, 11, 16, 26, 39, 47, 58, 68, 72, 76]
         # train_list = [11, 16, 26, 39, 47, 58, 68, 72, 76]
-        train_list = [10]  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
+        train_list = range(21,51)  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
         result = {}
         # 如果输出癌变概率图，并进行评估
-        enable_evaluate = True
+        enable_evaluate = False
 
         for id in train_list:
             x1, y1, x2, y2 = 0, 0, 0, 0

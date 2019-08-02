@@ -19,7 +19,7 @@ from core import *
 import matplotlib.pyplot as plt
 from scipy import ndimage as nd
 from skimage.morphology import square
-from pytorch.cancer_map import CancerMapBuilder
+from pytorch.cancer_map import CancerMapBuilder, SlideClassifier
 from skimage.segmentation import mark_boundaries
 
 class Evaluation(object):
@@ -160,7 +160,9 @@ class Evaluation(object):
         save_path = "{}/results".format(project_root)
         mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
 
-        imgCone = ImageCone(self._params, Open_Slide())
+        sc = SlideClassifier(self._params, "simple", "128")
+
+        # imgCone = ImageCone(self._params, Open_Slide())
         result_auc = []
         K = len("_history.npz")
 
@@ -181,10 +183,10 @@ class Evaluation(object):
                 assert coordinate_scale == 1.25, "Scale is Error!"
 
                 history = result["history"].item()
+                history = sc.predict(x1,y1,x2,y2,history, batch_size=100)
 
                 cmb = CancerMapBuilder(self._params, x1, y1, x2, y2, 1.25)
                 cancer_map = cmb.generating_probability_map(history, extract_scale=40, patch_size=256)
-                # p_thresh = cmb.calc_probability_threshold(history)
                 p_thresh = 0.5
                 print("p_thresh = ", p_thresh)
 
@@ -219,19 +221,19 @@ class Evaluation(object):
 
     @staticmethod
     def save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, save_path):
-        fig, axes = plt.subplots(1, 2, figsize=(16, 16), dpi=300)
+        fig, axes = plt.subplots(1, 2, figsize=(16, 16), dpi=150)
         ax = axes.ravel()
         shape = mask_img.shape
 
         ax[0].imshow(mark_boundaries(src_img, mask_img, color=(1, 0, 0), ))
         ax[0].imshow(cancer_map, alpha=0.3)
-        ax[0].contour(cancer_map, cmap=plt.cm.hot, levels=levels)
+        ax0 = ax[0].contour(cancer_map, cmap=plt.cm.hot, levels=levels)
         ax[0].set_title("{} ({} x {}), AUC = {:.4f}".format(slice_id, shape[0], shape[1], roc_auc))
 
         point = np.array(list(history.keys()))
         value = np.array(list(history.values()))
         ax[1].imshow(mask_img)
-        ax[1].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9, c=value, cmap=plt.cm.jet)
+        ax1 = ax[1].scatter(point[:, 0], point[:, 1], s=1, marker='o', alpha=0.9, c=value, cmap=plt.cm.jet)
         total = shape[0] * shape[1]
         count = len(point)
         disp_text = "history, count = {:d}, ratio = {:.4e}".format(count, count / total)
@@ -240,6 +242,9 @@ class Evaluation(object):
         for a in ax.ravel():
             a.axis('off')
         # ax[0].axis("on")
+        # fig.colorbar(ax0, ax=ax[0])
+        fig.colorbar(ax1, ax=ax[1], shrink=0.5)
+        fig.tight_layout()
         plt.savefig("{}/result_{}.png".format(save_path, slice_id), dpi=150, format="png")
 
 

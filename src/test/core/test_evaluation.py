@@ -79,10 +79,12 @@ class TestEvaluation(unittest.TestCase):
         # , "Tumor_034", "Tumor_035", "Tumor_036"
         # eval.calculate_ROC("Train_Tumor", chosen=["Tumor_040", "Tumor_041",])
         # eval.calculate_ROC("Train_Tumor", chosen=None)
-        eval.calculate_ROC("Train_Tumor", chosen=["Tumor_017", ])
+        select = ["Tumor_{:0>3d}".format(i) for i in range(4, 21)]
+        eval.calculate_ROC("Train_Tumor", chosen=select)
 
     def test_save_result_pictures(self):
         c = Params()
         c.load_config_file(JSON_PATH)
         eval = Evaluation(c)
-        eval.save_result_pictures("Train_Tumor", chosen=["Tumor_001", ])
+        eval.save_result_pictures("Train_Tumor", chosen=["Tumor_002", "Tumor_003"])
+        # eval.save_result_pictures("Train_Tumor", chosen=None)
