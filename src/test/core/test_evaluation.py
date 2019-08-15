@@ -72,19 +72,28 @@ class TestEvaluation(unittest.TestCase):
 
         eval.evaluation_FROC(mask_folder, result_folder)
 
+
+
+
+
     def test_calculate_ROC(self):
         c = Params()
         c.load_config_file(JSON_PATH)
         eval = Evaluation(c)
         # , "Tumor_034", "Tumor_035", "Tumor_036"
-        # eval.calculate_ROC("Train_Tumor", chosen=["Tumor_040", "Tumor_041",])
+        # eval.calculate_ROC("Train_Tumor", chosen= ["Tumor_040", "Tumor_041",])
         # eval.calculate_ROC("Train_Tumor", chosen=None)
-        select = ["Tumor_{:0>3d}".format(i) for i in range(4, 21)]
-        eval.calculate_ROC("Train_Tumor", chosen=select)
+        # select = ["Tumor_{:0>3d}".format(i) for i in range(21, 51)]
+        # eval.calculate_ROC("Train_Tumor", chosen=select)
+
+        eval.calculate_ROC("Train_Tumor", tag=2, chosen=None)
 
     def test_save_result_pictures(self):
         c = Params()
         c.load_config_file(JSON_PATH)
         eval = Evaluation(c)
-        eval.save_result_pictures("Train_Tumor", chosen=["Tumor_002", "Tumor_003"])
+        # eval.save_result_pictures("Train_Tumor", chosen=["Tumor_002", "Tumor_003"])
         # eval.save_result_pictures("Train_Tumor", chosen=None)
+        # select = ["Tumor_{:0>3d}".format(i) for i in range(25, 51)]
+        select = ["Tumor_{:0>3d}".format(i) for i in [33]]
+        eval.save_result_pictures("Train_Tumor", tag = 0,  chosen=select)

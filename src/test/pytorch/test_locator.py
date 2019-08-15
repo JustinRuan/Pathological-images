@@ -16,10 +16,11 @@ from matplotlib import pyplot as plt
 from skimage.segmentation import mark_boundaries
 from pytorch.locator import Locator
 import csv
+from pytorch.cancer_map import CancerMapBuilder
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestLocator(unittest.TestCase):
     def test_calcuate_location_features(self):
@@ -77,21 +78,31 @@ class TestLocator(unittest.TestCase):
         #                                    "Tumor_047", "Tumor_058", "Tumor_068","Tumor_072","Tumor_076"])
         # loca.output_result_csv("csv_2", chosen=None)
         # loca.output_result_csv("csv_2", chosen=None)
-        loca.output_result_csv("csv_2", chosen=["Tumor_076"])
+        select = ["Tumor_{:0>3d}".format(i) for i in range(1, 21)] # [9,11,16,18,20]range(1, 21)
+        loca.output_result_csv("csv_2", tag =1,  chosen=select)
 
     def test_csv2(self):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        i = 76
-        sub_path = "csv"
+        i = 9
+        sub_path = "csv_2"
         code = "Tumor_{:0>3d}".format(i)
-        filename = "{}/results/{}_cancermap.npz".format(c.PROJECT_ROOT, code)
-        result = np.load(filename)
+        filename = "{}/results/{}_history_v2.npz".format(c.PROJECT_ROOT, code)
+        result = np.load(filename, allow_pickle=True)
+
         x1 = result["x1"]
         y1 = result["y1"]
+        x2 = result["x2"]
+        y2 = result["y2"]
         coordinate_scale = result["scale"]
-        cancer_map = result["cancer_map"]
+        assert coordinate_scale == 1.25, "Scale is Error!"
+
+        history = result["history"].item()
+
+        cmb = CancerMapBuilder(c, extract_scale=40, patch_size=256)
+        cancer_map = cmb.generating_probability_map(history, x1, y1, x2, y2, 1.25)
+
         h, w = cancer_map.shape
 
         csv_filename = "{}/results/{}/{}.csv".format(c.PROJECT_ROOT, sub_path, code)

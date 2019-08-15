@@ -154,17 +154,20 @@ class Evaluation(object):
         doc.writexml(f, encoding="utf-8")
         f.close()
 
-    def calculate_ROC(self, slice_dirname, chosen):
+    def calculate_ROC(self, slice_dirname, tag, chosen):
 
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
         mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
 
-        sc = SlideClassifier(self._params, "simple", "128")
-
         # imgCone = ImageCone(self._params, Open_Slide())
         result_auc = []
-        K = len("_history.npz")
+        if tag == 0:
+            code = "_history.npz"
+        else:
+            code = "_history_v2.npz"
+
+        K = len(code)
 
         for result_file in os.listdir(save_path):
             ext_name = os.path.splitext(result_file)[1]
@@ -172,9 +175,9 @@ class Evaluation(object):
             if chosen is not None and slice_id not in chosen:
                 continue
 
-            if ext_name == ".npz":
-                print("loading data : {}".format(slice_id))
-                result = np.load("{}/{}".format(save_path, result_file))
+            if ext_name == ".npz" and code in result_file:
+                print("loading data : {}, {}".format(slice_id, result_file))
+                result = np.load("{}/{}".format(save_path, result_file), allow_pickle=True)
                 x1 = result["x1"]
                 y1 = result["y1"]
                 x2 = result["x2"]
@@ -183,12 +186,11 @@ class Evaluation(object):
                 assert coordinate_scale == 1.25, "Scale is Error!"
 
                 history = result["history"].item()
-                history = sc.predict(x1,y1,x2,y2,history, batch_size=100)
 
-                cmb = CancerMapBuilder(self._params, x1, y1, x2, y2, 1.25)
-                cancer_map = cmb.generating_probability_map(history, extract_scale=40, patch_size=256)
-                p_thresh = 0.5
-                print("p_thresh = ", p_thresh)
+                cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+                cancer_map = cmb.generating_probability_map(history, x1, y1, x2, y2, 1.25)
+                p_thresh = CancerMapBuilder.calc_probability_threshold(history)
+                # print("p_thresh = ", p_thresh)
 
                 # imgCone.open_slide("{}/{}.tif".format(slice_dirname, slice_id),
                 #                    '{}/{}.xml'.format(slice_dirname, slice_id), slice_id)
@@ -209,7 +211,7 @@ class Evaluation(object):
 
                 dice = Evaluation.calculate_dice_coef(mask_img, cancer_map > p_thresh)
 
-                temp = "{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, dice, roc_auc)
+                temp = "{}\t{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, p_thresh, dice, roc_auc)
                 result_auc.append(temp)
                 print(temp)
 
@@ -220,7 +222,7 @@ class Evaluation(object):
         return
 
     @staticmethod
-    def save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, save_path):
+    def save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, save_path, tag = 0):
         fig, axes = plt.subplots(1, 2, figsize=(16, 16), dpi=150)
         ax = axes.ravel()
         shape = mask_img.shape
@@ -245,17 +247,25 @@ class Evaluation(object):
         # fig.colorbar(ax0, ax=ax[0])
         fig.colorbar(ax1, ax=ax[1], shrink=0.5)
         fig.tight_layout()
-        plt.savefig("{}/result_{}.png".format(save_path, slice_id), dpi=150, format="png")
+        plt.savefig("{}/result_{}_v{}.png".format(save_path, slice_id, tag), dpi=150, format="png")
+
+        plt.close(fig)
 
 
-    def save_result_pictures(self, slice_dirname, chosen):
+    def save_result_pictures(self, slice_dirname, tag, chosen):
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
         pic_path = "{}/results/cancer_pic".format(project_root)
         levels = [0.3, 0.5, 0.6, 0.8]
 
         imgCone = ImageCone(self._params, Open_Slide())
-        K = len("_history.npz")
+        if tag == 0:
+            code = "_history.npz"
+        else:
+            tag = 2
+            code = "_history_v2.npz"
+
+        K = len(code)
 
         for result_file in os.listdir(save_path):
             ext_name = os.path.splitext(result_file)[1]
@@ -263,8 +273,8 @@ class Evaluation(object):
             if chosen is not None and slice_id not in chosen:
                 continue
 
-            if ext_name == ".npz":
-                print("loading data : {}".format(slice_id))
+            if ext_name == ".npz" and code in result_file:
+                print("loading data : {}, {}".format(slice_id, result_file))
                 result = np.load("{}/{}".format(save_path, result_file))
                 x1 = result["x1"]
                 y1 = result["y1"]
@@ -275,8 +285,8 @@ class Evaluation(object):
 
                 history = result["history"].item()
 
-                cmb = CancerMapBuilder(self._params, x1, y1, x2, y2, 1.25)
-                cancer_map = cmb.generating_probability_map(history, extract_scale=40, patch_size=256)
+                cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+                cancer_map = cmb.generating_probability_map(history, x1, y1, x2, y2, 1.25)
 
                 imgCone.open_slide("{}/{}.tif".format(slice_dirname, slice_id),
                                    '{}/{}.xml'.format(slice_dirname, slice_id), slice_id)
@@ -293,7 +303,8 @@ class Evaluation(object):
                 false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_img.ravel(),
                                                                                         cancer_map.ravel())
                 roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
-                Evaluation.save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, pic_path)
+                Evaluation.save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels,
+                                               pic_path, tag)
 
 ###################################################################################################
 ##############   多个切片的FROC检测的计算过程
@@ -356,7 +367,7 @@ class Evaluation(object):
 
         # Compute FROC curve
         total_FPs, total_sensitivity = self.computeFROC(FROC_data)
-
+        print("maximum of total_sensitivity =", np.max(total_sensitivity))
         # plot FROC curve
         self.plotFROC(total_FPs, total_sensitivity)
         return

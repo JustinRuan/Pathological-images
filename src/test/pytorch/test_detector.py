@@ -293,7 +293,7 @@ class Test_detector(unittest.TestCase):
         # train set
         # train_list = [9, 11, 16, 26, 39, 47, 58, 68, 72, 76]
         # train_list = [11, 16, 26, 39, 47, 58, 68, 72, 76]
-        train_list = range(21,51)  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
+        train_list = [22,28,30,35,40,48,49]  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
         result = {}
         # 如果输出癌变概率图，并进行评估
         enable_evaluate = False
@@ -320,13 +320,13 @@ class Test_detector(unittest.TestCase):
 
             history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
                                                    max_iter_nums=100, batch_size=100,
-                                                   limit_sampling_density=3,enhanced = False)
+                                                   limit_sampling_density=3,enhanced = True)
 
             detector.save_result_history(x1, y1, x2, y2, 1.25, history)
 
             if enable_evaluate:
-                cmb = CancerMapBuilder(c, x1, y1, x2, y2, 1.25)
-                cancer_map = cmb.generating_probability_map(history, extract_scale=40, patch_size=256)
+                cmb = CancerMapBuilder(c, extract_scale=40, patch_size=256)
+                cancer_map = cmb.generating_probability_map(history, x1, y1, x2, y2, 1.25)
 
                 src_img = detector.get_img_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)
                 mask_img = detector.get_true_mask_in_detect_area(x1, y1, x2, y2, 1.25, 1.25)

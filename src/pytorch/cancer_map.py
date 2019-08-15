@@ -15,61 +15,82 @@ import torch.nn as nn
 import torch.utils.data as Data
 from modelsummary import summary
 from scipy.interpolate import griddata
+from scipy.sparse import coo_matrix
 from skimage import morphology
 from skimage.morphology import square
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
+import torchvision
+from torch.utils.data import Dataset
 
 from core.util import latest_checkpoint
-from pytorch.loss_function import CenterLoss, LGMLoss
+from pytorch.loss_function import CenterLoss
+from sklearn.cluster import KMeans
+from sklearn.ensemble import IsolationForest
 
 class CancerMapBuilder(object):
-    def __init__(self, params, x1, y1, x2, y2, scale):
+    def __init__(self, params, extract_scale, patch_size):
         self._params = params
+        # seeds_scale = self._params.GLOBAL_SCALE
+        # amplify = extract_scale / seeds_scale
+        # selem_size = int(0.5 * patch_size / amplify)
+
+    def generating_probability_map(self, history, x1, y1, x2, y2, scale):
+
         GLOBAL_SCALE = self._params.GLOBAL_SCALE
         xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * GLOBAL_SCALE / scale).astype(np.int)
-        self.valid_area_width = xx2 - xx1
-        self.valid_area_height = yy2 - yy1
-
-    def generating_probability_map(self, history, extract_scale, patch_size):
-        seeds_scale = self._params.GLOBAL_SCALE
-        amplify = extract_scale / seeds_scale
-        selem_size = int(0.5 * patch_size / amplify)
+        valid_area_width = xx2 - xx1
+        valid_area_height = yy2 - yy1
 
         value = np.array(list(history.values()))
         point = list(history.keys())
         value_softmax = 1 / (1 + np.exp(-value))
 
         # 生成坐标网格
-        grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
+        grid_y, grid_x = np.mgrid[0: valid_area_height: 1, 0: valid_area_width: 1]
         cancer_map = griddata(point, value_softmax, (grid_x, grid_y), method='linear', fill_value=0)
 
-        cancer_map = morphology.closing(cancer_map, square(2 * selem_size))
-        cancer_map = morphology.dilation(cancer_map, square(selem_size))
+        # cancer_map = morphology.closing(cancer_map, square(2 * selem_size))
+        # cancer_map = morphology.dilation(cancer_map, square(selem_size))
 
         return cancer_map
 
-    # def calc_probability_threshold(self, history):
-    #     value = np.array(list(history.values()))
-    #     # value_softmax = 1 / (1 + np.exp(-value))
-    #     value = np.reshape(value, (-1, 1))
-    #
-    #     clustering = MiniBatchKMeans(n_clusters=2, init='k-means++', max_iter=100, compute_labels=True,
-    #                                  batch_size=200, tol=1e-4).fit(value)
-    #     cluster_centers = clustering.cluster_centers_.ravel()
-    #     index = np.argmax(cluster_centers)
-    #
-    #     right_part = value[index == clustering.labels_.ravel()]
-    #     if cluster_centers[index] > 0:
-    #         low_thresh = np.min(right_part)
-    #     else:
-    #         ift = IsolationForest(behaviour='new', max_samples='auto', contamination=0.001)
-    #         y = ift.fit_predict(right_part)
-    #         outliers = right_part[y == -1]
-    #
-    #         low_thresh = np.min(outliers)
-    #
-    #     return 1 / (1 + np.exp(-low_thresh))
+    @staticmethod
+    def calc_probability_threshold(history):
+        value = np.array(list(history.values()))
+        tag = value > 0
+        positive_part = np.reshape(value[tag], (-1, 1))
+
+        p_count = len(positive_part)
+        if p_count > 100:
+            contamination = 0.1
+        else:
+            return 0.5
+
+        ift = IsolationForest(behaviour='new', max_samples='auto', contamination=contamination)
+        y = ift.fit_predict(positive_part)
+        outliers = positive_part[y == -1]
+
+        clustering = KMeans(n_clusters=2, max_iter=100, tol=1e-4, random_state=None).fit(outliers)
+
+        cluster_centers = clustering.cluster_centers_.ravel()
+        dist = abs(cluster_centers[0] - cluster_centers[1])
+
+        if cluster_centers[0] < cluster_centers[1]:
+            left_part = outliers[clustering.labels_ == 0]
+            right_part = outliers[clustering.labels_ == 1]
+        else:
+            left_part = outliers[clustering.labels_ == 1]
+            right_part = outliers[clustering.labels_ == 0]
+
+        low_thresh = np.max(left_part)
+        # high_thresh = np.min(right_part)
+
+        low_prob_thresh = 1 / (1 + np.exp(-low_thresh))
+        # high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
+        # print("low_prob_thresh = ", low_prob_thresh, high_prob_thresh)
+        print("low_prob_thresh = ", low_prob_thresh)
+        return low_prob_thresh
 
 
 class Slide_CNN(nn.Module):
@@ -131,6 +152,7 @@ class SlideClassifier(object):
         self.patch_type = patch_type
         self.NUM_WORKERS = params.NUM_WORKERS
         self.image_size = int(patch_type)
+        self.num_classes = 2
 
         self.model_root = "{}/models/pytorch/Slide_{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         self.model = None
@@ -172,14 +194,16 @@ class SlideClassifier(object):
         D = np.load(filename)
         X = D['x']
         Y = D['y']
-        X = np.reshape(X, (-1,1,self.image_size, self.image_size))
+        # X = np.reshape(X, (-1,1,self.image_size, self.image_size))
 
         X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.05, )
 
-        train_data = torch.utils.data.TensorDataset(torch.from_numpy(X_train).float(),
-                                                    torch.from_numpy(y_train).long())
-        test_data = torch.utils.data.TensorDataset(torch.from_numpy(X_test).float(),
-                                                   torch.from_numpy(y_test).long())
+        # train_data = torch.utils.data.TensorDataset(torch.from_numpy(X_train).float(),
+        #                                             torch.from_numpy(y_train).long())
+        # test_data = torch.utils.data.TensorDataset(torch.from_numpy(X_test).float(),
+        #                                            torch.from_numpy(y_test).long())
+        train_data = Sparse_Image_Dataset(X_train, y_train)
+        test_data = Sparse_Image_Dataset(X_test, y_test)
         train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
                                        num_workers=self.NUM_WORKERS)
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
@@ -197,9 +221,9 @@ class SlideClassifier(object):
 
         # optimzer4nn
         # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
-        classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
-        # classifi_optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99, )
+        classifi_optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99, )
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(classifi_optimizer, mode='min',
                                                                factor=0.5)  # mode为min，则loss不下降学习率乘以factor，max则反之
@@ -352,7 +376,9 @@ class SlideClassifier(object):
                 continue
             sub_m = cancer_map[sy1:sy2, sx1:sx2]
             sub_y = np.any(mask[y - 4 : y + 4, x - 4: x + 4])
-            X_data.append(sub_m)
+            sparse_v = coo_matrix(sub_m)
+
+            X_data.append(sparse_v)
             Y_data.append(int(sub_y))
 
         return X_data, Y_data
@@ -415,9 +441,49 @@ class SlideClassifier(object):
         np.savez_compressed(filename, x=new_X, y=new_Y,)
         return
 
+    def update_history(self, chosen):
+        project_root = self._params.PROJECT_ROOT
+        save_path = "{}/results".format(project_root)
 
+        K = len("_history.npz")
 
+        for result_file in os.listdir(save_path):
+            ext_name = os.path.splitext(result_file)[1]
+            slice_id = result_file[:-K]
+            if chosen is not None and slice_id not in chosen:
+                continue
 
+            if ext_name == ".npz":
+                print("loading data : {}".format(slice_id))
+                result = np.load("{}/{}".format(save_path, result_file))
+                x1 = result["x1"]
+                y1 = result["y1"]
+                x2 = result["x2"]
+                y2 = result["y2"]
+                coordinate_scale = result["scale"]
+                assert coordinate_scale == 1.25, "Scale is Error!"
+
+                history = result["history"].item()
+                history = self.predict(x1, y1, x2, y2, history, batch_size=100)
+
+                save_filename = "{}/results/{}_history_v2.npz".format(self._params.PROJECT_ROOT, slice_id)
+                np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=coordinate_scale, history=history)
+                print(">>> >>> ", save_filename, " saved!")
+
+class Sparse_Image_Dataset(Dataset):
+    def __init__(self, x_set, y_set):
+        self.x, self.y = x_set, y_set
+        self.transform = torchvision.transforms.ToTensor()
+
+    def __getitem__(self, index):
+        img = self.x[index].toarray()
+        label = int(self.y[index])
+
+        img_tensor = self.transform(img).type(torch.FloatTensor)
+        return img_tensor, label
+
+    def __len__(self):
+        return len(self.x)
 
 
 

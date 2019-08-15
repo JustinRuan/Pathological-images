@@ -21,6 +21,9 @@ import joblib
 from skimage.morphology import extrema
 from skimage.morphology import square
 from sklearn.ensemble import IsolationForest
+from pytorch.cancer_map import CancerMapBuilder
+from scipy.spatial import distance
+from sklearn.cluster import KMeans
 
 class Locator(object):
     def __init__(self, params):
@@ -31,22 +34,34 @@ class Locator(object):
 
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
+        tag = 0
+        if tag == 0:
+            code = "_history.npz"
+        else:
+            code = "_history_v2.npz"
+
+        K = len(code)
+
         feature_data = {}
         for result_file in os.listdir(save_path):
             ext_name = os.path.splitext(result_file)[1]
-            slice_id = result_file[:-14]
+            slice_id = result_file[:-K]
             if chosen is not None and slice_id not in chosen:
                 continue
 
-            if ext_name == ".npz":
-                print("loading data : {}".format(slice_id))
+            if ext_name == ".npz" and code in result_file:
+                print("loading data : {}, {}".format(slice_id, result_file))
                 result = np.load("{}/{}".format(save_path, result_file))
                 x1 = result["x1"]
                 y1 = result["y1"]
+                x2 = result["x2"]
+                y2 = result["y2"]
                 coordinate_scale = result["scale"]
-                assert coordinate_scale==1.25, "Scale is Error!"
+                assert coordinate_scale == 1.25, "Scale is Error!"
 
-                cancer_map = result["cancer_map"]
+                history = result["history"].item()
+                cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+                cancer_map = cmb.generating_probability_map(history, x1, y1, x2, y2, 1.25)
 
                 # points = self.search_local_feature_points(cancer_map, thresh_list, x1, y1)
                 # points = self.search_local_feature_points_max(cancer_map, thresh_list, x1, y1)
@@ -100,7 +115,7 @@ class Locator(object):
         print("get points: ", len(features))
         return features
 
-    def search_local_feature_points_max(self, cancer_map, thresh_list, x_letftop, y_lefttop):
+    def search_local_feature_points_max(self, cancer_map, x_letftop, y_lefttop):
         map_h, map_w = cancer_map.shape
 
         h = 0.05
@@ -206,7 +221,8 @@ class Locator(object):
         if thresh_low > 0.5:
             thresh_list = [thresh_high, 0.5 * (thresh_high + thresh_low), thresh_low]
         else:
-            outliers = outliers[outliers > 0.5]
+            if thresh_high > 0.5:
+                outliers = outliers[outliers > 0.5]
 
             thresh_low = np.min(outliers)
             thresh_high = np.max(outliers)
@@ -314,47 +330,104 @@ class Locator(object):
         for pp, yy in zip(pred, Y):
             print("{:d}, \t{:.4f}".format(yy, pp))
 
-    def output_result_csv(self, sub_path, chosen = None):
+    # def output_result_csv(self, sub_path, tag, chosen = None):
+    #     '''
+    #     生成用于FROC检测用的CSV文件
+    #     :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
+    #     :return:
+    #     '''
+    #     model_file = self._params.PROJECT_ROOT + "/models/locator_svm_0.6742_0.7422.model"
+    #     clf = joblib.load(model_file)
+    #
+    #     project_root = self._params.PROJECT_ROOT
+    #     save_path = "{}/results".format(project_root)
+    #
+    #     if tag == 0:
+    #         code = "_history.npz"
+    #     else:
+    #         code = "_history_v2.npz"
+    #
+    #     K = len(code)
+    #
+    #     for result_file in os.listdir(save_path):
+    #         ext_name = os.path.splitext(result_file)[1]
+    #         slice_id = result_file[:-K]
+    #         if chosen is not None and slice_id not in chosen:
+    #             continue
+    #
+    #         if ext_name == ".npz" and code in result_file:
+    #             print("loading data : {}, {}".format(slice_id, result_file))
+    #             result = np.load("{}/{}".format(save_path, result_file))
+    #             x1 = result["x1"]
+    #             y1 = result["y1"]
+    #             x2 = result["x2"]
+    #             y2 = result["y2"]
+    #             coordinate_scale = result["scale"]
+    #             assert coordinate_scale == 1.25, "Scale is Error!"
+    #
+    #             history = result["history"].item()
+    #             cmb = CancerMapBuilder(self._params, x1, y1, x2, y2, 1.25)
+    #             cancer_map = cmb.generating_probability_map(history, extract_scale=40, patch_size=256)
+    #
+    #             # points = self.search_local_feature_points(cancer_map, thresh_list, x1, y1)
+    #             # points = self.search_local_feature_points_max(cancer_map, x1, y1)
+    #             points = self.search_local_feature_points_tree(cancer_map, x1, y1)
+    #             candidated_result = []
+    #             for (xx, yy), f in points.items():
+    #                 # 经过分类器判别后输出
+    #                 pred = clf.decision_function([f])
+    #                 # if pred > -1 and f[0] > 0.5:
+    #                 if pred > -0.1:
+    #                     #坐标从1.25倍镜下变换到40倍镜下
+    #                     candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[0]})
+    #
+    #                 # # # 直接全部输出
+    #                 # candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[0]})
+    #
+    #             csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
+    #             with open(csv_filename, 'w', newline='')as f:
+    #                 f_csv = csv.writer(f)
+    #                 for item in candidated_result:
+    #                     f_csv.writerow([item["prob"], item["x"], item["y"]])
+    #
+    #             print("完成 ", slice_id)
+    #     return
+
+    def output_result_csv(self, sub_path, tag, chosen = None):
         '''
         生成用于FROC检测用的CSV文件
         :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
         :return:
         '''
-        # model_file = self._params.PROJECT_ROOT + "/models/locator_svm_0.9802_0.6582.model"
-        # clf = joblib.load(model_file)
-
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
+
+        if tag == 0:
+            code = "_history.npz"
+        else:
+            code = "_history_v2.npz"
+
+        K = len(code)
+
         for result_file in os.listdir(save_path):
             ext_name = os.path.splitext(result_file)[1]
-            slice_id = result_file[:-14]
+            slice_id = result_file[:-K]
             if chosen is not None and slice_id not in chosen:
                 continue
 
-            if ext_name == ".npz":
-                result = np.load("{}/{}".format(save_path, result_file))
+            if ext_name == ".npz" and code in result_file:
+                print("loading data : {}, {}".format(slice_id, result_file))
+                result = np.load("{}/{}".format(save_path, result_file), allow_pickle=True)
                 x1 = result["x1"]
                 y1 = result["y1"]
+                x2 = result["x2"]
+                y2 = result["y2"]
                 coordinate_scale = result["scale"]
-                assert coordinate_scale==1.25, "Scale is Error!"
+                assert coordinate_scale == 1.25, "Scale is Error!"
 
-                cancer_map = result["cancer_map"]
-                # print("max :", np.max(cancer_map), "min :", np.min(cancer_map))
+                history = result["history"].item()
 
-                # points = self.search_local_feature_points(cancer_map, thresh_list, x1, y1)
-                # points = self.search_local_feature_points_max(cancer_map, thresh_list, x1, y1)
-                points = self.search_local_feature_points_tree(cancer_map, x1, y1)
-                candidated_result = []
-                for (xx, yy), f in points.items():
-                    # # 经过分类器判别后输出
-                    # pred = clf.decision_function([f])
-                    # # if pred > -1 and f[0] > 0.5:
-                    # if pred > -0.1:
-                    #     #坐标从1.25倍镜下变换到40倍镜下
-                    #     candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[0]})
-
-                    # # 直接全部输出
-                    candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[0]})
+                candidated_result = self.search_local_extremum_points(history, x1, y1)
 
                 csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
                 with open(csv_filename, 'w', newline='')as f:
@@ -364,3 +437,54 @@ class Locator(object):
 
                 print("完成 ", slice_id)
         return
+
+    # 模式1：均匀的选择
+    def search_local_extremum_points(self, history, x_letftop, y_lefttop):
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
+
+        candidated = []
+        for (x, y), f in history.items():
+            prob = 1 / (1 + np.exp(-f))
+            if low_prob_thresh < prob:
+                xx = x + x_letftop
+                yy = y + y_lefttop
+                # candidated.append({"x": 32 * xx, "y": 32 * yy, "prob": prob})
+                candidated.append((prob, xx, yy))
+
+        candidated.sort(key=lambda x: (x[0]), reverse=True)
+
+        resolution = 0.243
+        level = 5
+        Threshold = 5 * 75 / (resolution * pow(2, level) * 2)
+        result = []
+        while len(candidated) > 0:
+            m = candidated.pop(0)
+            mx = m[1]
+            my = m[2]
+            mprob = m[0]
+            tx = [mx]
+            ty = [my]
+            temp = []
+            for prob, x, y in candidated:
+                dist = distance.euclidean([mx, my], [x, y])
+                # * (3 - 2 * prob)* (*0.5 *(mprob + prob)/(mprob*prob))
+                if dist > Threshold:
+                    temp.append((prob, x, y))
+                else:
+                    tx.append(x)
+                    ty.append(y)
+
+            mx = np.rint(np.mean(np.array(tx))).astype(np.int)
+            my = np.rint(np.mean(np.array(ty))).astype(np.int)
+
+            result.append((mprob, mx, my))
+            candidated = temp
+
+        count = len(result)
+        print("count =", count)
+
+        candidated = []
+        for prob, x, y in result:
+            candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+
+        return candidated
