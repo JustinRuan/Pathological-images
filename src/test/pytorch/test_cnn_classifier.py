@@ -28,8 +28,8 @@ class Test_cnn_classifier(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        model_name = "simple_cnn"
-        # model_name = "densenet_22"
+        # model_name = "simple_cnn"
+        model_name = "e_densenet_40"
         sample_name = "cifar10"
 
         cnn = Simple_Classifier(c, model_name, sample_name)
@@ -304,8 +304,10 @@ class Test_cnn_classifier(unittest.TestCase):
 
         # cnn.train_model(samples_name=samples[0], class_weight=None,
         #                 batch_size=20, epochs = 10)
-        cnn.train_model_A2(samples_name=samples[0], class_weight=None,
-                        batch_size=20, loss_weight=0.001, epochs = 3)
+        # cnn.train_model_A2(samples_name=samples[0], class_weight=None,
+        #                 batch_size=20, loss_weight=0.001, epochs = 5)
+        cnn.train_model_A3(samples_name=samples[0], class_weight=None,
+                        batch_size=30, loss_weight=0.001, epochs = 5)
 
     # def test_train_model_multi_task(self):
     #     c = Params()

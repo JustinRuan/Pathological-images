@@ -6,21 +6,21 @@ __mtime__ = '2019-06-12'
 
 """
 
-import numpy as np
 import os
 import sys
-from skimage import measure
-from skimage.measure import find_contours, approximate_polygon, \
-    subdivide_polygon
-from sklearn import metrics
-from skimage import morphology
-import csv
-from core import *
+
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy import ndimage as nd
-from skimage.morphology import square
-from pytorch.cancer_map import CancerMapBuilder, SlideClassifier
+from skimage import measure
+from skimage import morphology
+from skimage.measure import approximate_polygon
 from skimage.segmentation import mark_boundaries
+from sklearn import metrics
+
+from core import *
+from pytorch.cancer_map import CancerMapBuilder
+
 
 class Evaluation(object):
     def __init__(self, params):
@@ -165,10 +165,10 @@ class Evaluation(object):
         if tag == 0:
             code = "_history.npz"
         else:
-            code = "_history_v2.npz"
+            code = "_history_v{}.npz".format(tag)
 
         K = len(code)
-
+        print("slice_id, area, count, p_thresh, dice, accu, recall, f1, roc_auc")
         for result_file in os.listdir(save_path):
             ext_name = os.path.splitext(result_file)[1]
             slice_id = result_file[:-K]
@@ -189,7 +189,8 @@ class Evaluation(object):
 
                 cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
                 cancer_map = cmb.generating_probability_map(history, x1, y1, x2, y2, 1.25)
-                p_thresh = CancerMapBuilder.calc_probability_threshold(history)
+                # p_thresh = CancerMapBuilder.calc_probability_threshold2(history)
+                p_thresh = 0.5
                 # print("p_thresh = ", p_thresh)
 
                 # imgCone.open_slide("{}/{}.tif".format(slice_dirname, slice_id),
@@ -209,9 +210,15 @@ class Evaluation(object):
                                                                                         cancer_map.ravel())
                 roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
 
-                dice = Evaluation.calculate_dice_coef(mask_img, cancer_map > p_thresh)
+                pred = np.array(cancer_map > p_thresh).astype(np.int)
+                mask_img = np.array(mask_img).astype(np.int)
+                dice = Evaluation.calculate_dice_coef(mask_img, pred)
+                accu = metrics.accuracy_score(mask_img, pred)
+                recall = metrics.recall_score(mask_img, pred, average='micro')
+                # f1 = metrics.f1_score(mask_img, pred, average='micro')
+                f1 = 2 * accu * recall / (accu + recall)
 
-                temp = "{}\t{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, p_thresh, dice, roc_auc)
+                temp = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, p_thresh, dice, accu, recall, f1,roc_auc)
                 result_auc.append(temp)
                 print(temp)
 
@@ -262,8 +269,7 @@ class Evaluation(object):
         if tag == 0:
             code = "_history.npz"
         else:
-            tag = 2
-            code = "_history_v2.npz"
+            code = "_history_v{}.npz".format(tag)
 
         K = len(code)
 
@@ -275,7 +281,7 @@ class Evaluation(object):
 
             if ext_name == ".npz" and code in result_file:
                 print("loading data : {}, {}".format(slice_id, result_file))
-                result = np.load("{}/{}".format(save_path, result_file))
+                result = np.load("{}/{}".format(save_path, result_file), allow_pickle=True)
                 x1 = result["x1"]
                 y1 = result["y1"]
                 x2 = result["x2"]

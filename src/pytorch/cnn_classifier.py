@@ -28,7 +28,7 @@ from core import Block
 from core.util import latest_checkpoint
 from core.util import read_csv_file,read_DSC_csv_file
 from pytorch.image_dataset import Image_Dataset, DSC_Image_Dataset
-from pytorch.loss_function import CenterLoss, LGMLoss
+from pytorch.loss_function import CenterLoss, LGMLoss, LGMLoss_v0
 from pytorch.net import DenseNet, SEDenseNet, ExtendedDenseNet, DSC_DenseNet
 from pytorch.net import Simple_CNN
 from pytorch.util import get_image_blocks_itor, get_image_blocks_batch_normalize_itor, \
@@ -617,7 +617,8 @@ class Simple_Classifier(BaseClassifier):
         elif self.model_name == "densenet_22":
             model = create_densenet(depth=22, gvp_out_size=1)
         elif self.model_name == "densenet_40":
-            model = create_densenet(depth=40, gvp_out_size=(2,2))
+            # model = create_densenet(depth=40, gvp_out_size=(2,2))
+            model = create_densenet(depth=40, gvp_out_size=1)
         elif self.model_name == "se_densenet_22":
             model = create_se_densenet(depth=22, gvp_out_size=1)
         elif self.model_name =="se_densenet_40":
@@ -1086,6 +1087,7 @@ class DSC_Classifier(BaseClassifier):
             class_weight = torch.FloatTensor(class_weight)
         loss_func = nn.CrossEntropyLoss(weight=class_weight)
         lgm_loss = LGMLoss(self.num_classes, 2, 1.00)
+        # lgm_loss = LGMLoss_v0(self.num_classes, 2, 1.00)
 
         if self.use_GPU:
             model.to(self.device)
@@ -1094,11 +1096,14 @@ class DSC_Classifier(BaseClassifier):
 
         optimizer_x2040 = torch.optim.Adam(model.parameters(), lr=1e-3)
         optimizer_xDS = torch.optim.Adam(model.parameters(), lr=1e-3)
+        # optimizer_x2040 = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99)
+        # optimizer_xDS = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99)
+
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
         # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
 
         # optimzer4center
-        optimzer4center = torch.optim.SGD(lgm_loss.parameters(), lr=0.5, momentum=0.9)
+        optimzer4center = torch.optim.SGD(lgm_loss.parameters(), lr=0.1, momentum=0.9)
 
         # training and testing
         for epoch in range(epochs):
@@ -1202,6 +1207,150 @@ class DSC_Classifier(BaseClassifier):
 
             torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}-{:.4f}-{:.4f}.pth".format(
                 self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc, epoch_acc20, epoch_acc40),
+                       )
+        return
+
+    def train_model_A3(self, samples_name, class_weight, batch_size, loss_weight, epochs):
+
+        train_data, test_data = self.load_custom_data(samples_name, )
+
+        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
+                                       num_workers=self.NUM_WORKERS)
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
+                                      num_workers=self.NUM_WORKERS)
+
+        model = self.load_model(model_file=None)
+        # print(model)
+        summary(model, torch.zeros((1, 3, self.image_size, self.image_size)),
+                torch.zeros((1, 3, self.image_size, self.image_size)), show_input=True, show_hierarchical=True)
+
+        if class_weight is not None:
+            class_weight = torch.FloatTensor(class_weight)
+        loss_func = nn.CrossEntropyLoss(weight=class_weight)
+        # lgm_loss = LGMLoss(self.num_classes, 2, 1.00)
+        lgm_loss = LGMLoss_v0(self.num_classes, 2, 1.00)
+
+        if self.use_GPU:
+            model.to(self.device)
+            loss_func.to(self.device)
+            lgm_loss.to(self.device)
+
+        optimizer_x2040 = torch.optim.Adam(model.parameters(), lr=1e-3)
+        optimizer_xDS = torch.optim.Adam(model.parameters(), lr=1e-3)
+        # optimizer_x2040 = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99)
+        # optimizer_xDS = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99)
+
+        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
+        # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
+
+        # optimzer4center
+        optimzer4center = torch.optim.SGD(lgm_loss.parameters(), lr=0.1, momentum=0.9)
+
+        # training and testing
+        for epoch in range(epochs):
+            print('Epoch {}/{}'.format(epoch + 1, epochs))
+            print('-' * 80)
+
+            model.train()
+            # 开始训练
+            train_data_len = len(train_loader)
+            starttime = datetime.datetime.now()
+            for step, ((x20, x40), (y20, y40, y)) in enumerate(
+                    train_loader):  # 分配 batch data, normalize x when iterate train_loader
+                b_x20 = Variable(x20.to(self.device))
+                b_x40 = Variable(x40.to(self.device))
+                b_y20 = Variable(y20.to(self.device))
+                b_y40 = Variable(y40.to(self.device))
+                b_y = Variable(y.to(self.device))
+
+                output20, output40, output = model(b_x20, b_x40)  # cnn output
+
+                output2040 = torch.cat((output20, output40), 0)
+                b_y2040 = torch.cat((b_y20, b_y40), 0)
+                # logits20, mlogits20, likelihood20 = lgm_loss(output20, b_y20)
+                # logits40, mlogits40, likelihood40 = lgm_loss(output40, b_y40)
+                logits2040, mlogits2040, likelihood2040 = lgm_loss(output2040, b_y2040)
+
+                # 组合特征的分类器的loss
+                loss1 = loss_func(output, b_y)
+
+                # 单个倍镜下的分类器的Loss
+                m = 0.5
+                # cross entropy loss
+                # loss2 = m * loss_func(output20, b_y20) + (1 - m) * loss_func(output40, b_y40) + loss_weight * (likelihood20 + likelihood40)
+                loss2 = m * loss_func(output20, b_y20) + (1 - m) * loss_func(output40,
+                                                                             b_y40) + loss_weight * likelihood2040
+
+                optimizer_x2040.zero_grad()  # clear gradients for this training step
+                optimizer_xDS.zero_grad()
+                optimzer4center.zero_grad()
+
+                loss1.backward(retain_graph=True)  # backpropagation, compute gradients,
+                loss2.backward()
+
+                optimizer_x2040.step()
+                optimizer_xDS.step()
+                optimzer4center.step()
+
+                # 数据统计
+                _, preds = torch.max(output, 1)
+                _, preds_x20 = torch.max(output20, 1)
+                _, preds_x40 = torch.max(output40, 1)
+
+                running_loss = loss1.item()
+                running_corrects = torch.sum(preds == b_y.data)
+
+                running_loss2 = loss2.item()
+                running_corrects2 = torch.sum(preds_x20 == b_y20.data).item()
+                running_corrects4 = torch.sum(preds_x40 == b_y40.data).item()
+
+                if step % 50 == 0:
+                    endtime = datetime.datetime.now()
+                    remaining_time = (train_data_len - step) * (endtime - starttime).seconds / (step + 1)
+
+                    # tmp = lgm_loss.log_covs
+                    # norm = torch.sum(torch.mul(tmp, tmp))
+                    # norm_value = norm.item()
+
+                    print(
+                        '%d / %d ==> Loss1: %.4f | Acc: %.4f , Loss2: %.4f | Acc_x20: %.4f | Acc_x40: %.4f, remaining time: %d (s)'
+                        % (step, train_data_len, running_loss, float(running_corrects) / b_y.size(0),
+                           running_loss2, float(running_corrects2) / b_y.size(0),
+                           float(running_corrects4) / b_y.size(0),
+                           remaining_time))
+
+            running_loss = 0.0
+            running_corrects = 0
+            running_corrects2 = 0
+            running_corrects4 = 0
+            model.eval()
+            # 开始评估
+            for (x20, x40), (y20, y40, y) in test_loader:
+                b_x20 = Variable(x20.to(self.device))
+                b_x40 = Variable(x40.to(self.device))
+                b_y20 = Variable(y20.to(self.device))
+                b_y40 = Variable(y40.to(self.device))
+                b_y = Variable(y.to(self.device))
+
+                output20, output40, output = model(b_x20, b_x40)
+                loss1 = loss_func(output, b_y)
+
+                _, preds = torch.max(output, 1)
+                _, preds_x20 = torch.max(output20, 1)
+                _, preds_x40 = torch.max(output40, 1)
+                running_loss += loss1.item() * b_y.size(0)
+                running_corrects += torch.sum(preds == b_y.data).item()
+                running_corrects2 += torch.sum(preds_x20 == b_y20.data).item()
+                running_corrects4 += torch.sum(preds_x40 == b_y40.data).item()
+
+            test_data_len = test_data.__len__()
+            epoch_loss = running_loss / test_data_len
+            epoch_acc = float(running_corrects) / test_data_len
+            epoch_acc20 = float(running_corrects2) / test_data_len
+            epoch_acc40 = float(running_corrects4) / test_data_len
+
+            torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}-{:.4f}-{:.4f}.pth".format(
+                self.model_name, self.patch_type, epoch + 1, epoch_loss, epoch_acc, epoch_acc20, epoch_acc40),
                        )
         return
 

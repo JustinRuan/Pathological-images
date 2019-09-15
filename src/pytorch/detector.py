@@ -7,6 +7,7 @@ __mtime__ = '2018-10-26'
 """
 import time
 import os
+import random
 from abc import ABCMeta, abstractmethod
 import cv2
 import numpy as np
@@ -27,7 +28,7 @@ from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
 from skimage import measure
-from pytorch.elastic_classifier import Elastic_Classifier
+# from pytorch.elastic_classifier import Elastic_Classifier
 
 class BaseDetector(object, metaclass=ABCMeta):
     def __init__(self, params, src_image):
@@ -375,6 +376,13 @@ class AdaptiveDetector(BaseDetector):
         self.enable_viz = False
         self.search_therhold = 0.03 # 0.015
 
+        self.eff_zone = None
+
+    def get_detection_rectangle(self,):
+        self.eff_zone = self._imgCone.get_effective_zone(self._params.GLOBAL_SCALE)
+        x1, y1, x2, y2 = self._imgCone.get_mask_min_rect(self.eff_zone)
+        return x1, y1, x2, y2
+
     def get_cancer_feature(self, predictions):
         '''
         计算出每个检测点所得到的癌变概率
@@ -499,6 +507,10 @@ class AdaptiveDetector(BaseDetector):
         batch_size = kwargs["batch_size"]
         limit_sampling_density = kwargs["limit_sampling_density"]
         enhanced = kwargs["enhanced"]
+        # effective_area_sampling_attenuation = kwargs["effective_area_sampling_attenuation"]
+        # superpixel_area = kwargs["superpixel_area"]
+        # superpixels_boundaries_spacing = kwargs["superpixels_boundaries_spacing"]
+
 
         normal_func = None
         select = 3
@@ -519,10 +531,10 @@ class AdaptiveDetector(BaseDetector):
             self.model_name = "dsc_densenet_40"
             self.sample_name = "2040_256"
             self.cnn = DSC_Classifier(self._params, self.model_name, self.sample_name)
-        elif select == 10:
-            self.model_name = "e_densenet_22"
-            self.sample_name = "4000_256"
-            self.cnn = Elastic_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
+        # elif select == 10:
+        #     self.model_name = "e_densenet_22"
+        #     self.sample_name = "4000_256"
+        #     self.cnn = Elastic_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
 
         history =  self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, limit_sampling_density, enhanced)
@@ -548,7 +560,134 @@ class AdaptiveDetector(BaseDetector):
     #
     #     return cancer_map
 
-    # 第三版本: 增强自适应采样
+    # # 第三版本: 增强自适应采样
+    # def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
+    #                            max_iter_nums, batch_size, limit_sampling_density = 1.0, enhanced=False):
+    #     '''
+    #
+    #     :param x1: 检测区域的左上角x
+    #     :param y1: 检测区域的左上角y
+    #     :param x2: 检测区域的右下角x
+    #     :param y2: 检测区域的右下角y
+    #     :param coordinate_scale: （x1, y1, x2, y2）所对应的倍镜数
+    #     :param extract_scale: 提到图块所用的倍镜数
+    #     :param patch_size: 图块边长
+    #     :param max_iter_nums: 最大的迭代轮数
+    #     :param batch_size: 每批次的图片数量
+    #     :param use_post: 是否使用后处理操作
+    #     :return:
+    #     '''
+    #     self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
+    #     print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
+    #     # self.effi_seeds = self.get_effective_seeds(x1, y1, x2, y2, coordinate_scale, self._params.GLOBAL_SCALE)
+    #     seeds_scale = self._params.GLOBAL_SCALE
+    #
+    #     seg = Segmentation(self._params, self._imgCone)
+    #     region_count = self.valid_area_height * self.valid_area_width // 1000
+    #     # region_count = np.sqrt(self.valid_area_height * self.valid_area_width) // 40
+    #     # region_count = 30
+    #     print("the number of superpixel regions ", region_count)
+    #
+    #     label_map = seg.create_superpixels_slic(x1, y1, x2, y2, coordinate_scale, seeds_scale, region_count, 20)
+    #     boundary_seeds = seg.get_seeds_at_boundaries(label_map, x1, y1, coordinate_scale)
+    #     print("the number of seeds at boundaries is ", len(boundary_seeds))
+    #
+    #     # 生成坐标网格
+    #     grid_y, grid_x = np.mgrid[0: self.valid_area_height: 1, 0: self.valid_area_width: 1]
+    #
+    #     sobel_img = None
+    #     interpolate_img = None
+    #     self.status_map = None
+    #     region_density = None
+    #     history = {}
+    #     N = 2000
+    #
+    #     #########################################################################################################
+    #     if self.enable_viz:
+    #         viz = Visualizer()
+    #         mask_img = self.get_true_mask_in_detect_area(x1, y1, x2, y2, coordinate_scale, seeds_scale)
+    #         viz.draw_mask(mask_img, y1, y2)
+    #     #########################################################################################################
+    #
+    #     threshold = 0.0 # 边缘区域与平坦区域的分割阈值
+    #     total_step = 1
+    #
+    #     rx1, ry1, rx2, ry2 = self.valid_rect
+    #     for i in range(max_iter_nums):
+    #
+    #         print("iter {}, {}, {}".format(i + 1, (rx1, ry1), (rx2, ry2)))
+    #         # seeds = self.get_random_seeds(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
+    #         seeds = self.get_random_seeds_ex3(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
+    #         if i == 0:
+    #             seeds.extend(boundary_seeds)
+    #
+    #         new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
+    #         print("the number of new seeds: ", len(new_seeds), ', the number of seeds in history:', len(history))
+    #         if len(new_seeds) == 0:
+    #             break # 找不到高梯度的点了，
+    #
+    #         sampling_density = self.cacl_sampling_density(x1, y1, new_seeds, list(history.keys()), r=8)
+    #         print("Current sampling density = ", sampling_density)
+    #
+    #         # 单倍镜下进行检测
+    #         # if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn",
+    #         #                        "e_densenet_22", "e_densenet_40"]:
+    #         high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
+    #         probability, prediction, low_dim_features = self.cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
+    #         probs = np.array(low_dim_features)[:,1]
+    #
+    #         for (x, y), pred in zip(new_seeds, probs):
+    #             xx = x - x1
+    #             yy = y - y1
+    #             # history中的x,y坐标是局部的，原点是区域的左上角
+    #             if not history.__contains__((xx, yy)) and not np.isnan(pred):
+    #                 history[(xx, yy)] = pred
+    #
+    #         value = list(history.values())
+    #         point = list(history.keys())
+    #
+    #         # 使用cubic，会出现负值，而选用linear不会这样
+    #         interpolate_img = griddata(point, value, (grid_x, grid_y), method='linear', fill_value= -2.0)
+    #         sobel_img, threshold = self.calc_sobel(interpolate_img)
+    #
+    #         ########################################################################################################
+    #         if self.enable_viz:
+    #             viz.draw_density(sampling_density, total_step)
+    #             time.sleep(0.1)
+    #             viz.draw_points(x1, y2, new_seeds, total_step)
+    #             time.sleep(0.1)
+    #             viz.draw_thresh(threshold, total_step)
+    #         #########################################################################################################
+    #         total_step += 1
+    #
+    #         if not enhanced:
+    #             if sampling_density > limit_sampling_density:
+    #                 break
+    #         else:
+    #             if sampling_density > limit_sampling_density:
+    #                 region_density = self.cacl_sampling_density_with_superpixels(label_map, interpolate_img,
+    #                                                                              history, region_density, limit_sampling_density)
+    #                 # 分别对应四种区域：
+    #                 # 0：高概率低密度， HpLd
+    #                 # 1：高概率高密度， HpHd
+    #                 # 2：低概率低密度， LpLd
+    #                 # 3：低概率高密度，LpHd
+    #                 count_HpLd = len(region_density[0].keys())
+    #                 count_HpHd = len(region_density[1].keys())
+    #                 count_LpLd = len(region_density[2].keys())
+    #                 count_LpHd = len(region_density[3].keys())
+    #                 print("count of density regions: HpLd = {}, HpHd = {}, LpLd = {}, LpHd = {}".format(count_HpLd,
+    #                                                                                                    count_HpHd,
+    #                                                                                                    count_LpLd,
+    #                                                                                                    count_LpHd))
+    #                 if count_HpLd > 0:
+    #                     self.status_map = self.update_status_map(label_map, region_density, history)
+    #                 else:
+    #                     break
+    #
+    #     return history
+
+    # 第3.6版本: 增强自适应采样
     def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, limit_sampling_density = 1.0, enhanced=False):
         '''
@@ -567,13 +706,10 @@ class AdaptiveDetector(BaseDetector):
         '''
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
         print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
-        # self.effi_seeds = self.get_effective_seeds(x1, y1, x2, y2, coordinate_scale, self._params.GLOBAL_SCALE)
         seeds_scale = self._params.GLOBAL_SCALE
 
         seg = Segmentation(self._params, self._imgCone)
         region_count = self.valid_area_height * self.valid_area_width // 1000
-        # region_count = np.sqrt(self.valid_area_height * self.valid_area_width) // 40
-        # region_count = 30
         print("the number of superpixel regions ", region_count)
 
         label_map = seg.create_superpixels_slic(x1, y1, x2, y2, coordinate_scale, seeds_scale, region_count, 20)
@@ -588,6 +724,8 @@ class AdaptiveDetector(BaseDetector):
         self.status_map = None
         region_density = None
         history = {}
+
+        regions_count = {}
         N = 2000
 
         #########################################################################################################
@@ -605,31 +743,49 @@ class AdaptiveDetector(BaseDetector):
 
             print("iter {}, {}, {}".format(i + 1, (rx1, ry1), (rx2, ry2)))
             # seeds = self.get_random_seeds(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
-            seeds = self.get_random_seeds_ex3(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
+            seeds = self.get_random_seeds_ex4(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, threshold)
             if i == 0:
                 seeds.extend(boundary_seeds)
+
+            if seeds is None or len(seeds) == 0:
+                if len(history) < 5000:
+                    # threshold出现异常大，防止过早结束搜索
+                    seeds = self.get_random_seeds_ex3(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, 0)
+                else:
+                    print("seeds is None, could not find new seeds.")
+                    break # 找不到高梯度的点了，
 
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
             print("the number of new seeds: ", len(new_seeds), ', the number of seeds in history:', len(history))
             if len(new_seeds) == 0:
+                print("could not find new seeds.")
                 break # 找不到高梯度的点了，
 
             sampling_density = self.cacl_sampling_density(x1, y1, new_seeds, list(history.keys()), r=8)
             print("Current sampling density = ", sampling_density)
 
-            # 单倍镜下进行检测
-            # if self.model_name in ["se_densenet_40", "se_densenet_22", "densenet_22", "simple_cnn",
-            #                        "e_densenet_22", "e_densenet_40"]:
-            high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, new_seeds)
+            if i == 0:
+                eff_seeds = new_seeds
+            else:
+                eff_seeds = self.filter_seeds_by_effective_area(x1, y1, new_seeds)
+
+            # 进行检测
+            high_seeds = transform_coordinate(0, 0, coordinate_scale, seeds_scale, extract_scale, eff_seeds)
             probability, prediction, low_dim_features = self.cnn.predict_on_batch(self._imgCone, extract_scale, patch_size, high_seeds, batch_size)
             probs = np.array(low_dim_features)[:,1]
 
-            for (x, y), pred in zip(new_seeds, probs):
+            for (x, y), pred in zip(eff_seeds, probs):
                 xx = x - x1
                 yy = y - y1
                 # history中的x,y坐标是局部的，原点是区域的左上角
                 if not history.__contains__((xx, yy)) and not np.isnan(pred):
                     history[(xx, yy)] = pred
+
+                    region_id = label_map[yy, xx]
+                    if region_id not in regions_count.keys():
+                        regions_count[region_id] = 1
+                    else:
+                        regions_count[region_id] += 1
 
             value = list(history.values())
             point = list(history.keys())
@@ -642,7 +798,7 @@ class AdaptiveDetector(BaseDetector):
             if self.enable_viz:
                 viz.draw_density(sampling_density, total_step)
                 time.sleep(0.1)
-                viz.draw_points(x1, y2, new_seeds, total_step)
+                viz.draw_points(x1, y2, eff_seeds, total_step) # new_seeds
                 time.sleep(0.1)
                 viz.draw_thresh(threshold, total_step)
             #########################################################################################################
@@ -653,8 +809,11 @@ class AdaptiveDetector(BaseDetector):
                     break
             else:
                 if sampling_density > limit_sampling_density:
-                    region_density = self.cacl_sampling_density_with_superpixels(label_map, interpolate_img,
-                                                                                 history, region_density, limit_sampling_density)
+                    # region_density = self.cacl_sampling_density_with_superpixels(label_map, interpolate_img,
+                    #                                                              history, region_density, limit_sampling_density)
+                    region_density = self.cacl_sampling_density_with_superpixels(regions_count, label_map, interpolate_img, sobel_img,
+                                                                                 region_density, limit_sampling_density)
+
                     # 分别对应四种区域：
                     # 0：高概率低密度， HpLd
                     # 1：高概率高密度， HpHd
@@ -675,6 +834,36 @@ class AdaptiveDetector(BaseDetector):
 
         return history
 
+    # def filter_seeds_by_effective_area(self, x1, y1, new_seeds, history, regions_count, label_map):
+    def filter_seeds_by_effective_area(self, x1, y1, new_seeds):
+        #通过有效区域进行过滤,
+        if self.eff_zone is not None:
+            eff_seeds = []
+            for (x, y) in new_seeds:
+                xx = x - x1
+                yy = y - y1
+                if self.eff_zone[yy, xx]:
+                    eff_seeds.append((x, y))
+                else:
+                    # # 发现问题：检测结果出现不稳定，原因可能是概率图的细节缺失
+                    # # history中的x,y坐标是局部的，原点是区域的左上角
+                    # if not history.__contains__((xx, yy)):
+                    #     history[(xx, yy)] = -2.0
+                    #
+                    #     region_id = label_map[yy, xx]
+                    #     if region_id not in regions_count.keys():
+                    #         regions_count[region_id] = 1
+                    #     else:
+                    #         regions_count[region_id] += 1
+                    # 另一方案：按较小的概率抽查
+                    rand = random.random()
+                    if rand <= 0.5:
+                        eff_seeds.append((x, y))
+        else:
+            eff_seeds = new_seeds
+
+        return eff_seeds
+
     def cacl_sampling_density(self, x1, y1, new_seeds, old_seeds, r = 8):
 
         if not old_seeds:
@@ -692,28 +881,38 @@ class AdaptiveDetector(BaseDetector):
 
         return np.mean(result)
 
-    def cacl_sampling_density_with_superpixels(self, label_map, cancer_map, history, region_density, limit_sampling_density):
+    def cacl_sampling_density_with_superpixels(self, regions_count, label_map, cancer_map, sobel_img, region_density, limit_sampling_density):
 
-        feat_thresh = -1 # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
-        tag_map = np.zeros(label_map.shape, dtype=np.bool)
-        for (x, y), prob in history.items():
-            tag_map[y, x] = True
+        feat_thresh = -1  # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
+        grad_thresh = 0.1
+        f_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
+        g_properties = measure.regionprops(label_map, intensity_image=sobel_img, cache=True, coordinates='rc')
 
         if region_density is None:
             max_label = np.amax(label_map)
+            print("max label =", max_label, ", count of regions which were checked, ", len(regions_count))
+
             # 分别对应四种区域：
             # 0：高概率低密度， HpLd
             # 1：高概率高密度， HpHd
             # 2：低概率低密度， LpLd
             # 3：低概率高密度，LpHd
             result = [{}, {}, {}, {}]
-            for index in range(0, max_label + 1):
-                selected_region = label_map == index
-                max_prob = np.max(cancer_map[selected_region])
-                # area = np.sum(selected_region)
-                sampling_density = np.sum(tag_map[selected_region])
+            for index in range(1, max_label + 1):
+                if index in regions_count.keys():
+                    sampling_density = regions_count[index]
+                else:
+                    sampling_density = 0
 
-                if max_prob >= feat_thresh:
+                p = f_properties[index - 1]
+                g = g_properties[index - 1]
+                max_prob = p.max_intensity
+                max_grad = g.max_intensity
+                assert p.label == index, "Error: p.label != index"
+                # selected_region = label_map == index
+                # max_prob2 = np.max(cancer_map[selected_region])
+
+                if max_prob >= feat_thresh and max_grad >= grad_thresh:
                     if sampling_density < limit_sampling_density:
                         result[0][index] = (max_prob, sampling_density)
                     else:
@@ -725,14 +924,26 @@ class AdaptiveDetector(BaseDetector):
                         result[3][index] = (max_prob, sampling_density)
             return result
         else:
-            last_HpLd_label = list(region_density[0].keys())
+            last_Ld_label = list(region_density[0].keys())
+            last_Ld_label.extend(list(region_density[2].keys()))
             region_density[0] = {}
-            for index in last_HpLd_label:
-                selected_region = label_map == index
-                max_prob = np.max(cancer_map[selected_region])
-                sampling_density = np.sum(tag_map[selected_region])
+            region_density[2] = {}
 
-                if max_prob >= feat_thresh:
+            for index in last_Ld_label:
+                if index in regions_count.keys():
+                    sampling_density = regions_count[index]
+                else:
+                    sampling_density = 0
+
+                p = f_properties[index - 1]
+                g = g_properties[index - 1]
+                max_prob = p.max_intensity
+                max_grad = g.max_intensity
+                assert p.label == index, "Error: p.label != index"
+                # selected_region = label_map == index
+                # max_prob = np.max(cancer_map[selected_region])
+
+                if max_prob >= feat_thresh and max_grad >= grad_thresh:
                     if sampling_density < limit_sampling_density:
                         region_density[0][index] = (max_prob, sampling_density)
                     else:
@@ -745,6 +956,124 @@ class AdaptiveDetector(BaseDetector):
 
             return region_density
 
+    # def cacl_sampling_density_with_superpixels(self, regions_count, label_map, cancer_map, region_density, limit_sampling_density):
+    #
+    #     feat_thresh = -1  # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
+    #
+    #     if region_density is None:
+    #         max_label = np.amax(label_map)
+    #         print("max label =", max_label, ", count of regions which were checked, ", len(regions_count))
+    #         properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
+    #
+    #         # 分别对应四种区域：
+    #         # 0：高概率低密度， HpLd
+    #         # 1：高概率高密度， HpHd
+    #         # 2：低概率低密度， LpLd
+    #         # 3：低概率高密度，LpHd
+    #         result = [{}, {}, {}, {}]
+    #         for index in range(0, max_label + 1):
+    #             if index in regions_count.keys():
+    #                 sampling_density = regions_count[index]
+    #             else:
+    #                 sampling_density = 0
+    #
+    #             p = properties[index]
+    #             max_prob = p.max_intensity
+    #             assert p.label == index, "Error: p.label != index"
+    #             # selected_region = label_map == index
+    #             # max_prob2 = np.max(cancer_map[selected_region])
+    #
+    #             if max_prob >= feat_thresh:
+    #                 if sampling_density < limit_sampling_density:
+    #                     result[0][index] = (max_prob, sampling_density)
+    #                 else:
+    #                     result[1][index] = (max_prob, sampling_density)
+    #             else:
+    #                 if sampling_density < limit_sampling_density:
+    #                     result[2][index] = (max_prob, sampling_density)
+    #                 else:
+    #                     result[3][index] = (max_prob, sampling_density)
+    #         return result
+    #     else:
+    #         last_HpLd_label = list(region_density[0].keys())
+    #         region_density[0] = {}
+    #
+    #         for index in last_HpLd_label:
+    #             if index in regions_count.keys():
+    #                 sampling_density = regions_count[index]
+    #             else:
+    #                 sampling_density = 0
+    #
+    #             selected_region = label_map == index
+    #             max_prob = np.max(cancer_map[selected_region])
+    #
+    #             if max_prob >= feat_thresh:
+    #                 if sampling_density < limit_sampling_density:
+    #                     region_density[0][index] = (max_prob, sampling_density)
+    #                 else:
+    #                     region_density[1][index] = (max_prob, sampling_density)
+    #             else:
+    #                 if sampling_density < limit_sampling_density:
+    #                     region_density[2][index] = (max_prob, sampling_density)
+    #                 else:
+    #                     region_density[3][index] = (max_prob, sampling_density)
+    #
+    #         return region_density
+
+
+    # def cacl_sampling_density_with_superpixels(self, label_map, cancer_map, history, region_density, limit_sampling_density):
+    #
+    #     feat_thresh = -1 # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
+    #     tag_map = np.zeros(label_map.shape, dtype=np.bool)
+    #     for (x, y), prob in history.items():
+    #         tag_map[y, x] = True
+    #
+    #     if region_density is None:
+    #         max_label = np.amax(label_map)
+    #         # 分别对应四种区域：
+    #         # 0：高概率低密度， HpLd
+    #         # 1：高概率高密度， HpHd
+    #         # 2：低概率低密度， LpLd
+    #         # 3：低概率高密度，LpHd
+    #         result = [{}, {}, {}, {}]
+    #         for index in range(0, max_label + 1):
+    #             selected_region = label_map == index
+    #             max_prob = np.max(cancer_map[selected_region])
+    #             # area = np.sum(selected_region)
+    #             sampling_density = np.sum(tag_map[selected_region])
+    #
+    #             if max_prob >= feat_thresh:
+    #                 if sampling_density < limit_sampling_density:
+    #                     result[0][index] = (max_prob, sampling_density)
+    #                 else:
+    #                     result[1][index] = (max_prob, sampling_density)
+    #             else:
+    #                 if sampling_density < limit_sampling_density:
+    #                     result[2][index] = (max_prob, sampling_density)
+    #                 else:
+    #                     result[3][index] = (max_prob, sampling_density)
+    #         return result
+    #     else:
+    #         last_HpLd_label = list(region_density[0].keys())
+    #         region_density[0] = {}
+    #         for index in last_HpLd_label:
+    #             selected_region = label_map == index
+    #             max_prob = np.max(cancer_map[selected_region])
+    #             sampling_density = np.sum(tag_map[selected_region])
+    #
+    #             if max_prob >= feat_thresh:
+    #                 if sampling_density < limit_sampling_density:
+    #                     region_density[0][index] = (max_prob, sampling_density)
+    #                 else:
+    #                     region_density[1][index] = (max_prob, sampling_density)
+    #             else:
+    #                 if sampling_density < limit_sampling_density:
+    #                     region_density[2][index] = (max_prob, sampling_density)
+    #                 else:
+    #                     region_density[3][index] = (max_prob, sampling_density)
+    #
+    #         return region_density
+
     def update_status_map(self, label_map, region_density, history):
         status_map = np.zeros(label_map.shape, dtype=np.bool)
         # select_label = []
@@ -756,8 +1085,8 @@ class AdaptiveDetector(BaseDetector):
             status_map[selected_region] = True
 
         for (x, y), prob in history.items():
-            status_map[y, x] = False
-
+            status_map[y-4:y+4, x-4:y+4] = False
+        print("count of nonzone of status map ", np.sum(status_map))
         return status_map
 
     def calc_sobel(self, interpolate):
@@ -774,6 +1103,8 @@ class AdaptiveDetector(BaseDetector):
 
         self.cluster_centers = clustering.cluster_centers_.ravel()
         threshold = np.mean(self.cluster_centers)
+        if threshold > 0.3:
+            threshold = 0.3
         print("threshold = {:.6f}, clustering = {}".format(threshold, self.cluster_centers))
         return sobel_img, threshold
 
@@ -939,7 +1270,141 @@ class AdaptiveDetector(BaseDetector):
 
         return tuple(zip(x, y))
 
-    #
+
+    def get_random_seeds_ex4(self, N, x0, y0, x1, x2, y1, y2, sobel_img, threshold):
+        '''
+        获取随机的种子点坐标（扩展算法）
+        :param N: 获取种子点的数量
+        :param x0: Sobel_image的左上角在全切片的绝对位置坐标x
+        :param y0: Sobel_image的左上角在全切片的绝对位置坐标y
+        :param x1: 在全切片中当前检测区域的左上角x
+        :param x2: 在全切片中当前检测区域的右下角x
+        :param y1: 在全切片中当前检测区域的左上角y
+        :param y2: 在全切片中当前检测区域的右下角y
+        :param sobel_img: 梯度图
+        :param threshold: 边界阈值
+        :return: 种子点
+        '''
+        # 目前，自适应采样分为三个阶段进行：
+        # 1）第一轮，全局的Haltan随机采样，以此生成Sobel图
+        # 2）第二轮开始，直到检测阈值Threshold达到设定范围之前的阶段：根据WxW区域内梯度局部极大值进行种子点的选择。
+        #       相当于图像分辨率下降后的随机搜索过程，加速寻找可能性的区域。
+        # 3）检测阈值达到设定值Threshold后， 算法进入精确的搜索阶段：只选择梯度值越过设定Threshold的点进行采样，
+        #       直到采样过密，采样点重合条件达到，退出算法。
+        if sobel_img is None:  # 第一轮
+            n = N
+            x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
+        else:
+            x = []
+            y = []
+            if threshold > self.search_therhold:  # 精确搜索开始
+                n = 4 * N
+                sx, sy = self.random_gen.generate_random_by_mask(n, x1, x2, y1, y2, mask=self.status_map)
+                if sx is None or sy is None: return None
+
+                prob = sobel_img[sy - y0, sx - x0]
+                index = prob >= threshold
+                sx = sx[index]
+                sy = sy[index]
+
+                x.extend(sx)
+                y.extend(sy)
+
+                if self.status_map is None:
+                    # 搜索过程加速向局部集中
+                    half_w = 64
+
+                    if len(x) < N:
+                        for xx, yy in zip(sx, sy):
+                            nx1 = max(xx - half_w, x1)
+                            nx2 = min(xx + half_w, x2)
+                            ny1 = max(yy - half_w, y1)
+                            ny2 = min(yy + half_w, y2)
+                            sx2, sy2 = self.random_gen.generate_random(n, nx1, nx2, ny1, ny2)
+                            prob = sobel_img[sy2 - y0, sx2 - x0]
+                            index = prob >= threshold
+                            sx = sx2[index]
+                            sy = sy2[index]
+
+                            x.extend(sx)
+                            y.extend(sy)
+
+                    # 从当前的x和y的结果中只选择N个
+                    m = len(x)
+                    if m > N:
+                        x = np.array(x)
+                        y = np.array(y)
+
+                        selected_tag = np.arange(m)
+                        np.random.shuffle(selected_tag)
+                        selected_tag = selected_tag[:N]
+
+                        x = x[selected_tag]
+                        y = y[selected_tag]
+                # else:
+                #     m = len(x)
+                #     if m < N:
+                #         # 这里已经限定的搜索范围，则增加的搜索的随机性，搜索过程在限定范围内进行一定的发散
+                #         w = 16
+                #         half_w = w >> 1
+                #         M = N - m
+                #         n = 2 * M
+                #         # sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
+                #         # print("generate_random_by_mask, ", n)
+                #         sx, sy = self.random_gen.generate_random_by_mask(n, x1, x2, y1, y2, mask=self.status_map)
+                #         grad_list = []
+                #         for xx, yy in zip(sx, sy):
+                #             rr, cc = rectangle((yy - half_w - y0, xx - half_w - x0), extent=(w, w))
+                #
+                #             select_y = (rr >= 0) & (rr < self.valid_area_height)
+                #             select_x = (cc >= 0) & (cc < self.valid_area_width)
+                #             select = select_x & select_y
+                #             max_grad = np.max(sobel_img[rr[select], cc[select]])
+                #             grad_list.append(max_grad)
+                #
+                #         index = np.array(grad_list).argsort()
+                #         sx = sx[index[-M:]]
+                #         sy = sy[index[-M:]]
+                #
+                #         x.extend(sx)
+                #         y.extend(sy)
+                #     else:
+                #         x = np.array(x)
+                #         y = np.array(y)
+                #
+                #         selected_tag = np.arange(m)
+                #         np.random.shuffle(selected_tag)
+                #         selected_tag = selected_tag[:N]
+                #
+                #         x = x[selected_tag]
+                #         y = y[selected_tag]
+
+            else:  # 大范围地随机搜索
+                w = 16
+                half_w = w >> 1
+                n = 2 * N
+                sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
+                # sx, sy = self.random_gen.generate_random_by_mask(n, x1, x2, y1, y2, mask=self.status_map)
+                grad_list = []
+                for xx, yy in zip(sx, sy):
+                    rr, cc = rectangle((yy - half_w - y0, xx - half_w - x0), extent=(w, w))
+
+                    select_y = (rr >= 0) & (rr < self.valid_area_height)
+                    select_x = (cc >= 0) & (cc < self.valid_area_width)
+                    select = select_x & select_y
+                    max_grad = np.max(sobel_img[rr[select], cc[select]])
+                    grad_list.append(max_grad)
+
+                index = np.array(grad_list).argsort()
+                sx = sx[index[-N:]]
+                sy = sy[index[-N:]]
+
+                x.extend(sx)
+                y.extend(sy)
+
+        return list(zip(x, y))
+
+
     def get_random_seeds_ex3(self, N, x0, y0, x1, x2, y1, y2, sobel_img, threshold):
         '''
         获取随机的种子点坐标（扩展算法）
@@ -971,6 +1436,8 @@ class AdaptiveDetector(BaseDetector):
 
                 # sx, sy = self.random_gen.generate_random(n, x1, x2, y1, y2)
                 sx, sy = self.random_gen.generate_random_by_mask(n, x1, x2, y1, y2, mask=self.status_map)
+                if sx is None or sy is None: return None
+
                 prob = sobel_img[sy - y0, sx - x0]
                 index = prob >= threshold
                 sx = sx[index]

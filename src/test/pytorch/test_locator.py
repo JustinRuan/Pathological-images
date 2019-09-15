@@ -18,9 +18,9 @@ from pytorch.locator import Locator
 import csv
 from pytorch.cancer_map import CancerMapBuilder
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestLocator(unittest.TestCase):
     def test_calcuate_location_features(self):
@@ -79,14 +79,14 @@ class TestLocator(unittest.TestCase):
         # loca.output_result_csv("csv_2", chosen=None)
         # loca.output_result_csv("csv_2", chosen=None)
         select = ["Tumor_{:0>3d}".format(i) for i in range(1, 21)] # [9,11,16,18,20]range(1, 21)
-        loca.output_result_csv("csv_2", tag =1,  chosen=select)
+        loca.output_result_csv("csv_1", tag =128,  chosen=select)
 
     def test_csv2(self):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        i = 9
-        sub_path = "csv_2"
+        i = 1
+        sub_path = "csv_1"
         code = "Tumor_{:0>3d}".format(i)
         filename = "{}/results/{}_history_v2.npz".format(c.PROJECT_ROOT, code)
         result = np.load(filename, allow_pickle=True)

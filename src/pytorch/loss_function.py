@@ -146,7 +146,6 @@ class LGMLoss(nn.Module):
         diff = torch.mul(diff, wdiff)
         dist = torch.sum(diff, dim=-1) #eq.(18)
 
-
         y_onehot = torch.FloatTensor(batch_size, self.num_classes)
         y_onehot.zero_()
         y_onehot = Variable(y_onehot).cuda()

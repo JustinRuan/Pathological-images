@@ -24,16 +24,17 @@ import torchvision
 from torch.utils.data import Dataset
 
 from core.util import latest_checkpoint
-from pytorch.loss_function import CenterLoss
+from pytorch.loss_function import CenterLoss, LGMLoss, LGMLoss_v0
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
+import joblib
 
 class CancerMapBuilder(object):
     def __init__(self, params, extract_scale, patch_size):
         self._params = params
-        # seeds_scale = self._params.GLOBAL_SCALE
-        # amplify = extract_scale / seeds_scale
-        # selem_size = int(0.5 * patch_size / amplify)
+        seeds_scale = self._params.GLOBAL_SCALE
+        amplify = extract_scale / seeds_scale
+        self.selem_size = int(0.5 * patch_size / amplify)
 
     def generating_probability_map(self, history, x1, y1, x2, y2, scale):
 
@@ -50,8 +51,8 @@ class CancerMapBuilder(object):
         grid_y, grid_x = np.mgrid[0: valid_area_height: 1, 0: valid_area_width: 1]
         cancer_map = griddata(point, value_softmax, (grid_x, grid_y), method='linear', fill_value=0)
 
-        # cancer_map = morphology.closing(cancer_map, square(2 * selem_size))
-        # cancer_map = morphology.dilation(cancer_map, square(selem_size))
+        # cancer_map = morphology.closing(cancer_map, square(2 * self.selem_size))
+        # cancer_map = morphology.dilation(cancer_map, square(self.selem_size))
 
         return cancer_map
 
@@ -88,10 +89,56 @@ class CancerMapBuilder(object):
 
         low_prob_thresh = 1 / (1 + np.exp(-low_thresh))
         # high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
-        # print("low_prob_thresh = ", low_prob_thresh, high_prob_thresh)
-        print("low_prob_thresh = ", low_prob_thresh)
         return low_prob_thresh
 
+    # @staticmethod
+    # def calc_probability_threshold2(history):
+    #     value = np.array(list(history.values()))
+    #     all_part = np.reshape(value, (-1,1))
+    #
+    #     np_clustering = KMeans(n_clusters=2, max_iter=100, tol=1e-4, random_state=None).fit(all_part)
+    #     np_centers = np_clustering.cluster_centers_.ravel()
+    #
+    #     small_positive = np.sign(np_centers[0]) == np.sign(np_centers[1])
+    #     if small_positive:
+    #         return 0.5
+    #     else:
+    #         if np_centers[0] > 0:
+    #             pos_id = 0
+    #         else:
+    #             pos_id = 1
+    #
+    #         positive_part = value[np_clustering.labels_ == pos_id]
+    #         positive_part = np.reshape(positive_part, (-1,1))
+    #
+    #     p_count = len(positive_part)
+    #     if p_count > 100:
+    #         contamination = 0.1
+    #     else:
+    #         return np.max(np.min(positive_part), 0.4)
+    #
+    #     ift = IsolationForest(behaviour='new', max_samples='auto', contamination=contamination)
+    #     y = ift.fit_predict(positive_part)
+    #     outliers = positive_part[y == -1]
+    #
+    #     clustering = KMeans(n_clusters=2, max_iter=100, tol=1e-4, random_state=None).fit(outliers)
+    #
+    #     cluster_centers = clustering.cluster_centers_.ravel()
+    #     dist = abs(cluster_centers[0] - cluster_centers[1])
+    #
+    #     if cluster_centers[0] < cluster_centers[1]:
+    #         left_part = outliers[clustering.labels_ == 0]
+    #         right_part = outliers[clustering.labels_ == 1]
+    #     else:
+    #         left_part = outliers[clustering.labels_ == 1]
+    #         right_part = outliers[clustering.labels_ == 0]
+    #
+    #     low_thresh = np.max(left_part)
+    #     # high_thresh = np.min(right_part)
+    #
+    #     low_prob_thresh = 1 / (1 + np.exp(-low_thresh))
+    #     # high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
+    #     return low_prob_thresh
 
 class Slide_CNN(nn.Module):
 
@@ -154,7 +201,7 @@ class SlideClassifier(object):
         self.image_size = int(patch_type)
         self.num_classes = 2
 
-        self.model_root = "{}/models/pytorch/Slide_{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
+        self.model_root = "{}/models/pytorch/{}_{}".format(self._params.PROJECT_ROOT, self.model_name, self.patch_type)
         self.model = None
 
         self.use_GPU = True
@@ -189,9 +236,9 @@ class SlideClassifier(object):
         return Slide_CNN()
 
 
-    def train(self, batch_size, loss_weight, epochs):
-        filename = "{}/data/slide_train_data.npz".format(self._params.PROJECT_ROOT)
-        D = np.load(filename)
+    def train(self, data_filename, class_weight, batch_size, loss_weight, epochs):
+        filename = "{}/data/{}".format(self._params.PROJECT_ROOT, data_filename)
+        D = np.load(filename, allow_pickle=True)
         X = D['x']
         Y = D['y']
         # X = np.reshape(X, (-1,1,self.image_size, self.image_size))
@@ -210,10 +257,14 @@ class SlideClassifier(object):
                                       num_workers=self.NUM_WORKERS)
 
         model = self.load_model(model_file=None)
-        summary(model, torch.zeros((1, 1, self.image_size, self.image_size)), show_input=True)
+        summary(model, torch.zeros((1, 1, self.image_size, self.image_size)), show_input=False)
 
-        classifi_loss = nn.CrossEntropyLoss(weight=None)
-        center_loss = CenterLoss(self.num_classes, 2)
+        if class_weight is not None:
+            class_weight = torch.FloatTensor(class_weight)
+
+        classifi_loss = nn.CrossEntropyLoss(weight=class_weight)
+        # center_loss = CenterLoss(self.num_classes, 2)
+        center_loss = LGMLoss_v0(self.num_classes, 2, 1.00)
         if self.use_GPU:
             model.to(self.device)
             classifi_loss.to(self.device)
@@ -222,7 +273,7 @@ class SlideClassifier(object):
         # optimzer4nn
         # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
         # classifi_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
+        # classifi_optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9,)
         classifi_optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.99, )
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(classifi_optimizer, mode='min',
@@ -247,7 +298,10 @@ class SlideClassifier(object):
                 output = model(b_x)  # cnn output
 
                 # cross entropy loss + center loss
-                loss = classifi_loss(output, b_y) + loss_weight * center_loss(b_y, output)
+                # loss = classifi_loss(output, b_y) + loss_weight * center_loss(b_y, output)
+
+                logits, mlogits, likelihood = center_loss(output, b_y)
+                loss = classifi_loss(mlogits, b_y) + loss_weight * likelihood
 
                 classifi_optimizer.zero_grad()  # clear gradients for this training step
                 optimzer4center.zero_grad()
@@ -289,9 +343,10 @@ class SlideClassifier(object):
             epoch_loss=running_loss / test_data_len
             epoch_acc=running_corrects.double() / test_data_len
 
-            torch.save(model.state_dict(), self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}.pth".format(
-                self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc),
-                       )
+            save_filename = self.model_root + "/{}_{}_cp-{:04d}-{:.4f}-{:.4f}.pth".format(
+                self.model_name, self.patch_type,epoch+1, epoch_loss, epoch_acc)
+            torch.save(model.state_dict(), save_filename)
+            print("Saved ", save_filename)
         return
 
 
@@ -302,10 +357,13 @@ class SlideClassifier(object):
         for (x, y), f in history.items():
             cancer_map[y, x] = f
 
+        # 是否转换成稀疏矩阵，以压缩内存，
+        c_tag = self.image_size > 150
+
         X_data = []
-        half_size = 64
+        half_size = self.image_size // 2
         xy = []
-        prob = []
+        # prob = []
         for (x, y), f in history.items():
             sx1 = x - half_size
             sx2 = x + half_size
@@ -314,9 +372,13 @@ class SlideClassifier(object):
             if sx1 < 0 or sx2 > valid_area_width or sy1 < 0 or sy2 > valid_area_height:
                 continue
             sub_m = cancer_map[sy1:sy2, sx1:sx2]
+
+            if c_tag:
+                sub_m = coo_matrix(sub_m)
+
             X_data.append(sub_m)
             xy.append((x, y))
-            prob.append(f)
+            # prob.append(f)
 
         if self.model is None:
             self.model = self.load_model(model_file=None)
@@ -327,8 +389,12 @@ class SlideClassifier(object):
             self.model.to(self.device)
             self.model.eval()
 
-        X_data = np.array(X_data).reshape((-1,1,self.image_size,self.image_size))
-        test_data = torch.utils.data.TensorDataset(torch.from_numpy(X_data).float(),)
+        if c_tag:
+            test_data = Sparse_Image_Dataset(X_data, None)
+        else:
+            X_data = np.array(X_data).reshape((-1,1,self.image_size,self.image_size))
+            test_data = torch.utils.data.TensorDataset(torch.from_numpy(X_data).float(),)
+
         test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
                                       num_workers=self.NUM_WORKERS)
 
@@ -336,26 +402,40 @@ class SlideClassifier(object):
 
         prediction = []
         for step, xx in enumerate(test_loader):
-            b_x = Variable(xx[0].to(self.device))
+            if c_tag:
+                b_x = Variable(xx.to(self.device))
+            else:
+                b_x = Variable(xx[0].to(self.device))
 
             output = self.model(b_x)  # model最后不包括一个softmax层
 
             prediction.extend(output.cpu().numpy())
-            print('predicting => %d / %d ' % (step + 1, data_len))
+            if (step % 20) == 0:
+                print('predicting => %d / %d ' % (step + 1, data_len))
+
+        new_history = dict(history)
+        for (x, y), pred in zip(xy, prediction):
+            new_history[(x, y)] = pred[1]
+
+        return new_history
+
+    def counting_history_changes(self, old_history, new_history):
 
         count = 0
-        for (x, y), f, pred, in zip(xy, prob, prediction):
-            history[(x, y)] = pred[1]
+        sum = 0
+        for (x, y), old_pred in old_history.items():
+            new_pred = new_history[(x, y)]
 
-            if pred[1]*f < 0:
-                # print(f, pred[1])
+            if (old_pred > 0 and new_pred < 0) or (old_pred < 0 and new_pred > 0):
                 count+=1
-
-        print("count of updated points, ", count)
-        return history
-
+                dist = abs(old_pred - new_pred)
+                sum += dist
+        if count > 0 :
+            print("avg of dist =", sum / count)
+        return count
 
     def bulid_train_data(self, x1, y1, x2, y2, history, ground_truth, ):
+
         valid_area_width = x2 - x1
         valid_area_height = y2 - y1
         cancer_map = np.zeros((valid_area_height, valid_area_width),dtype=np.float)
@@ -365,8 +445,8 @@ class SlideClassifier(object):
         mask = ground_truth[y1:y2, x1:x2]
         X_data = []
         Y_data = []
-        half_size = 64
-
+        half_size = self.image_size // 2
+        W = 4
         for x, y in history.keys():
             sx1 = x - half_size
             sx2 = x + half_size
@@ -375,7 +455,7 @@ class SlideClassifier(object):
             if sx1 < 0 or sx2 > valid_area_width or sy1 < 0 or sy2 > valid_area_height:
                 continue
             sub_m = cancer_map[sy1:sy2, sx1:sx2]
-            sub_y = np.any(mask[y - 4 : y + 4, x - 4: x + 4])
+            sub_y = np.any(mask[y - W : y + W, x - W: x + W])
             sparse_v = coo_matrix(sub_m)
 
             X_data.append(sparse_v)
@@ -383,7 +463,7 @@ class SlideClassifier(object):
 
         return X_data, Y_data
 
-    def read_train_data(self, slice_dirname, chosen):
+    def read_train_data(self, slice_dirname, chosen, np_ratio = 1.0, p_ratio = 1.0):
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
         mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
@@ -398,7 +478,7 @@ class SlideClassifier(object):
             if chosen is not None and slice_id not in chosen:
                 continue
 
-            if ext_name == ".npz":
+            if ext_name == ".npz" and "_history.npz" in result_file and "Test" not in result_file:
                 print("loading data : {}".format(slice_id))
                 result = np.load("{}/{}".format(save_path, result_file))
                 x1 = result["x1"]
@@ -420,28 +500,31 @@ class SlideClassifier(object):
         count = np.sum(Y)
         print("count of Y =", count, "len =", len(Y))
 
-        ratio = float(count) / len(Y)
+        # p_ratio = 0.6
+        n_ratio = p_ratio * np_ratio * float(count) / len(Y)
         new_X = []
         new_Y = []
 
         for x, y in zip(X, Y):
+            rand = random.random()
             if y:
-                new_X.append(x)
-                new_Y.append(y)
+                if rand <= p_ratio:
+                    new_X.append(x)
+                    new_Y.append(y)
             else:
-                rand = random.random()
-                if rand <= ratio:
+                if rand <= n_ratio:
                     new_X.append(x)
                     new_Y.append(y)
 
         count = np.sum(new_Y)
         print("count of new Y =", count, "len =", len(new_Y))
 
-        filename = "{}/data/slide_train_data.npz".format(self._params.PROJECT_ROOT)
+        filename = "{}/data/slide_train_data{}_p{:.1f}_np{:.1f}.npz".format(self._params.PROJECT_ROOT, self.image_size,
+                                                                         p_ratio, np_ratio)
         np.savez_compressed(filename, x=new_X, y=new_Y,)
         return
 
-    def update_history(self, chosen):
+    def update_history(self, chosen, batch_size):
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
 
@@ -453,9 +536,9 @@ class SlideClassifier(object):
             if chosen is not None and slice_id not in chosen:
                 continue
 
-            if ext_name == ".npz":
+            if ext_name == ".npz" and "_history.npz" in result_file:
                 print("loading data : {}".format(slice_id))
-                result = np.load("{}/{}".format(save_path, result_file))
+                result = np.load("{}/{}".format(save_path, result_file), allow_pickle=True)
                 x1 = result["x1"]
                 y1 = result["y1"]
                 x2 = result["x2"]
@@ -464,10 +547,12 @@ class SlideClassifier(object):
                 assert coordinate_scale == 1.25, "Scale is Error!"
 
                 history = result["history"].item()
-                history = self.predict(x1, y1, x2, y2, history, batch_size=100)
+                history2 = self.predict(x1, y1, x2, y2, history, batch_size=batch_size)
+                modified_count = self.counting_history_changes(history, history2)
+                print("{}, count of updated points = {}".format(slice_id, modified_count), )
 
-                save_filename = "{}/results/{}_history_v2.npz".format(self._params.PROJECT_ROOT, slice_id)
-                np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=coordinate_scale, history=history)
+                save_filename = "{}/results/{}_history_v{}.npz".format(self._params.PROJECT_ROOT, slice_id,self.image_size)
+                np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=coordinate_scale, history=history2)
                 print(">>> >>> ", save_filename, " saved!")
 
 class Sparse_Image_Dataset(Dataset):
@@ -477,10 +562,14 @@ class Sparse_Image_Dataset(Dataset):
 
     def __getitem__(self, index):
         img = self.x[index].toarray()
-        label = int(self.y[index])
+        if self.y is not None:
+            label = int(self.y[index])
 
         img_tensor = self.transform(img).type(torch.FloatTensor)
-        return img_tensor, label
+        if self.y is None:
+            return img_tensor
+        else:
+            return img_tensor, label
 
     def __len__(self):
         return len(self.x)

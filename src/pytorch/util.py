@@ -209,8 +209,8 @@ def get_image_blocks_dsc_itor(src_img, seeds_scale, seeds, nWidth, nHeight, batc
     transform = torchvision.transforms.ToTensor()
     n = 0
 
-    r20 = 20 / seeds_scale
-    r40 = 40 / seeds_scale
+    r20 = 20.0 / seeds_scale
+    r40 = 40.0 / seeds_scale
 
     images_x20 = []
     images_x40 = []
