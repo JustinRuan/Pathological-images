@@ -15,9 +15,9 @@ from matplotlib import pyplot as plt
 from skimage.segmentation import mark_boundaries
 from skimage import color
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 
 class TestEvaluation(unittest.TestCase):
@@ -105,8 +105,8 @@ class TestEvaluation(unittest.TestCase):
         # eval.save_result_pictures("Train_Tumor", chosen=["Tumor_002", "Tumor_003"])
         # eval.save_result_pictures("Train_Tumor", chosen=None)
         # select = ["Tumor_{:0>3d}".format(i) for i in range(25, 51)]
-        select = ["Tumor_{:0>3d}".format(i) for i in [98]]
-        eval.save_result_pictures("Train_Tumor", tag = 0,  chosen=select)
+        # select = ["Tumor_{:0>3d}".format(i) for i in [98]]
+        # eval.save_result_pictures("Train_Tumor", tag = 0,  chosen=select)
 
-        # select = ["Test_{:0>3d}".format(i) for i in [13]]
-        # eval.save_result_pictures("testing\images", tag=0, chosen=select)
+        select = ["Test_{:0>3d}".format(i) for i in [27]]
+        eval.save_result_pictures("testing\images", tag=64, chosen=select)

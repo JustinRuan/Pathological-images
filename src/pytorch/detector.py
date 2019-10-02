@@ -511,7 +511,6 @@ class AdaptiveDetector(BaseDetector):
         # superpixel_area = kwargs["superpixel_area"]
         # superpixels_boundaries_spacing = kwargs["superpixels_boundaries_spacing"]
 
-
         normal_func = None
         select = 3
         if select == 1:
@@ -531,17 +530,31 @@ class AdaptiveDetector(BaseDetector):
             self.model_name = "dsc_densenet_40"
             self.sample_name = "2040_256"
             self.cnn = DSC_Classifier(self._params, self.model_name, self.sample_name)
-        # elif select == 10:
-        #     self.model_name = "e_densenet_22"
-        #     self.sample_name = "4000_256"
-        #     self.cnn = Elastic_Classifier(self._params, self.model_name, self.sample_name, normalization=normal_func)
 
         history =  self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, limit_sampling_density, enhanced)
         return history
 
-        # cancer_map = self.generating_cancer_probability_map(history, extract_scale, self._params.GLOBAL_SCALE, patch_size)
-        # return cancer_map, history
+    def adaptive_detect(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
+        max_iter_nums = kwargs["max_iter_nums"]
+        batch_size = kwargs["batch_size"]
+        limit_sampling_density = kwargs["limit_sampling_density"]
+        enhanced = kwargs["enhanced"]
+        superpixel_area = kwargs["superpixel_area"]
+        superpixels_boundaries_spacing = kwargs["superpixels_boundaries_spacing"]
+
+        normal_func = None
+
+        self.model_name = "dsc_densenet_40"
+        self.sample_name = "2040_256"
+        self.cnn = DSC_Classifier(self._params, self.model_name, self.sample_name)
+
+        extract_scale = 40
+        patch_size = 256
+        history =  self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
+                               max_iter_nums, batch_size, limit_sampling_density, enhanced, superpixel_area,
+                                               superpixels_boundaries_spacing)
+        return history
 
     # def generating_cancer_probability_map(self, history, extract_scale, seeds_scale, patch_size):
     #     amplify = extract_scale / seeds_scale
@@ -689,7 +702,8 @@ class AdaptiveDetector(BaseDetector):
 
     # 第3.6版本: 增强自适应采样
     def adaptive_detect_region(self, x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
-                               max_iter_nums, batch_size, limit_sampling_density = 1.0, enhanced=False):
+                               max_iter_nums, batch_size, limit_sampling_density = 1.0, enhanced=False,
+                               superpixel_area = 1000, superpixels_boundaries_spacing = 60):
         '''
 
         :param x1: 检测区域的左上角x
@@ -709,11 +723,11 @@ class AdaptiveDetector(BaseDetector):
         seeds_scale = self._params.GLOBAL_SCALE
 
         seg = Segmentation(self._params, self._imgCone)
-        region_count = self.valid_area_height * self.valid_area_width // 1000
+        region_count = self.valid_area_height * self.valid_area_width // superpixel_area # superpixel_area = 1000
         print("the number of superpixel regions ", region_count)
 
         label_map = seg.create_superpixels_slic(x1, y1, x2, y2, coordinate_scale, seeds_scale, region_count, 20)
-        boundary_seeds = seg.get_seeds_at_boundaries(label_map, x1, y1, coordinate_scale)
+        boundary_seeds = seg.get_seeds_at_boundaries(label_map, x1, y1, coordinate_scale, superpixels_boundaries_spacing)
         print("the number of seeds at boundaries is ", len(boundary_seeds))
 
         # 生成坐标网格

@@ -131,16 +131,14 @@ class Segmentation(object):
             label_map = slic_map
         return label_map
 
-    def get_seeds_at_boundaries(self, label_img, x1, y1, coordinate_scale, ):
+    def get_seeds_at_boundaries(self, label_img, x1, y1, coordinate_scale, spacing = 60):
         boundaries = find_boundaries(label_img,)
-        # s = np.rint(np.sqrt(np.sum(boundaries)) / 6.0,).astype(np.int32)
+
         s = 4
         temp = morphology.binary_dilation(boundaries, square(s))
         boundaries = find_boundaries(temp, )
 
         GLOBAL_SCALE = self._params.GLOBAL_SCALE
-        # seeds = get_seeds(boundaries, lowScale=GLOBAL_SCALE, highScale=GLOBAL_SCALE, patch_size_high=4,
-        #                    spacingHigh = spacing, margin = 0)
 
         xx1 = int(x1 / coordinate_scale * GLOBAL_SCALE)
         yy1 = int(y1 / coordinate_scale * GLOBAL_SCALE)
@@ -150,7 +148,7 @@ class Segmentation(object):
         x = pos[1]  # col
 
         # spacing = np.rint(np.sqrt(len(y)) / 4.0)
-        spacing = 60
+        # spacing = 60
         print("superpixels boundaries spacing", spacing)
         seeds = []
         test = set()
