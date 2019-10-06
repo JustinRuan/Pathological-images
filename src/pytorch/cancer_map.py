@@ -142,7 +142,7 @@ class CancerMapBuilder(object):
 
 class Slide_CNN(nn.Module):
 
-    def __init__(self, ):
+    def __init__(self, image_size):
         super(Slide_CNN, self).__init__()
 
         num_classes = 2
@@ -169,14 +169,16 @@ class Slide_CNN(nn.Module):
             nn.ReLU(64),
             nn.MaxPool2d(kernel_size=2) # image_size / 8
         )
-        self.gap = nn.AdaptiveAvgPool2d((2, 2))
-        feature_dim = 64 * 2 * 2
-        self.dense = nn.Sequential(
-            nn.Linear(feature_dim, 256),
-            nn.ReLU(256),
-        )
+        # self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        self.gap = nn.AvgPool2d(8, stride=8)
+        s = int(image_size / (8 * 8))
+        feature_dim = 64 * s * s
+        # self.dense = nn.Sequential(
+        #     nn.Linear(feature_dim, 256),
+        #     nn.ReLU(256),
+        # )
         self.classifier = nn.Sequential(
-            nn.Linear(256, num_classes),
+            nn.Linear(feature_dim, num_classes),
             # nn.Softmax(dim=1)
         )
 
@@ -186,7 +188,7 @@ class Slide_CNN(nn.Module):
         x = self.conv3(x)
         x = self.gap(x)
         x = x.view(x.size(0), -1) # 展平多维的卷积图成 (batch_size, .....)
-        x = self.dense(x)
+        # x = self.dense(x)
 
         output = self.classifier(x)
         return output
@@ -233,7 +235,7 @@ class SlideClassifier(object):
         return model
 
     def create_initial_model(self):
-        return Slide_CNN()
+        return Slide_CNN(self.image_size)
 
 
     def train(self, data_filename, class_weight, batch_size, loss_weight, epochs):
@@ -446,7 +448,7 @@ class SlideClassifier(object):
         X_data = []
         Y_data = []
         half_size = self.image_size // 2
-        W = 4
+        W = 1 # W = 4
         for x, y in history.keys():
             sx1 = x - half_size
             sx2 = x + half_size

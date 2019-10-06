@@ -15,9 +15,9 @@ from matplotlib import pyplot as plt
 from skimage.segmentation import mark_boundaries
 from skimage import color
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 
 class TestEvaluation(unittest.TestCase):
@@ -85,18 +85,26 @@ class TestEvaluation(unittest.TestCase):
         eval = Evaluation(c)
         # , "Tumor_034", "Tumor_035", "Tumor_036"
 
-        # select = ["Tumor_{:0>3d}".format(i) for i in range(1,112)]
-        # # select = ["Tumor_{:0>3d}".format(i) for i in [98]]
-        # eval.calculate_ROC("Train_Tumor", tag=256, chosen=select)
+        select = ["Tumor_{:0>3d}".format(i) for i in range(1,112)]
+        # select = ["Tumor_{:0>3d}".format(i) for i in range(1,20)]
+        eval.calculate_ROC("Train_Tumor", tag=64, chosen=select, p_thresh=0.5)
 
         # # eval.calculate_ROC("Train_Tumor", tag=2, chosen=None)
 
-        select = ["Test_{:0>3d}".format(i) for i in [1,2,4,8,10,11,13,16,21,26,27,29,30,33,38,40,46,48,51,52,
-                                                      61,64,65,66,68,69,71,73,74,75,79,
-                                                    82,84,90,94,97,99,102,104,105,108,110,113,116,117,121,122]]
-        # # select = ["Test_{:0>3d}".format(i) for i in [4,10,29,30,33,38,48,66,79,84,99,102,116,117,122]]
-        # select = ["Test_{:0>3d}".format(i) for i in [99, 117]]
-        eval.calculate_ROC("testing\images", tag=128, chosen=select)
+        # select = ["Test_{:0>3d}".format(i) for i in [1,2,4,8,10,11,13,16,21,26,27,29,30,33,38,40,46,48,51,52,
+        #                                               61,64,65,66,68,69,71,73,74,75,79,
+        #                                             82,84,90,94,97,99,102,104,105,108,110,113,116,117,121,122]]
+        # # # select = ["Test_{:0>3d}".format(i) for i in [4,10,29,30,33,38,48,66,79,84,99,102,116,117,122]]
+        # # select = ["Test_{:0>3d}".format(i) for i in [1, 2, 4]]
+        # eval.calculate_ROC("testing\images", tag=128, chosen=select)
+
+    def test_calculate_ROC2(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        eval = Evaluation(c)
+
+        select = ["Test_{:0>3d}".format(i) for i in [3, 5]]
+        eval.calculate_ROC("testing\images", tag=0, chosen=select)
 
     def test_save_result_pictures(self):
         c = Params()
@@ -108,5 +116,5 @@ class TestEvaluation(unittest.TestCase):
         # select = ["Tumor_{:0>3d}".format(i) for i in [98]]
         # eval.save_result_pictures("Train_Tumor", tag = 0,  chosen=select)
 
-        select = ["Test_{:0>3d}".format(i) for i in [27]]
-        eval.save_result_pictures("testing\images", tag=64, chosen=select)
+        select = ["Test_{:0>3d}".format(i) for i in [3]]
+        eval.save_result_pictures("testing\images", tag=0, chosen=select)

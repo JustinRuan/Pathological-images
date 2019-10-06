@@ -36,7 +36,9 @@ class ImageCone(object):
         if tag:
             if not ano_filename is None:
                 self._slide.read_annotation(root_path + ano_filename)
-
+                self.ano_filename = ano_filename
+            else:
+                self.ano_filename = None
             return True
 
         return False

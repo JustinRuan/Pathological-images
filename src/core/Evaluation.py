@@ -154,7 +154,7 @@ class Evaluation(object):
         doc.writexml(f, encoding="utf-8")
         f.close()
 
-    def calculate_ROC(self, slice_dirname, tag, chosen):
+    def calculate_ROC(self, slice_dirname, tag, chosen, p_thresh = 0.5):
 
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
@@ -189,22 +189,18 @@ class Evaluation(object):
 
                 cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
                 cancer_map = cmb.generating_probability_map(history, x1, y1, x2, y2, 1.25)
-                # p_thresh = CancerMapBuilder.calc_probability_threshold2(history)
-                p_thresh = 0.5
-                # print("p_thresh = ", p_thresh)
-
-                # imgCone.open_slide("{}/{}.tif".format(slice_dirname, slice_id),
-                #                    '{}/{}.xml'.format(slice_dirname, slice_id), slice_id)
-                #
-                # mask_img = imgCone.create_mask_image(self._params.GLOBAL_SCALE, 0)
-                # mask_img = mask_img['C']
-
-                mask_img = np.load("{}/{}_true_mask.npy".format(mask_path, slice_id))
-
                 h, w = cancer_map.shape
-                mask_img = mask_img[y1:y1+h, x1:x1+w]
-                area = np.sum(mask_img)
-                _, count = morphology.label(mask_img, neighbors=8, connectivity=2, return_num=True)
+
+                mask_filename = "{}/{}_true_mask.npy".format(mask_path, slice_id)
+                if os.path.exists(mask_filename):
+                    mask_img = np.load(mask_filename)
+                    mask_img = mask_img[y1:y1+h, x1:x1+w]
+                    area = np.sum(mask_img)
+                    _, count = morphology.label(mask_img, neighbors=8, connectivity=2, return_num=True)
+                else:
+                    mask_img = np.zeros((h, w), dtype=np.bool)
+                    area = 0
+                    count = 0
 
                 false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(mask_img.ravel(),
                                                                                         cancer_map.ravel())
@@ -215,7 +211,7 @@ class Evaluation(object):
                 dice = Evaluation.calculate_dice_coef(mask_img, pred)
                 accu = metrics.accuracy_score(mask_img, pred)
                 recall = metrics.recall_score(mask_img, pred, average='micro')
-                # f1 = metrics.f1_score(mask_img, pred, average='micro')
+                # f1 = metrics.f1_score(mask_img, pred, average='micro') # Here, f1 = dice
                 f1 = 2 * accu * recall / (accu + recall)
 
                 temp = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, p_thresh, dice, accu, recall, f1,roc_auc)
