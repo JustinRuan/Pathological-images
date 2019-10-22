@@ -193,7 +193,7 @@ class Slide_CNN(nn.Module):
         output = self.classifier(x)
         return output
 
-class SlideClassifier(object):
+class SlideFilter(object):
     def __init__(self, params, model_name, patch_type):
         self._params = params
 

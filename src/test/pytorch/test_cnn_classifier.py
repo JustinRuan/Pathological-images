@@ -18,8 +18,8 @@ from pytorch.image_dataset import Image_Dataset
 import pandas as pd
 from pytorch.elastic_classifier import Elastic_Classifier
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
@@ -308,6 +308,38 @@ class Test_cnn_classifier(unittest.TestCase):
         #                 batch_size=20, loss_weight=0.001, epochs = 5)
         cnn.train_model_A3(samples_name=samples[0], class_weight=None,
                         batch_size=30, loss_weight=0.001, epochs = 5)
+
+    def test_speed(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "dsc_densenet_40"
+        sample_name = "2040_256"
+
+        samples = [("P0619","T1_P0619_4000_2000_256"),  # 平衡样本集
+                    ]
+        cnn = DSC_Classifier(c, model_name, sample_name)
+        cnn.evaluate_model(samples_name=samples[0], model_file=None, batch_size=100)
+        # i5-7500, GTX 1060 6G
+        # acc, acc20, acc40, speed，len: 0.9723953695458593 0.9702034385916843 0.9520515103774231 235.46774193548387 14599
+
+    def test_class_centers(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        model_name = "dsc_densenet_40"
+        sample_name = "2040_256"
+
+        samples = [("P0619","T1_P0619_4000_2000_256"),  # 平衡样本集
+                    ]
+        cnn = DSC_Classifier(c, model_name, sample_name)
+        cnn.calc_centers(samples_name=samples[0], model_file=None, batch_size=100)
+
+    # center_20 Normal[3.0154288 - 3.374219]
+    # center_20 Tumor[-2.7567124 2.4602337]
+    # center_40 Normal[2.0857253 - 2.4292686]
+    # center_40 Tumor[-2.5575078 2.2696517]
+
 
     # def test_train_model_multi_task(self):
     #     c = Params()

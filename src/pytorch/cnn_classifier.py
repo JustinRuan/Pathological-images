@@ -1319,6 +1319,9 @@ class DSC_Classifier(BaseClassifier):
                            float(running_corrects4) / b_y.size(0),
                            remaining_time))
 
+                    class_centers = lgm_loss.centers.detach().cpu().numpy()
+                    print("class_centers", class_centers)
+
             running_loss = 0.0
             running_corrects = 0
             running_corrects2 = 0
@@ -1393,6 +1396,96 @@ class DSC_Classifier(BaseClassifier):
             print('predicting => %d / %d ' % (step + 1, data_len))
 
         return probability, prediction, low_dim_features
+
+    def evaluate_model(self, samples_name, model_file, batch_size):
+        train_data, test_data = self.load_custom_data(samples_name, )
+
+        train_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
+                                       num_workers=self.NUM_WORKERS)
+        test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
+                                      num_workers=self.NUM_WORKERS)
+
+        if self.model is None:
+            self.model = self.load_pretrained_model_on_predict()
+            self.model.to(self.device)
+            self.model.eval()
+
+        running_corrects = 0
+        running_corrects2 = 0
+        running_corrects4 = 0
+
+        starttime = datetime.datetime.now()
+        for (x20, x40), (y20, y40, y) in test_loader:
+            b_x20 = Variable(x20.to(self.device))
+            b_x40 = Variable(x40.to(self.device))
+            b_y20 = Variable(y20.to(self.device))
+            b_y40 = Variable(y40.to(self.device))
+            b_y = Variable(y.to(self.device))
+
+            output20, output40, output = self.model(b_x20, b_x40)
+
+            _, preds = torch.max(output, 1)
+            _, preds_x20 = torch.max(output20, 1)
+            _, preds_x40 = torch.max(output40, 1)
+
+            running_corrects += torch.sum(preds == b_y.data).item()
+            running_corrects2 += torch.sum(preds_x20 == b_y20.data).item()
+            running_corrects4 += torch.sum(preds_x40 == b_y40.data).item()
+
+        endtime = datetime.datetime.now()
+
+        test_data_len = test_data.__len__()
+        epoch_acc = float(running_corrects) / test_data_len
+        epoch_acc20 = float(running_corrects2) / test_data_len
+        epoch_acc40 = float(running_corrects4) / test_data_len
+        speed =  float(test_data_len) / (endtime - starttime).seconds
+
+        print("acc, acc20, acc40, speed:", epoch_acc, epoch_acc20, epoch_acc40, speed)
+
+    def calc_centers(self, samples_name, model_file, batch_size):
+        train_data, test_data = self.load_custom_data(samples_name, )
+
+        test_loader = Data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True,
+                                       num_workers=self.NUM_WORKERS)
+        # test_loader = Data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False,
+        #                               num_workers=self.NUM_WORKERS)
+
+        if self.model is None:
+            self.model = self.load_pretrained_model_on_predict()
+            self.model.to(self.device)
+            self.model.eval()
+
+        features_20T = []
+        features_20N = []
+        features_40T = []
+        features_40N = []
+
+        for (x20, x40), (y20, y40, y) in test_loader:
+            b_x20 = Variable(x20.to(self.device))
+            b_x40 = Variable(x40.to(self.device))
+            b_y20 = Variable(y20.to(self.device))
+            b_y40 = Variable(y40.to(self.device))
+            b_y = Variable(y.to(self.device))
+
+            output20, output40, output = self.model(b_x20, b_x40)
+
+            for f20, f40, yy in zip(output20.cpu().numpy(), output40.cpu().numpy(), y):
+                if yy == 0:
+                    features_20N.append(f20)
+                    features_40N.append(f40)
+                else:
+                    features_20T.append(f20)
+                    features_40T.append(f40)
+
+        center_20N = np.mean(np.array(features_20N), axis=0)
+        center_20T = np.mean(np.array(features_20T), axis=0)
+        print("center_20 Normal", center_20N)
+        print("center_20 Tumor", center_20T)
+
+        center_40N = np.mean(np.array(features_40N), axis=0)
+        center_40T = np.mean(np.array(features_40T), axis=0)
+        print("center_40 Normal", center_40N)
+        print("center_40 Tumor", center_40T)
 
 # ######################################################################################################################
 # ############       multi task            #########

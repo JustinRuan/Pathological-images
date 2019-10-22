@@ -764,14 +764,14 @@ class AdaptiveDetector(BaseDetector):
             if seeds is None or len(seeds) == 0:
                 if len(history) < 5000:
                     # threshold出现异常大，防止过早结束搜索
-                    seeds = self.get_random_seeds_ex3(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, 0)
+                    seeds = self.get_random_seeds_ex4(N, x1, y1, rx1, rx2, ry1, ry2, sobel_img, 0)
                 else:
                     print("seeds is None, could not find new seeds.")
                     break # 找不到高梯度的点了，
 
             new_seeds = self.remove_duplicates(x1, y1, seeds, set(history.keys()))
             print("the number of new seeds: ", len(new_seeds), ', the number of seeds in history:', len(history))
-            if len(new_seeds) == 0:
+            if len(new_seeds) <= 5:
                 print("could not find new seeds.")
                 break # 找不到高梯度的点了，
 
