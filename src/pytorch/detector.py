@@ -718,15 +718,18 @@ class AdaptiveDetector(BaseDetector):
         :param use_post: 是否使用后处理操作
         :return:
         '''
-        self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
-        print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
+
         seeds_scale = self._params.GLOBAL_SCALE
-
         seg = Segmentation(self._params, self._imgCone)
-        region_count = self.valid_area_height * self.valid_area_width // superpixel_area # superpixel_area = 1000
-        print("the number of superpixel regions ", region_count)
 
-        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, coordinate_scale, seeds_scale, region_count, 20)
+        # self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
+        # print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
+        #
+        # region_count = self.valid_area_height * self.valid_area_width // superpixel_area # superpixel_area = 1000
+        # print("the number of superpixel regions ", region_count)
+        #
+        # label_map = seg.create_superpixels_slic(x1, y1, x2, y2, coordinate_scale, seeds_scale, region_count, 20)
+        label_map = self.genrating_superpixels(seg, x1, y1, x2, y2, coordinate_scale, superpixel_area)
         boundary_seeds = seg.get_seeds_at_boundaries(label_map, x1, y1, coordinate_scale, superpixels_boundaries_spacing)
         print("the number of seeds at boundaries is ", len(boundary_seeds))
 
@@ -1554,115 +1557,18 @@ class AdaptiveDetector(BaseDetector):
 
         return list(zip(x, y))
 
-    # 在有效区域内采样，效果不好，因为无效区域内没有值时，插值后会出现误差
-    # def get_random_seeds_ex3(self, N, x0, y0, x1, x2, y1, y2, sobel_img, threshold):
-    #     '''
-    #     获取随机的种子点坐标（扩展算法）
-    #     :param N: 获取种子点的数量
-    #     :param x0: Sobel_image的左上角在全切片的绝对位置坐标x
-    #     :param y0: Sobel_image的左上角在全切片的绝对位置坐标y
-    #     :param x1: 在全切片中当前检测区域的左上角x
-    #     :param x2: 在全切片中当前检测区域的右下角x
-    #     :param y1: 在全切片中当前检测区域的左上角y
-    #     :param y2: 在全切片中当前检测区域的右下角y
-    #     :param sobel_img: 梯度图
-    #     :param threshold: 边界阈值
-    #     :return: 种子点
-    #     '''
-    #     # 目前，自适应采样分为三个阶段进行：
-    #     # 1）第一轮，全局的Haltan随机采样，以此生成Sobel图
-    #     # 2）第二轮开始，直到检测阈值Threshold达到设定范围之前的阶段：根据WxW区域内梯度局部极大值进行种子点的选择。
-    #     #       相当于图像分辨率下降后的随机搜索过程，加速寻找可能性的区域。
-    #     # 3）检测阈值达到设定值Threshold后， 算法进入精确的搜索阶段：只选择梯度值越过设定Threshold的点进行采样，
-    #     #       直到采样过密，采样点重合条件达到，退出算法。
-    #     if sobel_img is None:  # 第一轮
-    #         n = N
-    #         x, y = self.random_gen.generate_random(n, x1, x2, y1, y2)
-    #     else:
-    #         x = []
-    #         y = []
-    #         if threshold > self.search_therhold:  # 精确搜索开始
-    #             n = 4 * N
-    #             while len(x) <= N/10:
-    #                 sx, sy = self.random_gen.generate_random_by_mask(n, x1, x2, y1, y2, self.effi_seeds)
-    #
-    #                 prob = sobel_img[sy - y0, sx - x0]
-    #                 index = prob >= threshold
-    #                 sx = sx[index]
-    #                 sy = sy[index]
-    #
-    #                 x.extend(sx)
-    #                 y.extend(sy)
-    #
-    #             half_w = 128
-    #
-    #             if len(x) < N:
-    #                 for xx, yy in zip(sx, sy):
-    #                     nx1 = max(xx - half_w, x1)
-    #                     nx2 = min(xx + half_w, x2)
-    #                     ny1 = max(yy - half_w, y1)
-    #                     ny2 = min(yy + half_w, y2)
-    #                     sx2, sy2 = self.random_gen.generate_random_by_mask(n, nx1, nx2, ny1, ny2, self.effi_seeds)
-    #
-    #                     prob = sobel_img[sy2 - y0, sx2 - x0]
-    #                     index = prob >= threshold
-    #                     sx = sx2[index]
-    #                     sy = sy2[index]
-    #
-    #                     x.extend(sx)
-    #                     y.extend(sy)
-    #
-    #             # 从当前的x和y的结果中只选择N个
-    #             m = len(x)
-    #             if m > N:
-    #                 x = np.array(x)
-    #                 y = np.array(y)
-    #
-    #                 selected_tag = np.arange(m)
-    #                 np.random.shuffle(selected_tag)
-    #                 selected_tag = selected_tag[:N]
-    #
-    #                 x = x[selected_tag]
-    #                 y = y[selected_tag]
-    #
-    #         else:  # 大范围地随机搜索
-    #             w = 16
-    #             half_w = w >> 1
-    #             n = 2 * N
-    #             sx, sy = self.random_gen.generate_random_by_mask(n, x1, x2, y1, y2, self.effi_seeds)
-    #             grad_list = []
-    #             for xx, yy in zip(sx, sy):
-    #                 rr, cc = rectangle((yy - half_w - y0, xx - half_w - x0), extent=(w, w))
-    #
-    #                 select_y = (rr >= 0) & (rr < self.valid_area_height)
-    #                 select_x = (cc >= 0) & (cc < self.valid_area_width)
-    #                 select = select_x & select_y
-    #                 max_grad = np.max(sobel_img[rr[select], cc[select]])
-    #                 grad_list.append(max_grad)
-    #
-    #             index = np.array(grad_list).argsort()
-    #             sx = sx[index[-N:]]
-    #             sy = sy[index[-N:]]
-    #
-    #             x.extend(sx)
-    #             y.extend(sy)
-    #
-    #     return tuple(zip(x, y))
+    def genrating_superpixels(self, seg, x1, y1, x2, y2, coordinate_scale, superpixel_area = 1000):
+        seeds_scale = self._params.GLOBAL_SCALE
 
-    # def get_effective_seeds(self, x1, y1, x2, y2, coordinate_scale, seed_scale):
-    #     xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * seed_scale / coordinate_scale).astype(np.int)
-    #
-    #     effi_region =self._imgCone.get_effective_zone(seed_scale)
-    #     mask = np.zeros(effi_region.shape, dtype=np.bool)
-    #     mask[yy1:yy2, xx1:xx2] = effi_region[yy1:yy2, xx1:xx2]
-    #
-    #     result = mask.nonzero()
-    #
-    #     effi_seeds = set()
-    #     for xx, yy in zip(result[1], result[0]):
-    #         effi_seeds.add((xx, yy))
-    #
-    #     return effi_seeds
+        self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)
+        print("h = ", self.valid_area_height, ", w = ", self.valid_area_width)
+
+        region_count = self.valid_area_height * self.valid_area_width // superpixel_area # superpixel_area = 1000
+        print("the number of superpixel regions ", region_count)
+
+        label_map = seg.create_superpixels_slic(x1, y1, x2, y2, coordinate_scale, seeds_scale, region_count, 20)
+        return label_map
+
 
 class Visualizer(object):
     def __init__(self,):

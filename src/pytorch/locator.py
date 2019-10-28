@@ -24,6 +24,8 @@ from sklearn.ensemble import IsolationForest
 from pytorch.cancer_map import CancerMapBuilder
 from scipy.spatial import distance
 from sklearn.cluster import KMeans
+from skimage import filters
+
 
 class Locator(object):
     def __init__(self, params):
@@ -427,9 +429,23 @@ class Locator(object):
 
                 history = result["history"].item()
 
-                candidated_result = self.search_local_extremum_points(history, x1, y1)
+                labelmap_filename = "{}/data/Segmentations/{}_labelmap.npz".format(project_root, slice_id)
+                print("loading superpixels : {}, {}".format(slice_id, labelmap_filename))
+                result = np.load(labelmap_filename, allow_pickle=True)
+                bx1 = result["x1"]
+                by1 = result["y1"]
+                bx2 = result["x2"]
+                by2 = result["y2"]
+                coordinate_scale = result["scale"]
+                assert coordinate_scale == 1.25, "Scale is Error!"
+                assert x1==bx1 and y1==by1 and x2 == bx2 and y2==by2, "coordinate is Error!"
+
+                label_map = result["labelmap"]
+
+                # candidated_result = self.search_local_extremum_points(history, x1, y1)
                 # candidated_result = self.search_local_extremum_points2(history, x1, y1, x2, y2)
                 # candidated_result = self.search_local_extremum_points_max(history, x1, y1, x2, y2)
+                candidated_result = self.search_local_extremum_points_fusion2(history, label_map, x1, y1, x2, y2)
                 print("count =", len(candidated_result))
 
                 csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
@@ -444,7 +460,7 @@ class Locator(object):
     # 模式1：均匀的选择
     def search_local_extremum_points(self, history, x_letftop, y_lefttop):
         low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
-
+        # low_prob_thresh = 0.5
         candidated = []
         for (x, y), f in history.items():
             prob = 1 / (1 + np.exp(-f))
@@ -495,7 +511,7 @@ class Locator(object):
         cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
                                                     self._params.GLOBAL_SCALE)
 
-        h = 0.01
+        h = 0.02
         h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
         xy = np.nonzero(h_maxima)
         # maxima = extrema.local_maxima(cancer_map, allow_borders=False)
@@ -583,5 +599,129 @@ class Locator(object):
         candidated = []
         for prob, x, y in result:
             candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+
+        return candidated
+
+    # 模式4：
+    def search_local_extremum_points_fusion(self, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
+
+        cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+        cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
+                                                    self._params.GLOBAL_SCALE)
+
+        h = 0.1
+        h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
+        xy = np.nonzero(h_maxima)
+
+        sobel_img = filters.sobel(cancer_map)
+        feat_thresh = -1  # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
+        grad_thresh = 0.05
+        f_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
+        g_properties = measure.regionprops(label_map, intensity_image=sobel_img, cache=True, coordinates='rc')
+
+        candidated_region = {}
+        regions_extres = {}
+        for y, x in zip(xy[0], xy[1]):
+            region_id = label_map[y, x]
+            if region_id not in regions_extres.keys():
+                regions_extres[region_id] = (x, y)
+            else:
+                new_prob = cancer_map[y, x]
+                old_x, old_y = regions_extres[region_id]
+                old_prob = cancer_map[old_y, old_x]
+                if new_prob > old_prob:
+                    regions_extres[region_id] = (x, y)
+
+        max_label = np.amax(label_map)
+        print("max label =", max_label,)
+
+        # 分别对应四种区域：
+        # 0：高概率低密度， HpLd
+        # 1：高概率高密度， HpHd
+        # 2：低概率低密度， LpLd
+        # 3：低概率高密度，LpHd
+        for index in range(1, max_label + 1):
+            if index in regions_extres.keys():
+                x, y = regions_extres[index]
+                candidated_region[index] = (x, y)
+            else:
+                p = f_properties[index - 1]
+                g = g_properties[index - 1]
+                max_prob = p.max_intensity
+                max_grad = g.max_intensity
+                assert p.label == index, "Error: p.label != index"
+                if max_prob >= feat_thresh and max_grad >= grad_thresh:
+                    y, x = p.weighted_centroid
+                    if not (np.isnan(x) or np.isnan(y)):
+                        candidated_region[index] = (int(x), int(y))
+
+        candidated = []
+        for x, y in candidated_region.values():
+            prob = cancer_map[y, x]
+            if prob > low_prob_thresh:
+                x = x + x_letftop
+                y = y + y_lefttop
+                candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+
+        return candidated
+
+    # 模式5：
+    def search_local_extremum_points_fusion2(self, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
+
+        cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+        cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
+                                                    self._params.GLOBAL_SCALE)
+
+        sobel_img = filters.sobel(cancer_map)
+        feat_thresh = 0.1
+        grad_thresh = 0.05
+        f_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
+        g_properties = measure.regionprops(label_map, intensity_image=sobel_img, cache=True, coordinates='rc')
+
+        candidated_region = {}
+        regions_points = {}
+        for (x, y), f in history.items():
+            region_id = label_map[y, x]
+            if region_id not in regions_points.keys():
+                regions_points[region_id] = (x, y)
+            else:
+                new_prob = cancer_map[y, x]
+                old_x, old_y = regions_points[region_id]
+                old_prob = cancer_map[old_y, old_x]
+                if new_prob > old_prob:
+                    regions_points[region_id] = (x, y)
+
+        max_label = np.amax(label_map)
+        print("max label =", max_label, )
+
+        # 分别对应四种区域：
+        # 0：高概率低密度， HpLd
+        # 1：高概率高密度， HpHd
+        # 2：低概率低密度， LpLd
+        # 3：低概率高密度，LpHd
+        for index in range(1, max_label + 1):
+            if index in regions_points.keys():
+                x, y = regions_points[index]
+                candidated_region[index] = (x, y)
+            else:
+                p = f_properties[index - 1]
+                g = g_properties[index - 1]
+                max_prob = p.max_intensity
+                max_grad = g.max_intensity
+                assert p.label == index, "Error: p.label != index"
+                if max_prob >= feat_thresh and max_grad >= grad_thresh:
+                    y, x = p.weighted_centroid
+                    if not (np.isnan(x) or np.isnan(y)):
+                        candidated_region[index] = (int(x), int(y))
+
+        candidated = []
+        for x, y in candidated_region.values():
+            prob = cancer_map[y, x]
+            if prob > low_prob_thresh:
+                x = x + x_letftop
+                y = y + y_lefttop
+                candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
 
         return candidated

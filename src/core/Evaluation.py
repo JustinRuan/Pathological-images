@@ -329,6 +329,22 @@ class Evaluation(object):
             np.save("{}/{}_true_mask.npy".format(mask_path, code), mask_img, allow_pickle=True)
         return
 
+    def is_tumor_by_code(self, code):
+        tag = code[0:-4]
+        if tag == "Tumor":
+            return True
+        elif tag == "Normal":
+            return False
+        else:#"Test_001"
+            id = int(code[-3:])
+            if id in [1, 2, 4, 8, 10, 11, 13, 16, 21, 26, 27, 29, 30, 33, 38, 40, 46, 48, 51, 52,
+                      61, 64, 65, 66, 68, 69, 71, 73, 74, 75, 79,
+                      82, 84, 90, 94, 97, 99, 102, 104, 105, 108, 110, 113, 116, 117, 121, 122]:
+                return True
+            else:
+                return False
+
+
     def evaluation_FROC(self, mask_folder, result_folder):
 
         result_file_list = []
@@ -349,7 +365,8 @@ class Evaluation(object):
             csvDIR = os.path.join(result_folder, case)
             Probs, Xcorr, Ycorr = self.readCSVContent(csvDIR)
 
-            is_tumor = case[0:5] == 'Tumor'
+            # is_tumor = case[0:5] == 'Tumor'
+            is_tumor = self.is_tumor_by_code(case[0:-4])
             if (is_tumor):
                 # maskDIR = os.path.join(mask_folder, case[0:-4]) + '_Mask.tif'
                 maskDIR = "{}/{}_true_mask.npy".format(mask_folder, case[0:-4])
@@ -556,6 +573,8 @@ class Evaluation(object):
         plt.plot(total_FPs, total_sensitivity, '-', color='#000000')
         plt.show()
 
+        for fp, tp in zip(total_FPs, total_sensitivity):
+            print(fp, '\t', tp)
 
 
 

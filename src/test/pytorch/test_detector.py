@@ -13,10 +13,11 @@ from pytorch.detector import Detector, AdaptiveDetector
 import numpy as np
 from skimage.segmentation import mark_boundaries
 from pytorch.cancer_map import CancerMapBuilder
+from pytorch.segmentation import Segmentation
 
 # JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
-JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+# JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_detector(unittest.TestCase):
 
@@ -613,3 +614,36 @@ class Test_detector(unittest.TestCase):
                                                superpixel_area=1000, superpixels_boundaries_spacing=120)
 
             detector.save_result_history(x1, y1, x2, y2, 1.25, history)
+
+    def test_save_superpixels(self):
+        test_list = range(1, 131)
+
+        for id in test_list:
+
+            x1, y1, x2, y2 = 0, 0, 0, 0
+
+            slice_id = "Test_{:0>3d}".format(id)
+
+            c = Params()
+            c.load_config_file(JSON_PATH)
+            imgCone = ImageCone(c, Open_Slide())
+
+            # 读取数字全扫描切片图像
+            tag = imgCone.open_slide("Testing/images/%s.tif" % slice_id,
+                                     None, slice_id)
+
+            detector = AdaptiveDetector(c, imgCone)
+
+            if x2 * y2 == 0:
+                x1, y1, x2, y2 = detector.get_detection_rectangle()
+                print("x1, y1, x2, y2: ", x1, y1, x2, y2)
+
+            seg = Segmentation(c, imgCone)
+            label_map = detector.genrating_superpixels(seg, x1, y1, x2, y2, 1.25, superpixel_area=1000)
+
+            save_filename = "{}/data/Segmentations/{}_labelmap.npz".format(c.PROJECT_ROOT, imgCone.slice_id)
+
+            np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=1.25, history=label_map)
+            print(">>> >>> ", save_filename, " saved!")
+
+

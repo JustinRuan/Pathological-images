@@ -65,16 +65,6 @@ class TestEvaluation(unittest.TestCase):
         plt.imshow(color.label2rgb(evaluation_mask, bg_label=0))
         plt.show()
 
-    def test_evaluation_FROC(self):
-        c = Params()
-        c.load_config_file(JSON_PATH)
-        eval = Evaluation(c)
-
-        mask_folder = "{}/data/true_masks".format(c.PROJECT_ROOT)
-        result_folder = "{}/results/csv_1".format(c.PROJECT_ROOT)
-
-        eval.evaluation_FROC(mask_folder, result_folder)
-
 
     def test_calculate_ROC(self):
         c = Params()
@@ -83,8 +73,8 @@ class TestEvaluation(unittest.TestCase):
 
         # tag = "Tumor"
         # tag = "Test"
-        # tag = "Test_Normal"
-        tag = "Normal"
+        tag = "Test_Normal"
+        # tag = "Normal"
 
         if tag == "Tumor":
             select = ["Tumor_{:0>3d}".format(i) for i in range(1,112)]
@@ -96,7 +86,7 @@ class TestEvaluation(unittest.TestCase):
                                                           61,64,65,66,68,69,71,73,74,75,79,
                                                         82,84,90,94,97,99,102,104,105,108,110,113,116,117,121,122]]
             # select = ["Test_{:0>3d}".format(i) for i in [4,10,29,30,33,38,48,66,79,84,99,102,116,117,122]]
-            eval.calculate_ROC("testing\images", tag=128, chosen=select, p_thresh=0.5)
+            eval.calculate_ROC("testing\images", tag=64, chosen=select, p_thresh=0.5)
         elif tag == "Test_Normal":
             temp = [3, 5, 6, 7, 9, 12, 14, 15, 17, 18, 19, 20, 22, 23, 24, 25, 28, 31, 32, 34, 35, 36, 37, 39, 41, 42, 43, 44, 45,
              47, 49, 50, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63, 67, 70, 72, 76, 77, 78, 80, 81, 83, 85, 86, 87, 88, 89, 91,
@@ -107,17 +97,9 @@ class TestEvaluation(unittest.TestCase):
             eval.calculate_ROC("testing\images", tag=64, chosen=select, p_thresh=0.5)
         elif tag == "Normal":
             # select = ["Normal_{:0>3d}".format(i) for i in range(1,161)]
-            select = ["Normal_{:0>3d}".format(i) for i in range(1, 161)]
+            select = ["Normal_{:0>3d}".format(i) for i in range(61, 161)]
             eval.calculate_ROC("Train_Normal", tag=0, chosen=select, p_thresh=0.5)
 
-
-    def test_calculate_ROC2(self):
-        c = Params()
-        c.load_config_file(JSON_PATH)
-        eval = Evaluation(c)
-
-        select = ["Test_{:0>3d}".format(i) for i in [3, 5]]
-        eval.calculate_ROC("testing\images", tag=0, chosen=select)
 
     def test_save_result_pictures(self):
         c = Params()
@@ -131,3 +113,13 @@ class TestEvaluation(unittest.TestCase):
 
         select = ["Test_{:0>3d}".format(i) for i in [3]]
         eval.save_result_pictures("testing\images", tag=0, chosen=select)
+
+    def test_evaluation_FROC(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        eval = Evaluation(c)
+
+        mask_folder = "{}/data/true_masks".format(c.PROJECT_ROOT)
+        result_folder = "{}/results/csv_6".format(c.PROJECT_ROOT)
+
+        eval.evaluation_FROC(mask_folder, result_folder)

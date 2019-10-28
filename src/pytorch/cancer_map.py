@@ -59,7 +59,7 @@ class CancerMapBuilder(object):
     @staticmethod
     def calc_probability_threshold(history):
         value = np.array(list(history.values()))
-        tag = value > 0
+        tag = value > -0.5
         positive_part = np.reshape(value[tag], (-1, 1))
 
         p_count = len(positive_part)
@@ -550,12 +550,24 @@ class SlideFilter(object):
 
                 history = result["history"].item()
                 history2 = self.predict(x1, y1, x2, y2, history, batch_size=batch_size)
-                modified_count = self.counting_history_changes(history, history2)
+
+                history3 = self.fine_tuning(history, history2)
+                modified_count = self.counting_history_changes(history, history3)
                 print("{}, count of updated points = {}".format(slice_id, modified_count), )
 
                 save_filename = "{}/results/{}_history_v{}.npz".format(self._params.PROJECT_ROOT, slice_id,self.image_size)
-                np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=coordinate_scale, history=history2)
+                np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=coordinate_scale, history=history3)
                 print(">>> >>> ", save_filename, " saved!")
+
+    def fine_tuning(self, old_history, new_history):
+        result = {}
+        for (x, y), old_pred in old_history.items():
+            new_pred = new_history[(x, y)]
+            new_prob = 1 / (1 + np.exp(-new_pred))
+            old_prob = 1 / (1 + np.exp(-old_pred))
+            avg_prob = 0.5 * (old_prob + new_prob)
+            result[(x, y)] = - np.log(1/avg_prob - 1)
+        return result
 
 class Sparse_Image_Dataset(Dataset):
     def __init__(self, x_set, y_set):
