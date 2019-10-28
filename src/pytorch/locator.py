@@ -445,7 +445,7 @@ class Locator(object):
                 # candidated_result = self.search_local_extremum_points(history, x1, y1)
                 # candidated_result = self.search_local_extremum_points2(history, x1, y1, x2, y2)
                 # candidated_result = self.search_local_extremum_points_max(history, x1, y1, x2, y2)
-                candidated_result = self.search_local_extremum_points_fusion2(history, label_map, x1, y1, x2, y2)
+                candidated_result = self.search_local_extremum_points_fusion(history, label_map, x1, y1, x2, y2)
                 print("count =", len(candidated_result))
 
                 csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
