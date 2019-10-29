@@ -18,9 +18,9 @@ from pytorch.locator import Locator
 import csv
 from pytorch.cancer_map import CancerMapBuilder
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 class TestLocator(unittest.TestCase):
 
@@ -49,7 +49,12 @@ class TestLocator(unittest.TestCase):
             , 91, 92, 93, 94, 95, 96, 98, 100, 103, 104, 105, 106, 107, 108, 109, 111, 112, 113
             , 115, 118, 119, 120, 121, 123, 124, 125, 126, 128, 129, 130]
         select = ["Test_{:0>3d}".format(i) for i in code] #131
-        loca.output_result_csv("csv_6", tag=64, chosen=select)
+        loca.output_result_csv("csv_2", tag=64, chosen=select)
+
+        code = [4,8,10,11,13,14,33,38,46,48,53,55,62,65,66,74,77,79,82,84,89,97,99,101,
+                102,110,114,116,117,122,127]
+        select = ["Test_{:0>3d}".format(i) for i in code] #131
+        loca.output_result_csv("csv_2", tag=64, chosen=select)
 
     def test_csv2(self):
         c = Params()

@@ -57,9 +57,9 @@ class CancerMapBuilder(object):
         return cancer_map
 
     @staticmethod
-    def calc_probability_threshold(history):
+    def calc_probability_threshold(history, t = 0):
         value = np.array(list(history.values()))
-        tag = value > -0.5
+        tag = value > t
         positive_part = np.reshape(value[tag], (-1, 1))
 
         p_count = len(positive_part)

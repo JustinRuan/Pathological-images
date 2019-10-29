@@ -446,6 +446,7 @@ class Locator(object):
                 # candidated_result = self.search_local_extremum_points2(history, x1, y1, x2, y2)
                 # candidated_result = self.search_local_extremum_points_max(history, x1, y1, x2, y2)
                 candidated_result = self.search_local_extremum_points_fusion(history, label_map, x1, y1, x2, y2)
+                # candidated_result = self.search_local_extremum_points_fusion2(history, label_map, x1, y1, x2, y2)
                 print("count =", len(candidated_result))
 
                 csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
@@ -459,7 +460,7 @@ class Locator(object):
 
     # 模式1：均匀的选择
     def search_local_extremum_points(self, history, x_letftop, y_lefttop):
-        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t=-0.5)
         # low_prob_thresh = 0.5
         candidated = []
         for (x, y), f in history.items():
@@ -604,7 +605,7 @@ class Locator(object):
 
     # 模式4：
     def search_local_extremum_points_fusion(self, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
-        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, 0)
 
         cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
         cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
@@ -668,7 +669,7 @@ class Locator(object):
 
     # 模式5：
     def search_local_extremum_points_fusion2(self, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
-        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t = 0.5)
 
         cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
         cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,

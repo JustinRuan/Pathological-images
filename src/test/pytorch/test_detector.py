@@ -15,8 +15,8 @@ from skimage.segmentation import mark_boundaries
 from pytorch.cancer_map import CancerMapBuilder
 from pytorch.segmentation import Segmentation
 
-# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_detector(unittest.TestCase):
@@ -616,7 +616,7 @@ class Test_detector(unittest.TestCase):
             detector.save_result_history(x1, y1, x2, y2, 1.25, history)
 
     def test_save_superpixels(self):
-        test_list = range(1, 131)
+        test_list = range(50, 131)
 
         for id in test_list:
 
@@ -643,7 +643,21 @@ class Test_detector(unittest.TestCase):
 
             save_filename = "{}/data/Segmentations/{}_labelmap.npz".format(c.PROJECT_ROOT, imgCone.slice_id)
 
-            np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=1.25, history=label_map)
+            np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=1.25, labelmap=label_map)
             print(">>> >>> ", save_filename, " saved!")
 
-
+    # def test01(self):
+    #     c = Params()
+    #     c.load_config_file(JSON_PATH)
+    #     for id in range(1, 161):
+    #         slice_id = "Normal_{:0>3d}".format(id)
+    #         save_filename = "{}/data/Segmentations/{}_labelmap.npz".format(c.PROJECT_ROOT, slice_id)
+    #         result = np.load(save_filename, allow_pickle=True)
+    #         x1 = result["x1"]
+    #         y1 = result["y1"]
+    #         x2 = result["x2"]
+    #         y2 = result["y2"]
+    #         coordinate_scale = result["scale"]
+    #         label_map = result["history"]
+    #         np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=coordinate_scale, labelmap=label_map)
+    #         print(slice_id, "OK")

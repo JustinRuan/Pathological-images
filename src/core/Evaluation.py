@@ -523,6 +523,7 @@ class Evaluation(object):
                 FP_counter += 1
 
         num_of_tumors = max_label - len(Isolated_Tumor_Cells);
+        print("number of FP =", len(FP_probs), "number of TP =", len(TP_probs),"num_of_tumors =", num_of_tumors)
         return FP_probs, TP_probs, num_of_tumors, detection_summary, FP_summary
 
     def computeFROC(self, FROC_data):
