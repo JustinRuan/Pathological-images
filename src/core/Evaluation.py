@@ -456,10 +456,11 @@ class Evaluation(object):
         csv_lines = open(csvDIR, "r").readlines()
         for i in range(len(csv_lines)):
             line = csv_lines[i]
-            elems = line.rstrip().split(',')
-            Probs.append(float(elems[0]))
-            Xcorr.append(int(elems[1]))
-            Ycorr.append(int(elems[2]))
+            if len(line.strip()) > 0:
+                elems = line.rstrip().split(',')
+                Probs.append(float(elems[0]))
+                Xcorr.append(int(elems[1]))
+                Ycorr.append(int(elems[2]))
         return Probs, Xcorr, Ycorr
 
     def compute_FP_TP_Probs(self, Ycorr, Xcorr, Probs, is_tumor, evaluation_mask, Isolated_Tumor_Cells, level):
@@ -523,7 +524,7 @@ class Evaluation(object):
                 FP_counter += 1
 
         num_of_tumors = max_label - len(Isolated_Tumor_Cells);
-        print("number of FP =", len(FP_probs), "number of TP =", len(TP_probs),"num_of_tumors =", num_of_tumors)
+        print("number of FP =", len(FP_probs), ", number of TP =", len(TP_probs),", num_of_tumors =", num_of_tumors)
         return FP_probs, TP_probs, num_of_tumors, detection_summary, FP_summary
 
     def computeFROC(self, FROC_data):

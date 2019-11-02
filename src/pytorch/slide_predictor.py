@@ -12,7 +12,7 @@ import random
 
 import numpy as np
 from pytorch.cancer_map import CancerMapBuilder
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn import svm, metrics, naive_bayes, ensemble
 from sklearn.model_selection import GridSearchCV
 import joblib
@@ -20,9 +20,84 @@ from skimage import morphology
 from skimage.morphology import square
 from core.lagrangian_s3vm import lagrangian_s3vm_train
 
-class SlidePredictor(object):
-    def __init__(self, params, ):
+
+class BasePredictor(object):
+    def __init__(self, params, name):
+        self.predictor_name = name
         self._params = params
+
+    def save_train_data(self, feature_data, label_data, filename, append = False):
+        print("len =", len(feature_data), len(label_data))
+        filename = "{}/data/{}".format(self._params.PROJECT_ROOT, filename)
+        if not append:
+            np.savez_compressed(filename, x=feature_data, y=label_data,)
+        else:
+            result = np.load(filename, allow_pickle=True)
+            x = list(result["x"])
+            y = list(result["y"])
+            x.extend(feature_data)
+            y.extend(label_data)
+            np.savez_compressed(filename, x=x, y=y, )
+
+    def save_model(self, clf, typename, X_test, y_test):
+        print(clf)
+        y_pred = clf.predict_proba(X_test)
+        prob = y_pred[:,1]
+
+        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(y_test, prob)
+        roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
+
+        y_test[y_test == -1] = 0 # for S3VM
+        pred = prob > 0.5
+        accu = metrics.accuracy_score(y_test,pred)
+        recall = metrics.recall_score(y_test,pred)
+        f1 = metrics.f1_score(y_test,pred)
+        print("roc auc  = {:.4f}, accu = {:.4f}, recall = {:.4f}, f1 = {:.4f}".format(roc_auc,accu, recall, f1), )
+
+        if roc_auc > 0.8:
+            model_file = self._params.PROJECT_ROOT + "/models/{}_{}_{:.4f}_{:.4f}.model".format(self.predictor_name,
+                                                                                                typename,
+                                                                                                roc_auc,
+                                                                                                accu)
+            joblib.dump(clf, model_file)
+            print("saved : ", model_file)
+            for fp, tp in zip(false_positive_rate, true_positive_rate):
+                print(fp, '\t', tp)
+
+
+    def read_data(self, file_name, test_filename, mode):
+        filename = "{}/data/{}".format(self._params.PROJECT_ROOT, file_name)
+        result = np.load(filename, allow_pickle=True)
+        x = result["x"]
+        y = result["y"]
+        filename = "{}/data/{}".format(self._params.PROJECT_ROOT, test_filename)
+        result = np.load(filename, allow_pickle=True)
+        if mode == 1:
+            rand = random.randint(1, 100)
+            # rand = 100
+            print("rand", rand)
+            x = np.append(x, result["x"], axis=0)
+            y = np.append(y, result["y"], axis=0)
+            X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2,
+                                                              random_state=rand)
+        elif mode==2:
+            tx = result["x"]
+            ty = result["y"]
+            X_train, X_test, y_train, y_test = x, tx, y, ty
+        else:
+            tx = result["x"]
+            ty = result["y"]
+            x = np.append(x, result["x"], axis=0)
+            y = np.append(y, result["y"], axis=0)
+            X_train, X_test, y_train, y_test = x, tx, y, ty
+
+        return X_test, X_train, y_test, y_train
+
+
+class SlidePredictor(BasePredictor):
+    def __init__(self, params):
+        super(SlidePredictor, self).__init__(params, "slide_predictor")
+        self.model = None
 
     def extract_slide_features(self, tag =0, normal_names = None, tumor_names = None):
         project_root = self._params.PROJECT_ROOT
@@ -67,19 +142,6 @@ class SlidePredictor(object):
                     label_data.append(1)
 
         return feature_data, label_data
-
-    def save_train_data(self, feature_data, label_data, filename, append = False):
-        print("len =", len(feature_data), len(label_data))
-        filename = "{}/data/{}".format(self._params.PROJECT_ROOT, filename)
-        if not append:
-            np.savez_compressed(filename, x=feature_data, y=label_data,)
-        else:
-            result = np.load(filename, allow_pickle=True)
-            x = list(result["x"])
-            y = list(result["y"])
-            x.extend(feature_data)
-            y.extend(label_data)
-            np.savez_compressed(filename, x=x, y=y, )
 
     def calculate_slide_features(self, history, x1, y1, x2, y2):
         mode = 2
@@ -140,80 +202,6 @@ class SlidePredictor(object):
     #     self.save_model(result["clf"], "linearsvm", X_test, y_test)
     #
     #     return
-
-    def train_svm(self,file_name, test_name):
-        X_test, X_train, y_test, y_train = self.read_data(file_name, test_name, mode=1)
-
-        max_iter = 10000
-
-        #'kernel': ('linear'),
-        parameters = {'C': [0.0001, 0.001, 0.01, 0.1, 0.5, 1, 1.2, 1.5, 2.0, 10]}
-        # parameters = { 'C': [0.0001, 0.001, 0.01, 0.1, 0.5, 1, 1.2, 1.5, 2.0, 10],
-        #               'gamma':[2, 1, 0.1, 0.5, 0.01, 0.001, 0.0001]}
-
-        svc = svm.SVC(kernel='linear', probability=True,max_iter=max_iter,verbose=0,)
-        grid  = GridSearchCV(svc, parameters, cv=5)
-        grid .fit(X_train, y_train)
-        print("The best parameters are %s with a score of %0.2f"
-              % (grid.best_params_, grid.best_score_))
-
-        clf = grid.best_estimator_
-        self.save_model(clf, "linearsvm", X_test, y_test)
-
-        return
-
-    def save_model(self, clf, typename, X_test, y_test):
-        print(clf)
-        y_pred = clf.predict_proba(X_test)
-        prob = y_pred[:,1]
-
-        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(y_test, prob)
-        roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
-
-        y_test[y_test == -1] = 0 # for S3VM
-        pred = prob > 0.5
-        accu = metrics.accuracy_score(y_test,pred)
-        recall = metrics.recall_score(y_test,pred)
-        f1 = metrics.f1_score(y_test,pred)
-        print("roc auc  = {:.4f}, accu = {:.4f}, recall = {:.4f}, f1 = {:.4f}".format(roc_auc,accu, recall, f1), )
-
-        if roc_auc > 0.9:
-            model_file = self._params.PROJECT_ROOT + "/models/slide_predictor_{}_{:.4f}_{:.4f}.model".format(typename,
-                                                                                                             roc_auc,
-                                                                                                             accu)
-            joblib.dump(clf, model_file)
-            print("saved : ", model_file)
-            for fp, tp in zip(false_positive_rate, true_positive_rate):
-                print(fp, '\t', tp)
-
-
-    def read_data(self, file_name, test_filename, mode):
-        filename = "{}/data/{}".format(self._params.PROJECT_ROOT, file_name)
-        result = np.load(filename, allow_pickle=True)
-        x = result["x"]
-        y = result["y"]
-        filename = "{}/data/{}".format(self._params.PROJECT_ROOT, test_filename)
-        result = np.load(filename, allow_pickle=True)
-        if mode == 1:
-            # rand = random.randint(1, 100)
-            rand = 100
-            print("rand", rand)
-            x = np.append(x, result["x"], axis=0)
-            y = np.append(y, result["y"], axis=0)
-            X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2,
-                                                              random_state=rand)
-        elif mode==2:
-            tx = result["x"]
-            ty = result["y"]
-            X_train, X_test, y_train, y_test = x, tx, y, ty
-        else:
-            tx = result["x"]
-            ty = result["y"]
-            x = np.append(x, result["x"], axis=0)
-            y = np.append(y, result["y"], axis=0)
-            X_train, X_test, y_train, y_test = x, tx, y, ty
-
-        return X_test, X_train, y_test, y_train
 
     def train_test(self, file_name, test_name):
         X_test, X_train, y_test, y_train = self.read_data(file_name,test_name, mode = 1)
@@ -307,3 +295,34 @@ class SlidePredictor(object):
         np.savez_compressed(filename, x=x, y=y, )
         print("len x = ", len(x), "len y = ", len(y))
         return
+
+    def train_svm(self,file_name, test_name):
+        X_test, X_train, y_test, y_train = self.read_data(file_name, test_name, mode=1)
+
+        max_iter = 10000
+
+        #'kernel': ('linear'),
+        parameters = {'C': [0.0001, 0.001, 0.01, 0.1, 0.5, 1, 1.2, 1.5, 2.0, 10]}
+        # parameters = {'C': [ 1,]}
+        # parameters = { 'C': [0.0001, 0.001, 0.01, 0.1, 0.5, 1, 1.2, 1.5, 2.0, 10],
+        #               'gamma':[2, 1, 0.1, 0.5, 0.01, 0.001, 0.0001]}
+
+        svc = svm.SVC(kernel='linear', probability=True,max_iter=max_iter,verbose=0,)
+        grid  = GridSearchCV(svc, parameters, cv=5)
+        grid .fit(X_train, y_train)
+        print("The best parameters are %s with a score of %0.2f"
+              % (grid.best_params_, grid.best_score_))
+
+        clf = grid.best_estimator_
+        self.save_model(clf, "linearsvm", X_test, y_test)
+
+        return
+
+    def predict(self, history, x1, y1, x2, y2):
+        feature = self.calculate_slide_features(history, x1, y1, x2, y2)
+        if self.model is None:
+            model_file = self._params.PROJECT_ROOT + "/models/slide_predictor_S3VM_0.9961_0.9500.model"
+            self.model = joblib.load(model_file)
+
+        result = self.model.predict([feature])
+        return result == 1

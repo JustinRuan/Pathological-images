@@ -66,7 +66,7 @@ class CancerMapBuilder(object):
         if p_count > 100:
             contamination = 0.1
         else:
-            return 0.5
+            return 0.5, 0.5
 
         ift = IsolationForest(behaviour='new', max_samples='auto', contamination=contamination)
         y = ift.fit_predict(positive_part)
@@ -77,19 +77,23 @@ class CancerMapBuilder(object):
         cluster_centers = clustering.cluster_centers_.ravel()
         dist = abs(cluster_centers[0] - cluster_centers[1])
 
-        if cluster_centers[0] < cluster_centers[1]:
-            left_part = outliers[clustering.labels_ == 0]
-            right_part = outliers[clustering.labels_ == 1]
+        if dist >= 1.0:
+            if cluster_centers[0] < cluster_centers[1]:
+                left_part = outliers[clustering.labels_ == 0]
+                right_part = outliers[clustering.labels_ == 1]
+            else:
+                left_part = outliers[clustering.labels_ == 1]
+                right_part = outliers[clustering.labels_ == 0]
+
+            low_thresh = np.max(left_part)
+            high_thresh = np.min(right_part)
+
+            low_prob_thresh = 1 / (1 + np.exp(-low_thresh))
+            high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
+            return low_prob_thresh, high_prob_thresh
         else:
-            left_part = outliers[clustering.labels_ == 1]
-            right_part = outliers[clustering.labels_ == 0]
-
-        low_thresh = np.max(left_part)
-        # high_thresh = np.min(right_part)
-
-        low_prob_thresh = 1 / (1 + np.exp(-low_thresh))
-        # high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
-        return low_prob_thresh
+            low_prob_thresh =  0.5 * (cluster_centers[0] + cluster_centers[1])
+            return low_prob_thresh, low_prob_thresh
 
     # @staticmethod
     # def calc_probability_threshold2(history):

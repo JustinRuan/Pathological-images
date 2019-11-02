@@ -30,6 +30,65 @@ class TestLocator(unittest.TestCase):
 
         loca = Locator(c)
 
+        select = ["Tumor_{:0>3d}".format(i) for i in range(1, 112)] # 112
+        loca.output_result_csv("csv_3", tag =64,  chosen=select)
+
+        # select = ["Normal_{:0>3d}".format(i) for i in range(1, 161)] #161
+        # loca.output_result_csv("csv_3", tag=64, chosen=select)
+
+        # select = ["Test_{:0>3d}".format(i) for i in range(1, 49)]   # 49
+        # loca.output_result_csv("csv_4", tag=64, chosen=select)
+        #
+        # select = ["Test_{:0>3d}".format(i) for i in range(50, 131)] #131
+        # loca.output_result_csv("csv_4", tag=64, chosen=select)
+
+        # test
+        # code = [1, 2, 3, 5, 6, 7, 9, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        #     , 34, 35, 36, 37, 39, 40, 41, 42, 43, 44, 45, 47, 50, 51, 52, 54, 56, 57, 58, 59, 60
+        #     , 61, 63, 64, 67, 68, 69, 70, 71, 72, 73, 75, 76, 78, 80, 81, 83, 85, 86, 87, 88, 90
+        #     , 91, 92, 93, 94, 95, 96, 98, 100, 103, 104, 105, 106, 107, 108, 109, 111, 112, 113
+        #     , 115, 118, 119, 120, 121, 123, 124, 125, 126, 128, 129, 130]
+        # select = ["Test_{:0>3d}".format(i) for i in code] #131
+        # loca.output_result_csv("csv_1", tag=64, chosen=select)
+        #
+        # code = [4,8,10,11,13,14,33,38,46,48,53,55,62,65,66,74,77,79,82,84,89,97,99,101,
+        #         102,110,114,116,117,122,127]
+        # select = ["Test_{:0>3d}".format(i) for i in code] #131
+        # loca.output_result_csv("csv_1", tag=64, chosen=select)
+
+
+
+    def test_temp(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        # test normal
+        loca = Locator(c)
+        # temp = [3, 5, 6, 7, 9, 12, 14, 15, 17, 18, 19, 20, 22, 23, 24, 25, 28, 31, 32, 34, 35, 36, 37, 39, 41, 42, 43,
+        #         44, 45,
+        #         47, 49, 50, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63, 67, 70, 72, 76, 77, 78, 80, 81, 83, 85, 86, 87, 88,
+        #         89, 91,
+        #         92, 93, 95, 96, 98, 100, 101, 103, 106, 107, 109, 111, 112, 114, 115, 118, 119, 120, 123, 124, 125, 126,
+        #         127,
+        #         128, 129, 130]
+        #
+        # select = ["Test_{:0>3d}".format(i) for i in temp]
+        # loca.output_result_csv("csv_5", tag=64, chosen=select)
+
+        #[4, 8,10,11,13,33,38,46,48,65,66,74,79,82,84,97,99,102,
+        #           110,116,117]
+        # select = ["Test_{:0>3d}".format(i) for i in
+        #           [4, 8,10,11,13,33,38,46,48,65,66,74,79,82,84,97,99,102,
+        #            110,116,117]]
+        select = ["Test_{:0>3d}".format(i) for i in
+                  [110,116,117]]
+        loca.output_result_csv("csv_5", tag=0, chosen=select)
+
+    def test_output_result_csv_method2(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        loca = Locator(c)
+
         # select = ["Tumor_{:0>3d}".format(i) for i in range(1, 112)] # 112
         # loca.output_result_csv("csv_3", tag =64,  chosen=select)
         #
@@ -49,21 +108,21 @@ class TestLocator(unittest.TestCase):
             , 91, 92, 93, 94, 95, 96, 98, 100, 103, 104, 105, 106, 107, 108, 109, 111, 112, 113
             , 115, 118, 119, 120, 121, 123, 124, 125, 126, 128, 129, 130]
         select = ["Test_{:0>3d}".format(i) for i in code] #131
-        loca.output_result_csv("csv_2", tag=64, chosen=select)
+        loca.output_result_csv_method2("csv_1", tag=64, chosen=select)
 
-        code = [4,8,10,11,13,14,33,38,46,48,53,55,62,65,66,74,77,79,82,84,89,97,99,101,
-                102,110,114,116,117,122,127]
-        select = ["Test_{:0>3d}".format(i) for i in code] #131
-        loca.output_result_csv("csv_2", tag=64, chosen=select)
+        # code = [4,8,10,11,13,14,33,38,46,48,53,55,62,65,66,74,77,79,82,84,89,97,99,101,
+        #         102,110,114,116,117,122,127]
+        # select = ["Test_{:0>3d}".format(i) for i in code] #131
+        # loca.output_result_csv_method2("csv_1", tag=64, chosen=select)
 
     def test_csv2(self):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        i = 1
-        sub_path = "csv_1"
-        code = "Tumor_{:0>3d}".format(i)
-        filename = "{}/results/{}_history_v2.npz".format(c.PROJECT_ROOT, code)
+        i = 4
+        sub_path = "csv_5"
+        code = "Test_{:0>3d}".format(i)
+        filename = "{}/results/{}_history_v64.npz".format(c.PROJECT_ROOT, code)
         result = np.load(filename, allow_pickle=True)
 
         x1 = result["x1"]
@@ -94,8 +153,10 @@ class TestLocator(unittest.TestCase):
         imgCone = ImageCone(c, Open_Slide())
 
         # 读取数字全扫描切片图像
-        tag = imgCone.open_slide("Train_Tumor/%s.tif" % code,
-                                 'Train_Tumor/%s.xml' % code, code)
+        # tag = imgCone.open_slide("Train_Tumor/%s.tif" % code,
+        #                          'Train_Tumor/%s.xml' % code, code)
+        tag = imgCone.open_slide("Testing/images/%s.tif" % code,
+                                 'Testing/images/%s.xml' % code, code)
 
         src_img = np.array(imgCone.get_fullimage_byScale(1.25))
         mask_img = imgCone.create_mask_image(1.25, 0)
@@ -120,3 +181,28 @@ class TestLocator(unittest.TestCase):
         fig.colorbar(im, cax=cbar_ax)
 
         plt.show()
+
+
+    def test_create_train_data(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        select = ["Tumor_{:0>3d}".format(i) for i in range(1, 112)] # 112
+        select.extend(["Normal_{:0>3d}".format(i) for i in range(1, 161)]) #162
+
+        loca = Locator(c)
+        X, Y = loca.create_train_data(tag=64, slide_idset = select)
+        print("positive conut =", np.sum(Y), "all count =", len(Y))
+        loca.save_train_data(X, Y, "locator_data_d5.npz", append=False)
+
+        select = ["Test_{:0>3d}".format(i) for i in range(1, 49)]  # 49
+        select.extend(["Test_{:0>3d}".format(i) for i in range(50, 131)]) #131
+        X, Y = loca.create_train_data(tag=64, slide_idset = select)
+        print("positive conut =", np.sum(Y), "all count =", len(Y))
+        loca.save_train_data(X, Y, "locator_testdata_d5.npz", append=False)
+
+    def test_train_SVM(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        loca = Locator(c)
+        loca.train_svm(file_name="locator_data_d5.npz", test_name="locator_testdata_d5.npz")

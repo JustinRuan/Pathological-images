@@ -120,6 +120,6 @@ class TestEvaluation(unittest.TestCase):
         eval = Evaluation(c)
 
         mask_folder = "{}/data/true_masks".format(c.PROJECT_ROOT)
-        result_folder = "{}/results/csv_2".format(c.PROJECT_ROOT)
+        result_folder = "{}/results/csv_5".format(c.PROJECT_ROOT)
 
         eval.evaluation_FROC(mask_folder, result_folder)

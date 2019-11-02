@@ -25,312 +25,13 @@ from pytorch.cancer_map import CancerMapBuilder
 from scipy.spatial import distance
 from sklearn.cluster import KMeans
 from skimage import filters
+from pytorch.slide_predictor import BasePredictor
+from sklearn.model_selection import GridSearchCV
+from pytorch.slide_predictor import SlidePredictor
 
-
-class Locator(object):
+class Locator(BasePredictor):
     def __init__(self, params):
-        self._params = params
-
-
-    # def calcuate_location_features(self, thresh_list, chosen = None):
-    #
-    #     project_root = self._params.PROJECT_ROOT
-    #     save_path = "{}/results".format(project_root)
-    #     tag = 0
-    #     if tag == 0:
-    #         code = "_history.npz"
-    #     else:
-    #         code = "_history_v2.npz"
-    #
-    #     K = len(code)
-    #
-    #     feature_data = {}
-    #     for result_file in os.listdir(save_path):
-    #         ext_name = os.path.splitext(result_file)[1]
-    #         slice_id = result_file[:-K]
-    #         if chosen is not None and slice_id not in chosen:
-    #             continue
-    #
-    #         if ext_name == ".npz" and code in result_file:
-    #             print("loading data : {}, {}".format(slice_id, result_file))
-    #             result = np.load("{}/{}".format(save_path, result_file))
-    #             x1 = result["x1"]
-    #             y1 = result["y1"]
-    #             x2 = result["x2"]
-    #             y2 = result["y2"]
-    #             coordinate_scale = result["scale"]
-    #             assert coordinate_scale == 1.25, "Scale is Error!"
-    #
-    #             history = result["history"].item()
-    #             cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
-    #             cancer_map = cmb.generating_probability_map(history, x1, y1, x2, y2, 1.25)
-    #
-    #             # points = self.search_local_feature_points(cancer_map, thresh_list, x1, y1)
-    #             # points = self.search_local_feature_points_max(cancer_map, thresh_list, x1, y1)
-    #             points = self.search_local_feature_points_tree(cancer_map, x1, y1)
-    #             feature_data[slice_id] = points
-    #
-    #     return feature_data
-    #
-    # def search_local_feature_points(self, cancer_map, thresh_list, x_letftop, y_lefttop):
-    #     '''
-    #     生成用于FROC检测 的数据点
-    #     :param cancer_map:
-    #     :param thresh_list:
-    #     :param x_letftop:
-    #     :param y_lefttop:
-    #     :return:
-    #     '''
-    #     features = {}
-    #     last_thresh = 1.0
-    #     for thresh in thresh_list:
-    #         region = cancer_map >= thresh
-    #         candidated_tag = morphology.label(region, neighbors=8, connectivity=2)
-    #         num_tag = np.amax(candidated_tag)
-    #         properties = measure.regionprops(candidated_tag, intensity_image=cancer_map, cache=True, coordinates='rc')
-    #
-    #         for index in range(1, num_tag + 1):
-    #             p = properties[index - 1]
-    #             # 提取特征
-    #             max_value = p.max_intensity
-    #             # if max_value < last_thresh and p.major_axis_length > 15:
-    #             if max_value < last_thresh:
-    #                 # centroid = p.weighted_centroid
-    #                 invert_region = candidated_tag != index
-    #                 new_map = np.copy(cancer_map)
-    #                 new_map[invert_region] = 0
-    #
-    #                 pos = np.nonzero(new_map == max_value)
-    #                 max_count = len(pos[0])
-    #                 k = max_count // 2
-    #                 # 坐标从1.25倍镜下的
-    #                 x = pos[1][k] + x_letftop
-    #                 y = pos[0][k] + y_lefttop
-    #
-    #                 f = [p.max_intensity, p.mean_intensity,
-    #                      p.area, p.perimeter,
-    #                      p.major_axis_length, p.minor_axis_length, ]
-    #
-    #                 features[(x, y)] = f
-    #
-    #         last_thresh = thresh
-    #     print("get points: ", len(features))
-    #     return features
-    #
-    # def search_local_feature_points_max(self, cancer_map, x_letftop, y_lefttop):
-    #     map_h, map_w = cancer_map.shape
-    #
-    #     h = 0.05
-    #     h_maxima = extrema.h_maxima(cancer_map, h,)
-    #     candidated_tag = morphology.label(h_maxima, neighbors=8, connectivity=2)
-    #     num_tag = np.amax(candidated_tag)
-    #     properties = measure.regionprops(candidated_tag, intensity_image=cancer_map, cache=True)
-    #
-    #     features = {}
-    #     for index in range(1, num_tag + 1):
-    #         p = properties[index - 1]
-    #
-    #         max_count = p.area
-    #         k = max_count // 2
-    #         # 坐标从1.25倍镜下的
-    #         xy = p.coords[k]
-    #
-    #         # 提取局部子区
-    #         W = 128
-    #         nx1 = max(xy[1] - W, 0)
-    #         nx2 = min(xy[1] + W, map_w)
-    #         ny1 = max(xy[0] - W, 0)
-    #         ny2 = min(xy[0] + W, map_h)
-    #
-    #         sub_map = cancer_map[ny1:ny2, nx1:nx2]
-    #         region = sub_map >= (p.max_intensity - h)
-    #         # region = sub_map >= (0.9 * p.max_intensity)
-    #         sub_tag = morphology.label(region, neighbors=8, connectivity=2)
-    #         sub_label = sub_tag[xy[0] - ny1, xy[1] - nx1]
-    #         sub_properties = measure.regionprops(sub_tag, intensity_image=sub_map,cache=True)
-    #         sub_p = sub_properties[sub_label - 1]
-    #
-    #         assert sub_p.max_intensity >= p.max_intensity, "Error : max_intensity!"
-    #         f = [p.max_intensity, sub_p.max_intensity, sub_p.mean_intensity,
-    #              sub_p.area, sub_p.perimeter,
-    #              sub_p.major_axis_length, sub_p.minor_axis_length, ]
-    #
-    #         x = xy[1] + x_letftop
-    #         y = xy[0] + y_lefttop
-    #         features[(x, y)] = f
-    #
-    #     return features
-    #
-    # # def search_local_feature_points_tree(self, cancer_map, x_letftop, y_lefttop):
-    # #     map_h, map_w = cancer_map.shape
-    # #
-    # #     h = 0.01
-    # #     h_maxima = extrema.h_maxima(cancer_map, h,)
-    # #     candidated_tag = morphology.label(h_maxima, neighbors=8, connectivity=2)
-    # #     local_max_value = list(set(cancer_map[candidated_tag > 0]))
-    # #     local_max_value = np.reshape(local_max_value, (-1, 1))
-    # #
-    # #     ift = IsolationForest(behaviour='new', max_samples='auto', contamination=0.01)
-    # #     y = ift.fit_predict(local_max_value)
-    # #     outliers = local_max_value[y == -1]
-    # #
-    # #     thresh_low = np.min(outliers)
-    # #     thresh_high = np.max(outliers)
-    # #     max_prob = np.max(local_max_value)
-    # #     if max_prob > thresh_high:
-    # #         thresh = thresh_high
-    # #     else:
-    # #         thresh = thresh_low
-    # #
-    # #     num_tag = np.amax(candidated_tag)
-    # #     properties = measure.regionprops(candidated_tag, intensity_image=cancer_map, cache=True)
-    # #
-    # #     features = {}
-    # #     for index in range(1, num_tag + 1):
-    # #         p = properties[index - 1]
-    # #         max_value = p.max_intensity
-    # #
-    # #         if max_value > thresh:
-    # #             pos = np.nonzero(candidated_tag == index)
-    # #             max_count = len(pos[0])
-    # #             k = max_count // 2
-    # #             # 坐标从1.25倍镜下的
-    # #             x = pos[1][k] + x_letftop
-    # #             y = pos[0][k] + y_lefttop
-    # #             f = [p.max_intensity, p.mean_intensity,
-    # #                  p.area, p.perimeter,
-    # #                  p.major_axis_length, p.minor_axis_length, ]
-    # #
-    # #             features[(x, y)] = f
-    # #
-    # #     return features
-    #
-    # def search_local_feature_points_tree(self, cancer_map, x_letftop, y_lefttop):
-    #     map_h, map_w = cancer_map.shape
-    #
-    #     h = 0.01
-    #     h_maxima = extrema.h_maxima(cancer_map, h,)
-    #     candidated_tag = morphology.label(h_maxima, neighbors=8, connectivity=2)
-    #     local_max_value = list(set(cancer_map[candidated_tag > 0]))
-    #     local_max_value = np.reshape(local_max_value, (-1, 1))
-    #
-    #     ift = IsolationForest(behaviour='new', max_samples='auto', contamination=0.01)
-    #     y = ift.fit_predict(local_max_value)
-    #     outliers = local_max_value[y == -1]
-    #
-    #     thresh_low = np.min(outliers)
-    #     thresh_high = np.max(outliers)
-    #     if thresh_low > 0.5:
-    #         thresh_list = [thresh_high, 0.5 * (thresh_high + thresh_low), thresh_low]
-    #     else:
-    #         if thresh_high > 0.5:
-    #             outliers = outliers[outliers > 0.5]
-    #
-    #         thresh_low = np.min(outliers)
-    #         thresh_high = np.max(outliers)
-    #         thresh_list = [thresh_high, 0.5 * (thresh_high + thresh_low), thresh_low] #  - 0.5 * (thresh_high - thresh_low)
-    #
-    #     print("Thresh :", thresh_list)
-    #     features = self.search_local_feature_points(cancer_map, thresh_list, x_letftop, y_lefttop)
-    #
-    #     return features
-    #
-    # def create_train_data(self, feature_data):
-    #     imgCone = ImageCone(self._params, Open_Slide())
-    #     X = []
-    #     Y = []
-    #     for slice_id, features in feature_data.items():
-    #         print("processing ", slice_id, '... ...')
-    #         # 读取数字全扫描切片图像
-    #         tag = imgCone.open_slide("Train_Tumor/%s.tif" % slice_id,
-    #                                  'Train_Tumor/%s.xml' % slice_id, slice_id)
-    #         all_mask = imgCone.create_mask_image(self._params.GLOBAL_SCALE, 0)
-    #         mask = all_mask['C']
-    #         for (xx, yy), f in features.items():
-    #             if mask[yy, xx]:
-    #                 Y.append(1)
-    #             else:
-    #                 Y.append(0)
-    #             X.append(f)
-    #     print("count of X :", len(X), "count of cancer points", sum(Y))
-    #     return X, Y
-    #
-    # # def train_svm(self, X, Y):
-    # #     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.1)
-    # #
-    # #     max_iter = 5000
-    # #     model_params = [{'C': 0.0001}, {'C': 0.001}, {'C': 0.01}, {'C': 0.1},
-    # #                     {'C': 0.5}, {'C': 1.0}, {'C': 1.2}, {'C': 1.5},
-    # #                     {'C': 2.0}, {'C': 10.0}]
-    # #
-    # #     result = {'pred': None, 'score': 0, 'clf': None}
-    # #
-    # #     feature_num = len(X_train[0])
-    # #     for params in model_params:
-    # #         clf = LinearSVC(**params, max_iter=max_iter, verbose=0, class_weight='balanced') # class_weight='balanced'
-    # #         clf.fit(X_train, y_train)
-    # #         y_pred = clf.predict(X_test)
-    # #         score = metrics.accuracy_score(y_test, y_pred)
-    # #         print('feature num = {}, C={:8f} => score={:5f}'.format(feature_num, params['C'], score))
-    # #
-    # #         if score > result["score"]:
-    # #             result = {'pred': y_pred, 'score': score, 'clf': clf}
-    # #
-    # #     print("the best score = {}".format(result["score"]))
-    # #
-    # #     target_names = ['normal', 'cancer']
-    # #     report = metrics.classification_report(y_test, result["pred"], target_names=target_names, digits = 4, output_dict=True)
-    # #     # print("Classification report for classifier %s:\n%s\n"
-    # #     #       % (result["clf"], report))
-    # #     print("Confusion matrix:\n%s" % metrics.confusion_matrix(y_test, result["pred"]))
-    # #
-    # #     model_file = self._params.PROJECT_ROOT + "/models/locator_svm_{:.4f}_{:.4f}.model".format(report['normal']['f1-score'],
-    # #                                                                                               report['cancer']['f1-score'])
-    # #     joblib.dump(result["clf"], model_file)
-    # #     return
-    #
-    # def train_svm(self, X, Y):
-    #     # X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.1)
-    #     X_train, y_train = X, Y
-    #
-    #     max_iter = 5000
-    #     model_params = [{'C': 0.0001}, {'C': 0.001}, {'C': 0.01}, {'C': 0.1},
-    #                     {'C': 0.5}, {'C': 1.0}, {'C': 1.2}, {'C': 1.5},
-    #                     {'C': 2.0}, {'C': 10.0}]
-    #
-    #     result = {'pred': None, 'score': 0, 'clf': None}
-    #
-    #     feature_num = len(X_train[0])
-    #     for params in model_params:
-    #         clf = svm.SVC(**params, max_iter=max_iter, verbose=0, class_weight={0:1, 1:100}) # class_weight='balanced'
-    #         clf.fit(X_train, y_train)
-    #         y_pred = clf.predict(X_train)
-    #         score = metrics.accuracy_score(y_train, y_pred)
-    #         print('feature num = {}, C={:8f} => score={:5f}'.format(feature_num, params['C'], score))
-    #
-    #         if score > result["score"]:
-    #             result = {'pred': y_pred, 'score': score, 'clf': clf}
-    #
-    #     print("the best score = {}".format(result["score"]))
-    #
-    #     target_names = ['normal', 'cancer']
-    #     report = metrics.classification_report(y_train, result["pred"], target_names=target_names, digits = 4, output_dict=True)
-    #     # print("Classification report for classifier %s:\n%s\n"
-    #     #       % (result["clf"], report))
-    #     print("Confusion matrix:\n%s" % metrics.confusion_matrix(y_train, result["pred"]))
-    #
-    #     model_file = self._params.PROJECT_ROOT + "/models/locator_svm_{:.4f}_{:.4f}.model".format(report['normal']['f1-score'],
-    #                                                                                               report['cancer']['f1-score'])
-    #     joblib.dump(result["clf"], model_file)
-    #     print("saved : ", model_file)
-    #     return
-    #
-    # def evaluate(self, X, Y):
-    #     model_file = self._params.PROJECT_ROOT + "/models/locator_svm_0.7778_0.8491.model"
-    #     clf = joblib.load(model_file)
-    #     pred = clf.decision_function(X)
-    #     for pp, yy in zip(pred, Y):
-    #         print("{:d}, \t{:.4f}".format(yy, pp))
+        super(Locator, self).__init__(params, "Locator")
 
     # def output_result_csv(self, sub_path, tag, chosen = None):
     #     '''
@@ -338,16 +39,13 @@ class Locator(object):
     #     :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
     #     :return:
     #     '''
-    #     model_file = self._params.PROJECT_ROOT + "/models/locator_svm_0.6742_0.7422.model"
-    #     clf = joblib.load(model_file)
-    #
     #     project_root = self._params.PROJECT_ROOT
     #     save_path = "{}/results".format(project_root)
     #
     #     if tag == 0:
     #         code = "_history.npz"
     #     else:
-    #         code = "_history_v2.npz"
+    #         code = "_history_v{}.npz".format(tag)
     #
     #     K = len(code)
     #
@@ -358,33 +56,10 @@ class Locator(object):
     #             continue
     #
     #         if ext_name == ".npz" and code in result_file:
-    #             print("loading data : {}, {}".format(slice_id, result_file))
-    #             result = np.load("{}/{}".format(save_path, result_file))
-    #             x1 = result["x1"]
-    #             y1 = result["y1"]
-    #             x2 = result["x2"]
-    #             y2 = result["y2"]
-    #             coordinate_scale = result["scale"]
-    #             assert coordinate_scale == 1.25, "Scale is Error!"
+    #             history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id)
     #
-    #             history = result["history"].item()
-    #             cmb = CancerMapBuilder(self._params, x1, y1, x2, y2, 1.25)
-    #             cancer_map = cmb.generating_probability_map(history, extract_scale=40, patch_size=256)
-    #
-    #             # points = self.search_local_feature_points(cancer_map, thresh_list, x1, y1)
-    #             # points = self.search_local_feature_points_max(cancer_map, x1, y1)
-    #             points = self.search_local_feature_points_tree(cancer_map, x1, y1)
-    #             candidated_result = []
-    #             for (xx, yy), f in points.items():
-    #                 # 经过分类器判别后输出
-    #                 pred = clf.decision_function([f])
-    #                 # if pred > -1 and f[0] > 0.5:
-    #                 if pred > -0.1:
-    #                     #坐标从1.25倍镜下变换到40倍镜下
-    #                     candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[0]})
-    #
-    #                 # # # 直接全部输出
-    #                 # candidated_result.append({"x": 32 * xx, "y": 32 * yy, "prob": f[0]})
+    #             candidated_result = self.search_local_extremum_points_fusion(history, label_map, x1, y1, x2, y2)
+    #             print("count =", len(candidated_result))
     #
     #             csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
     #             with open(csv_filename, 'w', newline='')as f:
@@ -404,6 +79,8 @@ class Locator(object):
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
 
+        sp = SlidePredictor(self._params)
+
         if tag == 0:
             code = "_history.npz"
         else:
@@ -418,35 +95,56 @@ class Locator(object):
                 continue
 
             if ext_name == ".npz" and code in result_file:
-                print("loading data : {}, {}".format(slice_id, result_file))
-                result = np.load("{}/{}".format(save_path, result_file), allow_pickle=True)
-                x1 = result["x1"]
-                y1 = result["y1"]
-                x2 = result["x2"]
-                y2 = result["y2"]
-                coordinate_scale = result["scale"]
-                assert coordinate_scale == 1.25, "Scale is Error!"
+                history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id)
+                # is_Tumor = sp.predict(history, x1, y1, x2, y2)
+                is_Tumor = True
 
-                history = result["history"].item()
+                candidated_result = []
+                if is_Tumor:
+                    # candidated_result = self.search_local_extremum_points_fusion(history, label_map, x1, y1, x2, y2)
+                    candidated_result = self.search_local_extremum_points_max2(history, x1, y1, x2, y2)
 
-                labelmap_filename = "{}/data/Segmentations/{}_labelmap.npz".format(project_root, slice_id)
-                print("loading superpixels : {}, {}".format(slice_id, labelmap_filename))
-                result = np.load(labelmap_filename, allow_pickle=True)
-                bx1 = result["x1"]
-                by1 = result["y1"]
-                bx2 = result["x2"]
-                by2 = result["y2"]
-                coordinate_scale = result["scale"]
-                assert coordinate_scale == 1.25, "Scale is Error!"
-                assert x1==bx1 and y1==by1 and x2 == bx2 and y2==by2, "coordinate is Error!"
+                print("candidated count =", len(candidated_result))
 
-                label_map = result["labelmap"]
+                csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
+                with open(csv_filename, 'w', newline='')as f:
+                    f_csv = csv.writer(f)
+                    for item in candidated_result:
+                        f_csv.writerow([item["prob"], item["x"], item["y"]])
 
-                # candidated_result = self.search_local_extremum_points(history, x1, y1)
-                # candidated_result = self.search_local_extremum_points2(history, x1, y1, x2, y2)
-                # candidated_result = self.search_local_extremum_points_max(history, x1, y1, x2, y2)
-                candidated_result = self.search_local_extremum_points_fusion(history, label_map, x1, y1, x2, y2)
-                # candidated_result = self.search_local_extremum_points_fusion2(history, label_map, x1, y1, x2, y2)
+                print("完成 ", slice_id)
+        return
+
+    def output_result_csv_method2(self, sub_path, tag, chosen = None):
+        '''
+        生成用于FROC检测用的CSV文件
+        :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
+        :return:
+        '''
+        project_root = self._params.PROJECT_ROOT
+        save_path = "{}/results".format(project_root)
+
+        model_file = self._params.PROJECT_ROOT + "/models/Locator_svm_0.8536_0.7725.model"
+
+        clf = joblib.load(model_file)
+
+        if tag == 0:
+            code = "_history.npz"
+        else:
+            code = "_history_v{}.npz".format(tag)
+
+        K = len(code)
+
+        for result_file in os.listdir(save_path):
+            ext_name = os.path.splitext(result_file)[1]
+            slice_id = result_file[:-K]
+            if chosen is not None and slice_id not in chosen:
+                continue
+
+            if ext_name == ".npz" and code in result_file:
+                history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id)
+
+                candidated_result = self.search_local_extremum_points_predict(clf, history, label_map, x1, y1, x2, y2)
                 print("count =", len(candidated_result))
 
                 csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
@@ -458,55 +156,96 @@ class Locator(object):
                 print("完成 ", slice_id)
         return
 
-    # 模式1：均匀的选择
-    def search_local_extremum_points(self, history, x_letftop, y_lefttop):
-        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t=-0.5)
-        # low_prob_thresh = 0.5
-        candidated = []
-        for (x, y), f in history.items():
-            prob = 1 / (1 + np.exp(-f))
-            if low_prob_thresh < prob:
-                xx = x + x_letftop
-                yy = y + y_lefttop
-                candidated.append((prob, xx, yy))
+    def load_history_labelmap(self, result_file, slice_id):
+        project_root = self._params.PROJECT_ROOT
+        save_path = "{}/results".format(project_root)
 
-        candidated.sort(key=lambda x: (x[0]), reverse=True)
+        print("loading data : {}, {}".format(slice_id, result_file))
+        result = np.load("{}/{}".format(save_path, result_file), allow_pickle=True)
+        x1 = result["x1"]
+        y1 = result["y1"]
+        x2 = result["x2"]
+        y2 = result["y2"]
+        coordinate_scale = result["scale"]
+        assert coordinate_scale == 1.25, "Scale is Error!"
+        history = result["history"].item()
 
-        resolution = 0.243
-        level = 5
-        Threshold = 5 * 75 / (resolution * pow(2, level) * 2)
-        result = []
-        while len(candidated) > 0:
-            m = candidated.pop(0)
-            mx = m[1]
-            my = m[2]
-            mprob = m[0]
-            tx = [mx]
-            ty = [my]
-            temp = []
-            for prob, x, y in candidated:
-                dist = distance.euclidean([mx, my], [x, y])
-                if dist > Threshold or mprob - prob > 0.15:
-                    temp.append((prob, x, y))
-                else:
-                    tx.append(x)
-                    ty.append(y)
+        labelmap_filename = "{}/data/Segmentations/{}_labelmap.npz".format(project_root, slice_id)
+        print("loading superpixels : {}, {}".format(slice_id, labelmap_filename))
+        result = np.load(labelmap_filename, allow_pickle=True)
+        bx1 = result["x1"]
+        by1 = result["y1"]
+        bx2 = result["x2"]
+        by2 = result["y2"]
+        coordinate_scale = result["scale"]
+        assert coordinate_scale == 1.25, "Scale is Error!"
+        assert x1 == bx1 and y1 == by1 and x2 == bx2 and y2 == by2, "coordinate is Error!"
+        label_map = result["labelmap"]
+        return history, label_map, x1, x2, y1, y2
 
-            mx = np.rint(np.mean(np.array(tx))).astype(np.int)
-            my = np.rint(np.mean(np.array(ty))).astype(np.int)
+    def load_true_mask(self, slice_id, x1, y1, x2, y2):
+        mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
 
-            result.append((mprob, mx, my))
-            candidated = temp
+        mask_filename = "{}/{}_true_mask.npy".format(mask_path, slice_id)
+        if os.path.exists(mask_filename):
+            mask_img = np.load(mask_filename)
+            mask_img = mask_img[y1:y2, x1:x2]
+        else:
+            h = y2 - y1
+            w = x2 - x1
+            mask_img = np.zeros((h, w), dtype=np.bool)
 
-        candidated = []
-        for prob, x, y in result:
-            candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+        return mask_img
 
-        return candidated
-
+    # # 模式1：均匀的选择
+    # def search_local_extremum_points(self, history, x_letftop, y_lefttop):
+    #     low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t=-0.5)
+    #     # low_prob_thresh = 0.5
+    #     candidated = []
+    #     for (x, y), f in history.items():
+    #         prob = 1 / (1 + np.exp(-f))
+    #         if low_prob_thresh < prob:
+    #             xx = x + x_letftop
+    #             yy = y + y_lefttop
+    #             candidated.append((prob, xx, yy))
+    #
+    #     candidated.sort(key=lambda x: (x[0]), reverse=True)
+    #
+    #     resolution = 0.243
+    #     level = 5
+    #     Threshold = 5 * 75 / (resolution * pow(2, level) * 2)
+    #     result = []
+    #     while len(candidated) > 0:
+    #         m = candidated.pop(0)
+    #         mx = m[1]
+    #         my = m[2]
+    #         mprob = m[0]
+    #         tx = [mx]
+    #         ty = [my]
+    #         temp = []
+    #         for prob, x, y in candidated:
+    #             dist = distance.euclidean([mx, my], [x, y])
+    #             if dist > Threshold or mprob - prob > 0.15:
+    #                 temp.append((prob, x, y))
+    #             else:
+    #                 tx.append(x)
+    #                 ty.append(y)
+    #
+    #         mx = np.rint(np.mean(np.array(tx))).astype(np.int)
+    #         my = np.rint(np.mean(np.array(ty))).astype(np.int)
+    #
+    #         result.append((mprob, mx, my))
+    #         candidated = temp
+    #
+    #     candidated = []
+    #     for prob, x, y in result:
+    #         candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+    #
+    #     return candidated
+    #
     # 模式2：局部极值输出
     def search_local_extremum_points_max(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
-        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t = -0.5)
 
         cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
         cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
@@ -515,8 +254,6 @@ class Locator(object):
         h = 0.02
         h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
         xy = np.nonzero(h_maxima)
-        # maxima = extrema.local_maxima(cancer_map, allow_borders=False)
-        # xy = np.nonzero(maxima)
 
         candidated = []
         for y, x in zip(xy[0], xy[1]):
@@ -528,10 +265,70 @@ class Locator(object):
 
         return candidated
 
+    def search_local_extremum_points_max2(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+        # for train set: t,c,h = -0.5, 50, 0.02
+        t_thresh = 0  # -0.5
+        c_thresh = 10  # 50
+        h_param = 0.02 # 0.02
+        low_prob_thresh, high_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t = t_thresh)
+        print("low_prob_thresh = {:.4f}, high_prob_thresh = {:.4f}".format(low_prob_thresh, high_prob_thresh))
+
+        cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+        cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
+                                                    self._params.GLOBAL_SCALE)
+
+        h = h_param
+        h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
+        xy = np.nonzero(h_maxima)
+
+        sorted_points = []
+        for y, x in zip(xy[0], xy[1]):
+            prob = cancer_map[y, x]
+            if prob > low_prob_thresh:
+                sorted_points.append((prob, x, y))
+        sorted_points.sort(key=lambda x: (x[0]), reverse=True)
+
+        resolution = 0.243
+        level = 5
+        Threshold = 3 * 75 / (resolution * pow(2, level) * 2)
+        result = []
+        while len(sorted_points) > 0:
+            m = sorted_points.pop(0)
+            mx = m[1]
+            my = m[2]
+            mprob = m[0]
+            tx = [mx]
+            ty = [my]
+            temp = []
+            for prob, x, y in sorted_points:
+                dist = distance.euclidean([mx, my], [x, y])
+                if dist > Threshold or mprob - prob > 0.15:
+                    temp.append((prob, x, y))
+                else:
+                    tx.append(x)
+                    ty.append(y)
+
+            mx = np.rint(np.mean(np.array(tx))).astype(np.int)
+            my = np.rint(np.mean(np.array(ty))).astype(np.int)
+
+            result.append((mprob, mx, my))
+            sorted_points = temp
+
+        candidated = []
+        count = 0
+        for prob, x, y in result:
+            if prob > high_prob_thresh or (prob > low_prob_thresh and count < c_thresh):
+                x = x + x_letftop
+                y = y + y_lefttop
+                candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+                count += 1
+
+        return candidated
+
     # 模式3
     def search_local_extremum_points2(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
-        # low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
-        low_prob_thresh = 0.5
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history)
+        # low_prob_thresh = 0.5
         value = 1 / (1 + np.exp(-np.array(list(history.values()))))
         positive_part = np.reshape(value[value > low_prob_thresh], (-1, 1))
         round_value = np.unique(np.round(positive_part, decimals=2))
@@ -605,18 +402,21 @@ class Locator(object):
 
     # 模式4：
     def search_local_extremum_points_fusion(self, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
-        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, 0)
+
+        c_thresh = 50
+
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, 0.5)
 
         cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
         cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
                                                     self._params.GLOBAL_SCALE)
 
-        h = 0.1
+        h = 0.02
         h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
         xy = np.nonzero(h_maxima)
 
         sobel_img = filters.sobel(cancer_map)
-        feat_thresh = -1  # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
+        feat_thresh = 0.5  # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
         grad_thresh = 0.05
         f_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
         g_properties = measure.regionprops(label_map, intensity_image=sobel_img, cache=True, coordinates='rc')
@@ -637,11 +437,6 @@ class Locator(object):
         max_label = np.amax(label_map)
         print("max label =", max_label,)
 
-        # 分别对应四种区域：
-        # 0：高概率低密度， HpLd
-        # 1：高概率高密度， HpHd
-        # 2：低概率低密度， LpLd
-        # 3：低概率高密度，LpHd
         for index in range(1, max_label + 1):
             if index in regions_extres.keys():
                 x, y = regions_extres[index]
@@ -657,62 +452,174 @@ class Locator(object):
                     if not (np.isnan(x) or np.isnan(y)):
                         candidated_region[index] = (int(x), int(y))
 
-        candidated = []
+        sorted_points = []
         for x, y in candidated_region.values():
             prob = cancer_map[y, x]
             if prob > low_prob_thresh:
+                sorted_points.append((prob, x, y))
+        sorted_points.sort(key=lambda x: (x[0]), reverse=True)
+
+        resolution = 0.243
+        level = 5
+        Threshold = 3 * 75 / (resolution * pow(2, level) * 2)
+        result = []
+        while len(sorted_points) > 0:
+            m = sorted_points.pop(0)
+            mx = m[1]
+            my = m[2]
+            mprob = m[0]
+            tx = [mx]
+            ty = [my]
+            temp = []
+            for prob, x, y in sorted_points:
+                dist = distance.euclidean([mx, my], [x, y])
+                if dist > Threshold or mprob - prob > 0.15:
+                    temp.append((prob, x, y))
+                else:
+                    tx.append(x)
+                    ty.append(y)
+
+            mx = np.rint(np.mean(np.array(tx))).astype(np.int)
+            my = np.rint(np.mean(np.array(ty))).astype(np.int)
+
+            result.append((mprob, mx, my))
+            sorted_points = temp
+
+        candidated = []
+        count = 0
+        for prob, x, y in result:
+            if count < c_thresh:
                 x = x + x_letftop
                 y = y + y_lefttop
                 candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+                count += 1
+
+
+        # candidated = []
+        # for x, y in candidated_region.values():
+        #     prob = cancer_map[y, x]
+        #     if prob > low_prob_thresh:
+        #         x = x + x_letftop
+        #         y = y + y_lefttop
+        #         candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
 
         return candidated
 
-    # 模式5：
-    def search_local_extremum_points_fusion2(self, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
-        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t = 0.5)
+    # # 模式4：
+    # def search_local_extremum_points_fusion(self, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+    #     # low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, 0)
+    #     low_prob_thresh = 0.3
+    #     high_prob_thresh = 0.4
+    #     cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+    #     cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
+    #                                                 self._params.GLOBAL_SCALE)
+    #
+    #     h = 0.02
+    #     h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
+    #     xy = np.nonzero(h_maxima)
+    #
+    #     # sobel_img = filters.sobel(cancer_map)
+    #     # h_maxima2 = extrema.h_minima(sobel_img, h, selem=square(7))
+    #     # xy2 = np.nonzero(h_maxima2)
+    #     ex = xy[1]
+    #     ey = xy[0]
+    #     # ex = np.append(xy[1], xy2[1])
+    #     # ey = np.append(xy[0], xy2[0])
+    #     # # feat_thresh = -1  # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
+    #     #
+    #     # grad_thresh = 0.01
+    #     # f_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
+    #     # g_properties = measure.regionprops(label_map, intensity_image=sobel_img, cache=True, coordinates='rc')
+    #
+    #     candidated_region = {}
+    #     regions_extres = {}
+    #     for y, x in zip(ey, ex):
+    #         prob = cancer_map[y, x]
+    #         region_id = label_map[y, x]
+    #         if region_id not in regions_extres.keys():
+    #             regions_extres[region_id] = (prob, x, y)
+    #         else:
+    #             new_prob = cancer_map[y, x]
+    #             old_prob, old_x, old_y = regions_extres[region_id]
+    #             if new_prob > old_prob:
+    #                 regions_extres[region_id] = (new_prob, x, y)
+    #
+    #     max_label = np.amax(label_map)
+    #     print("max label =", max_label,)
+    #
+    #     for index in range(1, max_label + 1):
+    #         if index in regions_extres.keys():
+    #             prob, x, y = regions_extres[index]
+    #             candidated_region[index] = (prob, x, y)
+    #         # else:
+    #         #     p = f_properties[index - 1]
+    #         #     g = g_properties[index - 1]
+    #         #     max_prob = p.max_intensity
+    #         #     max_grad = g.max_intensity
+    #         #     assert p.label == index, "Error: p.label != index"
+    #         #     if max_prob >= low_prob_thresh and max_grad >= grad_thresh:
+    #         #         tag = np.logical_and(label_map == index, cancer_map == max_prob)
+    #         #         pos = np.nonzero(tag)
+    #         #         max_count = len(pos[0])
+    #         #         k = max_count // 2
+    #         #         # 坐标从1.25倍镜下的
+    #         #         x = pos[1][k]
+    #         #         y = pos[0][k]
+    #         #         candidated_region[index] = (max_prob, int(x), int(y))
+    #
+    #     sort_regions = sorted(candidated_region.values(), key=lambda s:s[0], reverse=True)
+    #
+    #     candidated = []
+    #     count = 0
+    #     for prob, x, y in sort_regions:
+    #         if prob > high_prob_thresh or (count < 20 and prob > low_prob_thresh):
+    #             x = x + x_letftop
+    #             y = y + y_lefttop
+    #             candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+    #             count += 1
+    #
+    #     return candidated
 
+    # 模式6：
+    def search_local_extremum_points_predict(self, clf, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, 0)
+        # low_prob_thresh = 0.5
         cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
         cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
                                                     self._params.GLOBAL_SCALE)
 
-        sobel_img = filters.sobel(cancer_map)
-        feat_thresh = 0.1
-        grad_thresh = 0.05
-        f_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
-        g_properties = measure.regionprops(label_map, intensity_image=sobel_img, cache=True, coordinates='rc')
+        h = 0.1
+        h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
+        xy = np.nonzero(h_maxima)
+
+        regions_prbability = self.calc_regions_prbability(clf, history, label_map)
+
+        p_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
 
         candidated_region = {}
-        regions_points = {}
-        for (x, y), f in history.items():
+        regions_extres = {}
+        for y, x in zip(xy[0], xy[1]):
             region_id = label_map[y, x]
-            if region_id not in regions_points.keys():
-                regions_points[region_id] = (x, y)
+            if region_id not in regions_extres.keys():
+                regions_extres[region_id] = (x, y)
             else:
                 new_prob = cancer_map[y, x]
-                old_x, old_y = regions_points[region_id]
+                old_x, old_y = regions_extres[region_id]
                 old_prob = cancer_map[old_y, old_x]
                 if new_prob > old_prob:
-                    regions_points[region_id] = (x, y)
+                    regions_extres[region_id] = (x, y)
 
         max_label = np.amax(label_map)
-        print("max label =", max_label, )
+        print("max label =", max_label,)
 
-        # 分别对应四种区域：
-        # 0：高概率低密度， HpLd
-        # 1：高概率高密度， HpHd
-        # 2：低概率低密度， LpLd
-        # 3：低概率高密度，LpHd
         for index in range(1, max_label + 1):
-            if index in regions_points.keys():
-                x, y = regions_points[index]
-                candidated_region[index] = (x, y)
-            else:
-                p = f_properties[index - 1]
-                g = g_properties[index - 1]
-                max_prob = p.max_intensity
-                max_grad = g.max_intensity
-                assert p.label == index, "Error: p.label != index"
-                if max_prob >= feat_thresh and max_grad >= grad_thresh:
+            if index in regions_prbability.keys() and\
+                    regions_prbability[index] >= 0.3:
+                if index in regions_extres.keys():
+                    x, y = regions_extres[index]
+                    candidated_region[index] = (x, y)
+                else:
+                    p = p_properties[index - 1]
                     y, x = p.weighted_centroid
                     if not (np.isnan(x) or np.isnan(y)):
                         candidated_region[index] = (int(x), int(y))
@@ -720,9 +627,134 @@ class Locator(object):
         candidated = []
         for x, y in candidated_region.values():
             prob = cancer_map[y, x]
-            if prob > low_prob_thresh:
+            if prob >= low_prob_thresh:
                 x = x + x_letftop
                 y = y + y_lefttop
                 candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
 
         return candidated
+
+    def calc_regions_prbability(self, clf, history, label_map):
+        features = self.calc_superpixel_feature(history, label_map)
+        result = {}
+        for index, feature in features.items():
+            y_pred = clf.predict_proba([feature])
+            prob = y_pred[:, 1]
+            result[index] = prob
+        return result
+
+    def calc_superpixel_feature(self,history, label_map, cancer_map):
+        regions_probs = {}
+        mode = 2
+        if mode == 1: # by cancer map
+            selem_size = 8
+            cancer_map = morphology.erosion(cancer_map,square(selem_size))
+            max_label = np.amax(label_map)
+            for index in range(1, max_label + 1):
+                tag = label_map == index
+                data = cancer_map[tag].ravel()
+                regions_probs[index] = data
+        elif mode == 2: # by history
+            for (x, y), f in history.items():
+                region_id = label_map[y, x]
+                prob = 1 / (1 + np.exp(-f))
+                if region_id not in regions_probs.keys():
+                    regions_probs[region_id] = [prob]
+                else:
+                    regions_probs[region_id].append(prob)
+
+        DIM = 5
+        regions_features = {}
+        for id, data in regions_probs.items():
+            data = np.array(data)
+            data = data[data >= 0.5]
+            L = len(data)
+            if L > 0:
+                max_prob = np.max(data)
+                hist = np.histogram(data, bins=DIM - 2, range=(0.5, 1), density=False)
+                feature = np.array(hist[0], dtype=np.float) / L
+                feature = np.append(feature, [L, max_prob])
+                regions_features[id] = feature
+            else:
+                regions_features[id] = np.zeros((DIM,))
+
+        return regions_features
+
+    def calc_superpixel_label(self, true_mask, label_map):
+        mask = np.array(true_mask, dtype=np.int)
+        L_properties = measure.regionprops(label_map, intensity_image=mask, cache=True, coordinates='rc')
+        max_label = np.amax(label_map)
+        print("max label =", max_label,)
+
+        threshold = 0.5
+        regions_label = {}
+        for index in range(1, max_label + 1):
+            sub_label = L_properties[index - 1]
+            assert sub_label.label == index, "Error: label is not match!"
+            if sub_label.mean_intensity > threshold:
+                regions_label[index] = 1
+            else:
+                regions_label[index] = 0
+
+        return regions_label
+
+    def create_train_data(self, tag, slide_idset):
+        project_root = self._params.PROJECT_ROOT
+
+        if tag == 0:
+            code = "_history.npz"
+        else:
+            code = "_history_v{}.npz".format(tag)
+
+        X, Y = [], []
+        tempXY = []
+        for slide_id in slide_idset:
+            print(slide_id, "begin ...")
+            result_file = "{}{}".format(slide_id, code)
+            history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slide_id)
+            true_mask = self.load_true_mask(slide_id, x1, y1, x2, y2)
+
+            regions_features = self.calc_superpixel_feature(history, label_map)
+            regions_label = self.calc_superpixel_label(true_mask,label_map)
+
+            for region_id, features in regions_features.items():
+                if region_id in regions_label.keys():
+                    label = regions_label[region_id]
+                    m = np.append(features, [label]).tolist()
+                    if len(tempXY) == 0 or (m not in tempXY):
+                        X.append(features)
+                        Y.append(label)
+                        tempXY.append(m)
+
+                else:
+                    print(slide_id, "not in regions_label!")
+
+        return X, Y
+
+    def train_svm(self,file_name, test_name):
+        X_test, X_train, y_test, y_train = self.read_data(file_name, test_name, mode=3)
+
+        max_iter = 5000
+
+        #'kernel': ('linear', 'poly', 'rbf'),
+        # parameters = {'C': [0.0001, 0.001, 0.01, 0.1, 0.5, 1, 1.2, 1.5, 2.0, 10]}
+        parameters = {'C': [ 1, ]}
+        # parameters = { 'C': [0.0001, 0.001, 0.01, 0.1, 0.5, 1, 1.2, 1.5, 2.0, 10],
+        #               'gamma':[2, 1, 0.1, 0.5, 0.01, 0.001, 0.0001]}
+
+        svc = svm.SVC(kernel='rbf', probability=True, max_iter=max_iter,verbose=0,)
+        grid  = GridSearchCV(svc, parameters, cv=3)
+        grid .fit(X_train, y_train)
+        print("The best parameters are %s with a score of %0.2f"
+              % (grid.best_params_, grid.best_score_))
+
+        clf = grid.best_estimator_
+        self.save_model(clf, "linearsvm", X_test, y_test)
+
+        return
+
+
+
+
+
+
