@@ -92,7 +92,8 @@ class CancerMapBuilder(object):
             high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
             return low_prob_thresh, high_prob_thresh
         else:
-            low_prob_thresh =  0.5 * (cluster_centers[0] + cluster_centers[1])
+            f =  0.5 * (cluster_centers[0] + cluster_centers[1])
+            low_prob_thresh = 1 / (1 + np.exp(-f))
             return low_prob_thresh, low_prob_thresh
 
     # @staticmethod

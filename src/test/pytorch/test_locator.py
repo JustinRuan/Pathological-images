@@ -80,7 +80,9 @@ class TestLocator(unittest.TestCase):
         #           [4, 8,10,11,13,33,38,46,48,65,66,74,79,82,84,97,99,102,
         #            110,116,117]]
         select = ["Test_{:0>3d}".format(i) for i in
-                  [110,116,117]]
+                  [74, 97, 110,116,117]]
+        # select = ["Test_{:0>3d}".format(i) for i in
+        #           [4, 8,10,11,13,33,38,46,48,65,66,79,82,84,99,102]]
         loca.output_result_csv("csv_5", tag=0, chosen=select)
 
     def test_output_result_csv_method2(self):
@@ -119,7 +121,7 @@ class TestLocator(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        i = 4
+        i = 117
         sub_path = "csv_5"
         code = "Test_{:0>3d}".format(i)
         filename = "{}/results/{}_history_v64.npz".format(c.PROJECT_ROOT, code)

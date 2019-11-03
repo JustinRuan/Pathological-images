@@ -95,7 +95,8 @@ class Locator(BasePredictor):
                 continue
 
             if ext_name == ".npz" and code in result_file:
-                history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id)
+                history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id,
+                                                                                is_load_label_map=False)
                 is_Tumor = sp.predict(history, x1, y1, x2, y2)
                 # is_Tumor = True
 
@@ -156,7 +157,7 @@ class Locator(BasePredictor):
                 print("完成 ", slice_id)
         return
 
-    def load_history_labelmap(self, result_file, slice_id):
+    def load_history_labelmap(self, result_file, slice_id, is_load_label_map = True):
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
 
@@ -170,17 +171,19 @@ class Locator(BasePredictor):
         assert coordinate_scale == 1.25, "Scale is Error!"
         history = result["history"].item()
 
-        labelmap_filename = "{}/data/Segmentations/{}_labelmap.npz".format(project_root, slice_id)
-        print("loading superpixels : {}, {}".format(slice_id, labelmap_filename))
-        result = np.load(labelmap_filename, allow_pickle=True)
-        bx1 = result["x1"]
-        by1 = result["y1"]
-        bx2 = result["x2"]
-        by2 = result["y2"]
-        coordinate_scale = result["scale"]
-        assert coordinate_scale == 1.25, "Scale is Error!"
-        assert x1 == bx1 and y1 == by1 and x2 == bx2 and y2 == by2, "coordinate is Error!"
-        label_map = result["labelmap"]
+        label_map = None
+        if is_load_label_map:
+            labelmap_filename = "{}/data/Segmentations/{}_labelmap.npz".format(project_root, slice_id)
+            print("loading superpixels : {}, {}".format(slice_id, labelmap_filename))
+            result = np.load(labelmap_filename, allow_pickle=True)
+            bx1 = result["x1"]
+            by1 = result["y1"]
+            bx2 = result["x2"]
+            by2 = result["y2"]
+            coordinate_scale = result["scale"]
+            assert coordinate_scale == 1.25, "Scale is Error!"
+            assert x1 == bx1 and y1 == by1 and x2 == bx2 and y2 == by2, "coordinate is Error!"
+            label_map = result["labelmap"]
         return history, label_map, x1, x2, y1, y2
 
     def load_true_mask(self, slice_id, x1, y1, x2, y2):
@@ -276,6 +279,8 @@ class Locator(BasePredictor):
         cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
         cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
                                                     self._params.GLOBAL_SCALE)
+
+        # cancer_map = morphology.erosion(cancer_map, selem=square(3))
 
         h = h_param
         h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
