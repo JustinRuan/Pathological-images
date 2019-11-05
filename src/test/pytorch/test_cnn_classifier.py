@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 from core import *
 from skimage import io
-from pytorch.cnn_classifier import Simple_Classifier, DSC_Classifier
+from pytorch.cnn_classifier import Simple_Classifier, DMC_Classifier
 import torch
 from preparation.normalization import HistNormalization, HSDNormalization, ACDNormalization,ReinhardNormalization #, ACDNormalization_tf
 from preparation.augmentation import ImageAugmentation, RndAugmentation, HRndAugmentation
@@ -300,7 +300,7 @@ class Test_cnn_classifier(unittest.TestCase):
 
         samples = [("P0619","T1_P0619_4000_2000_256"),  # 平衡样本集
                     ]
-        cnn = DSC_Classifier(c, model_name, sample_name)
+        cnn = DMC_Classifier(c, model_name, sample_name)
 
         # cnn.train_model(samples_name=samples[0], class_weight=None,
         #                 batch_size=20, epochs = 10)
@@ -318,7 +318,7 @@ class Test_cnn_classifier(unittest.TestCase):
 
         samples = [("P0619","T1_P0619_4000_2000_256"),  # 平衡样本集
                     ]
-        cnn = DSC_Classifier(c, model_name, sample_name)
+        cnn = DMC_Classifier(c, model_name, sample_name)
         cnn.evaluate_model(samples_name=samples[0], model_file=None, batch_size=100)
         # i5-7500, GTX 1060 6G
         # acc, acc20, acc40, speed，len: 0.9723953695458593 0.9702034385916843 0.9520515103774231 235.46774193548387 14599
@@ -332,7 +332,7 @@ class Test_cnn_classifier(unittest.TestCase):
 
         samples = [("P0619","T1_P0619_4000_2000_256"),  # 平衡样本集
                     ]
-        cnn = DSC_Classifier(c, model_name, sample_name)
+        cnn = DMC_Classifier(c, model_name, sample_name)
         cnn.calc_centers(samples_name=samples[0], model_file=None, batch_size=100)
 
     # center_20 Normal[3.0154288 - 3.374219]

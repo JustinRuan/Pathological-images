@@ -29,7 +29,7 @@ from core.util import latest_checkpoint
 from core.util import read_csv_file,read_DSC_csv_file
 from pytorch.image_dataset import Image_Dataset, DSC_Image_Dataset
 from pytorch.loss_function import CenterLoss, LGMLoss, LGMLoss_v0
-from pytorch.net import DenseNet, SEDenseNet, ExtendedDenseNet, DSC_DenseNet
+from pytorch.net import DenseNet, SEDenseNet, ExtendedDenseNet, DMC_DenseNet
 from pytorch.net import Simple_CNN
 from pytorch.util import get_image_blocks_itor, get_image_blocks_batch_normalize_itor, \
     get_image_file_batch_normalize_itor, get_image_blocks_dsc_itor
@@ -878,9 +878,9 @@ class Simple_Classifier(BaseClassifier):
         return
 
 
-class DSC_Classifier(BaseClassifier):
+class DMC_Classifier(BaseClassifier):
     def __init__(self, params, model_name, patch_type, **kwargs):
-        super(DSC_Classifier, self).__init__(params, model_name, patch_type,**kwargs)
+        super(DMC_Classifier, self).__init__(params, model_name, patch_type, **kwargs)
 
         if self.patch_type in ["2040_256"]:
             self.num_classes = 2
@@ -894,7 +894,7 @@ class DSC_Classifier(BaseClassifier):
             block_config = [(depth - 4) // 6 for _ in range(3)]
 
             # Models
-            model = DSC_DenseNet(
+            model = DMC_DenseNet(
                 growth_rate=growth_rate,
                 block_config=block_config,
                 num_classes=self.num_classes,

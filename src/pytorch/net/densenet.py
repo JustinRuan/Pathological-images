@@ -272,15 +272,15 @@ class ExtendedDenseNet(nn.Module):
         out = self.classifier(self.out_feature)
         return out
 
-# Double scale combination (DSC)
-class DSC_DenseNet(ExtendedDenseNet):
+# Double Magnification combination (DMC)
+class DMC_DenseNet(ExtendedDenseNet):
     def __init__(self, growth_rate=12, block_config=(16, 16, 16), compression=0.5,
                  num_init_features=24, bn_size=4, drop_rate=0,
                  num_classes=10, gvp_out_size = 1, efficient=False):
 
-        super(DSC_DenseNet, self).__init__(growth_rate, block_config, compression,
-                 num_init_features, bn_size, drop_rate,
-                 num_classes, gvp_out_size, efficient)
+        super(DMC_DenseNet, self).__init__(growth_rate, block_config, compression,
+                                           num_init_features, bn_size, drop_rate,
+                                           num_classes, gvp_out_size, efficient)
 
         # Linear layer
         self.DSC_feature_dim = 2 * self.feature_dim

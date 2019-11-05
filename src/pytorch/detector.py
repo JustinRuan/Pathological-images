@@ -23,7 +23,7 @@ from visdom import Visdom
 
 from core import Random_Gen
 from core.util import get_seeds, transform_coordinate
-from pytorch.cnn_classifier import Simple_Classifier, DSC_Classifier
+from pytorch.cnn_classifier import Simple_Classifier, DMC_Classifier
 from pytorch.segmentation import Segmentation
 from pytorch.transfer_cnn import Transfer
 from preparation.normalization import HistNormalization
@@ -529,7 +529,7 @@ class AdaptiveDetector(BaseDetector):
         elif select == 3:
             self.model_name = "dsc_densenet_40"
             self.sample_name = "2040_256"
-            self.cnn = DSC_Classifier(self._params, self.model_name, self.sample_name)
+            self.cnn = DMC_Classifier(self._params, self.model_name, self.sample_name)
 
         history =  self.adaptive_detect_region(x1, y1, x2, y2, coordinate_scale, extract_scale, patch_size,
                                max_iter_nums, batch_size, limit_sampling_density, enhanced)
@@ -547,7 +547,7 @@ class AdaptiveDetector(BaseDetector):
 
         self.model_name = "dsc_densenet_40"
         self.sample_name = "2040_256"
-        self.cnn = DSC_Classifier(self._params, self.model_name, self.sample_name)
+        self.cnn = DMC_Classifier(self._params, self.model_name, self.sample_name)
 
         extract_scale = 40
         patch_size = 256
