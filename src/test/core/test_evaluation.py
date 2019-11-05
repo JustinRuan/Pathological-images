@@ -71,14 +71,14 @@ class TestEvaluation(unittest.TestCase):
         c.load_config_file(JSON_PATH)
         eval = Evaluation(c)
 
-        # tag = "Tumor"
+        tag = "Tumor"
         # tag = "Test"
-        tag = "Test_Normal"
+        # tag = "Test_Normal"
         # tag = "Normal"
 
         if tag == "Tumor":
-            select = ["Tumor_{:0>3d}".format(i) for i in range(1,112)]
-            # select = ["Tumor_{:0>3d}".format(i) for i in range(1,20)]
+            # select = ["Tumor_{:0>3d}".format(i) for i in range(1,112)]
+            select = ["Tumor_{:0>3d}".format(i) for i in range(1,20)]
             eval.calculate_ROC("Train_Tumor", tag=64, chosen=select, p_thresh=0.5)
         elif tag == "Test":
 

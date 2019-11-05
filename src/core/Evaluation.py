@@ -211,8 +211,7 @@ class Evaluation(object):
                 dice = Evaluation.calculate_dice_coef(mask_img, pred)
                 accu = metrics.accuracy_score(mask_img, pred)
                 recall = metrics.recall_score(mask_img, pred, average='micro')
-                # f1 = metrics.f1_score(mask_img, pred, average='micro') # Here, f1 = dice
-                f1 = 2 * accu * recall / (accu + recall)
+                f1 = metrics.f1_score(mask_img, pred, average='weighted') # Here, f1 = dice，average='micro'
 
                 temp = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, p_thresh, dice, accu, recall, f1,roc_auc)
                 result_auc.append(temp)

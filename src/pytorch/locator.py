@@ -97,8 +97,8 @@ class Locator(BasePredictor):
             if ext_name == ".npz" and code in result_file:
                 history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id,
                                                                                 is_load_label_map=False)
-                is_Tumor = sp.predict(history, x1, y1, x2, y2)
-                # is_Tumor = True
+                # is_Tumor = sp.predict(history, x1, y1, x2, y2)
+                is_Tumor = True
 
                 candidated_result = []
                 if is_Tumor:
