@@ -208,7 +208,9 @@ class TestPatchPack(unittest.TestCase):
 
         # data_tag = pack.filtering(data_tag, filter_mask=["Tumor_033", "Tumor_034",
         #                                                  "Tumor_046","Tumor_054","Tumor_061"])
-        pack.create_train_test_data(data_tag, 0.95, 0.05, "T1_P0619_4000_256", need_balance=True)
+        data_tag = pack.selecting(data_tag, select_mask=["Tumor_020", "Tumor_029", "Tumor_033",
+                                                         "Tumor_061","Tumor_089","Tumor_095"])
+        pack.create_train_test_data(data_tag, 0.95, 0.05, "T2_P0619_4000_256", need_balance=True)
 
     #################################################################################################################
     ####################  20 x 256  ############################
@@ -258,4 +260,4 @@ class TestPatchPack(unittest.TestCase):
         pack = PatchPack(c)
         pack.create_train_test_data_DSC("P0619", ["S2000_256_cancer", "S2000_256_normal",
                                                          "S2000_256_normal2", "S2000_256_edgeinner",
-                                                         "S2000_256_edgeouter"], "T1_P0619_4000_256", 40, 20)
+                                                         "S2000_256_edgeouter"], "T2_P0619_4000_256", 40, 20)

@@ -49,14 +49,14 @@ class TestCancerMapBuilder(unittest.TestCase):
         c = Params()
         c.load_config_file(JSON_PATH)
 
-        # tag = "Tumor"
-        tag = "Test"
+        tag = "Tumor"
+        # tag = "Test"
         # tag = "Test_Normal"
         # tag = "Normal"
 
         if tag == "Tumor":
             select = ["Tumor_{:0>3d}".format(i) for i in range(1,112)]
-            # select = ["Tumor_{:0>3d}".format(i) for i in range(1,20)]
+            # select = ["Tumor_{:0>3d}".format(i) for i in [20,29,33,61,89,95]]
         elif tag == "Test":
 
             # select = ["Test_{:0>3d}".format(i) for i in [1,2,4,8,10,11,13,16,21,26,27,29,30,33,38,40,46,48,51,52,
@@ -82,3 +82,10 @@ class TestCancerMapBuilder(unittest.TestCase):
 
         # sc = SlideClassifier(c, "Slide_simple", "256")
         # sc.update_history(chosen=select, batch_size=100)
+
+    def test_summary_history(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        sc = SlideFilter(c, "Slide_simple", "64")
+        sc.summary_history("history2")

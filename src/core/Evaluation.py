@@ -17,6 +17,7 @@ from skimage import morphology
 from skimage.measure import approximate_polygon
 from skimage.segmentation import mark_boundaries
 from sklearn import metrics
+from skimage.transform import resize
 
 from core import *
 from pytorch.cancer_map import CancerMapBuilder
@@ -344,19 +345,20 @@ class Evaluation(object):
                 return False
 
 
-    def evaluation_FROC(self, mask_folder, result_folder):
+    def evaluation_FROC(self, mask_folder, result_folder, level = 5):
 
         result_file_list = []
         result_file_list += [each for each in os.listdir(result_folder) if each.endswith('.csv')]
 
         # level 0对应40倍镜，level 1对应20倍，这里level 5就是对应1.25倍镜下
-        EVALUATION_MASK_LEVEL = 5  # Image level at which the evaluation is done
+        EVALUATION_MASK_LEVEL = level  # Image level at which the evaluation is done
         L0_RESOLUTION = 0.243  # pixel resolution at level 0
 
         FROC_data = np.zeros((4, len(result_file_list)), dtype=np.object)
         FP_summary = np.zeros((2, len(result_file_list)), dtype=np.object)
         detection_summary = np.zeros((2, len(result_file_list)), dtype=np.object)
 
+        stats = {}
         caseNum = 0
         for case in result_file_list:
             print('Evaluating Performance on image:', case[0:-4])
@@ -381,11 +383,26 @@ class Evaluation(object):
             FROC_data[1][caseNum], FROC_data[2][caseNum], FROC_data[3][caseNum], \
             detection_summary[1][caseNum], FP_summary[1][caseNum] = \
                 self.compute_FP_TP_Probs(Ycorr, Xcorr, Probs, is_tumor, evaluation_mask, ITC_labels, EVALUATION_MASK_LEVEL)
+
+            stats[case[0:-4]] = self.calc_statistics(FROC_data[1][caseNum], FROC_data[2][caseNum], FROC_data[3][caseNum],
+                                 detection_summary[1][caseNum])
             caseNum += 1
 
         # Compute FROC curve
         total_FPs, total_sensitivity = self.computeFROC(FROC_data)
-        print("maximum of total_sensitivity =", np.max(total_sensitivity))
+
+        eval_threshold = [.25, .5, 1, 2, 4, 8]
+        eval_TPs = np.interp(eval_threshold, total_FPs[::-1], total_sensitivity[::-1])
+        for i in range(len(eval_threshold)):
+            print('Avg FP = ', str(eval_threshold[i]))
+            print('Sensitivity = ', str(eval_TPs[i]))
+
+        print('Avg Sensivity = ', np.mean(eval_TPs))
+
+        print("ID, FP_count, TP_count, num_of_tumors, hitted, missed")
+        for id, values in stats.items():
+            print("{}, {}, {}, {}, {}, {}".format(id, values[0], values[1],values[2],values[3],values[4]))
+
         # plot FROC curve
         self.plotFROC(total_FPs, total_sensitivity)
         return
@@ -402,6 +419,11 @@ class Evaluation(object):
             evaluation_mask
         """
         pixelarray = np.load(mask_file)
+        if level > 5:
+            r, c = pixelarray.shape
+            m = np.power(2, level - 5)
+            pixelarray = resize(pixelarray, (r // m, c //m))
+
         Threshold = 75/(resolution * pow(2, level) * 2)  # 75µm is the equivalent size of 5 tumor cells
 
         distance = nd.distance_transform_edt(255 * (1 - pixelarray))
@@ -433,7 +455,7 @@ class Evaluation(object):
         max_label = np.amax(evaluation_mask)
         properties = measure.regionprops(evaluation_mask, coordinates='rc')
         Isolated_Tumor_Cells = []
-        threshold = 1.0 * 275/ (resolution * pow(2, level))
+        threshold = 275/ (resolution * pow(2, level))
         for i in range(0, max_label):
             if properties[i].major_axis_length < threshold:
                 Isolated_Tumor_Cells.append(i + 1)
@@ -523,8 +545,20 @@ class Evaluation(object):
                 FP_counter += 1
 
         num_of_tumors = max_label - len(Isolated_Tumor_Cells);
-        print("number of FP =", len(FP_probs), ", number of TP =", len(TP_probs),", num_of_tumors =", num_of_tumors)
         return FP_probs, TP_probs, num_of_tumors, detection_summary, FP_summary
+
+    def calc_statistics(self, FP_probs, TP_probs, num_of_tumors, detection_summary):
+        FP_count = len(FP_probs)
+        TP_count = len(TP_probs)
+        hitted = 0
+        missed = 0
+        for item in detection_summary.values():
+            if len(item) > 0:
+                hitted += 1
+            else:
+                missed += 1
+
+        return (FP_count, TP_count, num_of_tumors, hitted, missed)
 
     def computeFROC(self, FROC_data):
         """Generates the data required for plotting the FROC curve

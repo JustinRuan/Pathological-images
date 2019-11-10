@@ -15,9 +15,9 @@ from matplotlib import pyplot as plt
 from skimage.segmentation import mark_boundaries
 from skimage import color
 
-JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
+# JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
-# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 
 
 class TestEvaluation(unittest.TestCase):
@@ -78,7 +78,7 @@ class TestEvaluation(unittest.TestCase):
 
         if tag == "Tumor":
             # select = ["Tumor_{:0>3d}".format(i) for i in range(1,112)]
-            select = ["Tumor_{:0>3d}".format(i) for i in range(1,20)]
+            select = ["Tumor_{:0>3d}".format(i) for i in [20,29,33,61,89,95]]
             eval.calculate_ROC("Train_Tumor", tag=64, chosen=select, p_thresh=0.5)
         elif tag == "Test":
 
@@ -120,6 +120,6 @@ class TestEvaluation(unittest.TestCase):
         eval = Evaluation(c)
 
         mask_folder = "{}/data/true_masks".format(c.PROJECT_ROOT)
-        result_folder = "{}/results/csv_5".format(c.PROJECT_ROOT)
+        result_folder = "{}/results/csv_2".format(c.PROJECT_ROOT)
 
-        eval.evaluation_FROC(mask_folder, result_folder)
+        eval.evaluation_FROC(mask_folder, result_folder, level = 7)

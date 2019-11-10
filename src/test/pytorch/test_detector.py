@@ -291,7 +291,7 @@ class Test_detector(unittest.TestCase):
         # train set
         # train_list = [9, 11, 16, 26, 39, 47, 58, 68, 72, 76]
         # train_list = [11, 16, 26, 39, 47, 58, 68, 72, 76]
-        train_list = [98]  # [1,2,3,4,5,6,7,8,10,12,13,14,15,17,18,19,20]range(27,39)
+        train_list = range(1,112) # [29,33,61,89,95]range(27,39)
         result = {}
         # 如果输出癌变概率图，并进行评估
         enable_evaluate = False
@@ -315,9 +315,10 @@ class Test_detector(unittest.TestCase):
                 x1, y1, x2, y2 = detector.get_detection_rectangle()
                 print("x1, y1, x2, y2: ", x1, y1, x2, y2)
 
-            history = detector.process(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
-                                       max_iter_nums=20, batch_size=100,
-                                       limit_sampling_density=2, enhanced=True)
+            history = detector.adaptive_detect(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
+                                               max_iter_nums=20, batch_size=100,
+                                               limit_sampling_density=1, enhanced=True,
+                                               superpixel_area=1000, superpixels_boundaries_spacing=120)
 
             detector.save_result_history(x1, y1, x2, y2, 1.25, history)
 
@@ -337,9 +338,9 @@ class Test_detector(unittest.TestCase):
                 # 存盘输出部分
                 # self.show_results(cancer_map, dice, false_positive_rate, history, levels, mask_img, roc_auc, slice_id,
                 #                   src_img, true_positive_rate)
-                save_path = "{}/results/cancer_pic".format(c.PROJECT_ROOT)
-                Evaluation.save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels,
-                                               save_path)
+                # save_path = "{}/results/cancer_pic".format(c.PROJECT_ROOT)
+                # Evaluation.save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels,
+                #                                save_path)
                 # detector.save_result_xml(x1, y1, 1.25, cancer_map, levels)
 
         for slice, (auc, dices) in result.items():
@@ -609,8 +610,8 @@ class Test_detector(unittest.TestCase):
                 print("x1, y1, x2, y2: ", x1, y1, x2, y2)
 
             history = detector.adaptive_detect(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
-                                               max_iter_nums=10, batch_size=100,
-                                               limit_sampling_density=1, enhanced=False,
+                                               max_iter_nums=20, batch_size=100,
+                                               limit_sampling_density=1, enhanced=True,
                                                superpixel_area=1000, superpixels_boundaries_spacing=120)
 
             detector.save_result_history(x1, y1, x2, y2, 1.25, history)

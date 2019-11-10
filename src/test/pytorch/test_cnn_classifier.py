@@ -18,6 +18,9 @@ from pytorch.image_dataset import Image_Dataset
 import pandas as pd
 from pytorch.elastic_classifier import Elastic_Classifier
 
+import warnings
+warnings.filterwarnings('ignore')
+
 # JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
 JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
 # JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
@@ -299,15 +302,15 @@ class Test_cnn_classifier(unittest.TestCase):
         sample_name = "2040_256"
 
         samples = [("P0619","T1_P0619_4000_2000_256"),  # 平衡样本集
-                    ]
+                    ("P0619","T2_P0619_4000_2000_256"),]
         cnn = DMC_Classifier(c, model_name, sample_name)
 
-        # cnn.train_model(samples_name=samples[0], class_weight=None,
-        #                 batch_size=20, epochs = 10)
+        cnn.train_model(samples_name=samples[1], class_weight=None,
+                        batch_size=20, epochs = 10)
         # cnn.train_model_A2(samples_name=samples[0], class_weight=None,
         #                 batch_size=20, loss_weight=0.001, epochs = 5)
-        cnn.train_model_A3(samples_name=samples[0], class_weight=None,
-                        batch_size=30, loss_weight=0.001, epochs = 5)
+        # cnn.train_model_A3(samples_name=samples[1], class_weight=None,
+        #                 batch_size=20, loss_weight=0.001, epochs = 5)
 
     def test_speed(self):
         c = Params()

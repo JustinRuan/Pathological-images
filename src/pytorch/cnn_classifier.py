@@ -916,7 +916,8 @@ class DMC_Classifier(BaseClassifier):
         :return: 网络模型
         '''
         net_file = {
-            "dsc_densenet_40_2040_256":"dsc_densenet_40_2040_256_cp-0016-0.0738-0.9724-0.9702-0.9521.pth"
+            "dsc_densenet_40_2040_256":"dsc_densenet_40_2040_256_cp-0016-0.0738-0.9724-0.9702-0.9521.pth",
+            # "dsc_densenet_40_2040_256":"dscp_densenet_40_2040_256_cp-0005-0.1717-0.9264-0.9323-0.8836.pth",
         }
 
         model_code = "{}_{}".format(self.model_name, self.patch_type)
@@ -978,8 +979,8 @@ class DMC_Classifier(BaseClassifier):
             loss_func.to(self.device)
 
         # optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay = 1e-4) #学习率为0.01的学习器
-        optimizer_x2040 = torch.optim.Adam(model.parameters(), lr=1e-3)
-        optimizer_xDS = torch.optim.Adam(model.parameters(), lr=1e-3)
+        optimizer_x2040 = torch.optim.Adam(model.parameters(), lr=1e-4)
+        optimizer_xDS = torch.optim.Adam(model.parameters(), lr=1e-4)
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay = 0.001)
         # optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-3, alpha=0.99, weight_decay = 0.001)
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # 每过30个epoch训练，学习率就乘gamma

@@ -65,26 +65,26 @@ class CancerMapBuilder(object):
         p_count = len(positive_part)
         if p_count > 100:
             contamination = 0.1
+            ift = IsolationForest(behaviour='new', max_samples='auto', contamination=contamination)
+            y = ift.fit_predict(positive_part)
+            outliers = positive_part[y == -1]
         else:
-            return 0.5, 0.5
-
-        ift = IsolationForest(behaviour='new', max_samples='auto', contamination=contamination)
-        y = ift.fit_predict(positive_part)
-        outliers = positive_part[y == -1]
+            outliers = positive_part
 
         clustering = KMeans(n_clusters=2, max_iter=100, tol=1e-4, random_state=None).fit(outliers)
 
         cluster_centers = clustering.cluster_centers_.ravel()
         dist = abs(cluster_centers[0] - cluster_centers[1])
+        if cluster_centers[0] < cluster_centers[1]:
+            left_id,  right_id= 0, 1
+        else:
+            left_id, right_id = 1, 0
 
         if dist >= 1.0:
-            if cluster_centers[0] < cluster_centers[1]:
-                left_part = outliers[clustering.labels_ == 0]
-                right_part = outliers[clustering.labels_ == 1]
-            else:
-                left_part = outliers[clustering.labels_ == 1]
-                right_part = outliers[clustering.labels_ == 0]
+            left_part = outliers[clustering.labels_ == left_id]
+            right_part = outliers[clustering.labels_ == right_id]
 
+            # low_thresh = np.mean(left_part)
             low_thresh = np.max(left_part)
             high_thresh = np.min(right_part)
 
@@ -92,35 +92,22 @@ class CancerMapBuilder(object):
             high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
             return low_prob_thresh, high_prob_thresh
         else:
-            f =  0.5 * (cluster_centers[0] + cluster_centers[1])
-            low_prob_thresh = 1 / (1 + np.exp(-f))
-            return low_prob_thresh, low_prob_thresh
+            f =  0.5 * (cluster_centers[left_id] + cluster_centers[right_id])
+            high_prob_thresh = 1 / (1 + np.exp(-f))
+            low_prob_thresh = 1 / (1 + np.exp(-t))
+            return low_prob_thresh, high_prob_thresh
 
     # @staticmethod
-    # def calc_probability_threshold2(history):
+    # def calc_probability_threshold(history, t = 0):
     #     value = np.array(list(history.values()))
-    #     all_part = np.reshape(value, (-1,1))
-    #
-    #     np_clustering = KMeans(n_clusters=2, max_iter=100, tol=1e-4, random_state=None).fit(all_part)
-    #     np_centers = np_clustering.cluster_centers_.ravel()
-    #
-    #     small_positive = np.sign(np_centers[0]) == np.sign(np_centers[1])
-    #     if small_positive:
-    #         return 0.5
-    #     else:
-    #         if np_centers[0] > 0:
-    #             pos_id = 0
-    #         else:
-    #             pos_id = 1
-    #
-    #         positive_part = value[np_clustering.labels_ == pos_id]
-    #         positive_part = np.reshape(positive_part, (-1,1))
+    #     tag = value > t
+    #     positive_part = np.reshape(value[tag], (-1, 1))
     #
     #     p_count = len(positive_part)
-    #     if p_count > 100:
+    #     if p_count > 40:
     #         contamination = 0.1
     #     else:
-    #         return np.max(np.min(positive_part), 0.4)
+    #         return 0.5, 0.5
     #
     #     ift = IsolationForest(behaviour='new', max_samples='auto', contamination=contamination)
     #     y = ift.fit_predict(positive_part)
@@ -134,16 +121,41 @@ class CancerMapBuilder(object):
     #     if cluster_centers[0] < cluster_centers[1]:
     #         left_part = outliers[clustering.labels_ == 0]
     #         right_part = outliers[clustering.labels_ == 1]
+    #         right_id = 1
     #     else:
     #         left_part = outliers[clustering.labels_ == 1]
     #         right_part = outliers[clustering.labels_ == 0]
+    #         right_id = 0
     #
-    #     low_thresh = np.max(left_part)
-    #     # high_thresh = np.min(right_part)
+    #     low_thresh = np.min(right_part)
+    #     high_thresh = cluster_centers[right_id]
     #
     #     low_prob_thresh = 1 / (1 + np.exp(-low_thresh))
-    #     # high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
-    #     return low_prob_thresh
+    #     high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
+    #     return low_prob_thresh, high_prob_thresh
+
+        # if dist >= 1.0:
+        #     if cluster_centers[0] < cluster_centers[1]:
+        #         left_part = outliers[clustering.labels_ == 0]
+        #         right_part = outliers[clustering.labels_ == 1]
+        #     else:
+        #         left_part = outliers[clustering.labels_ == 1]
+        #         right_part = outliers[clustering.labels_ == 0]
+        #
+        #     low_thresh = np.max(left_part)
+        #     high_thresh = np.min(right_part)
+        #
+        #     low_prob_thresh = 1 / (1 + np.exp(-low_thresh))
+        #     high_prob_thresh = 1 / (1 + np.exp(-high_thresh))
+        #     return low_prob_thresh, high_prob_thresh
+        # else:
+        #     max_value = np.amax(outliers)
+        #     min_value = np.amin(outliers)
+        #     f =  0.5 * (cluster_centers[0] + cluster_centers[1])
+        #     low_prob_thresh = 1 / (1 + np.exp(-0.5 * (f + min_value)))
+        #     high_prob_thresh = 1 / (1 + np.exp(-0.5 * (f + max_value)))
+        #     return low_prob_thresh, high_prob_thresh
+
 
 class Slide_CNN(nn.Module):
 
@@ -573,6 +585,33 @@ class SlideFilter(object):
             avg_prob = 0.5 * (old_prob + new_prob)
             result[(x, y)] = - np.log(1/avg_prob - 1)
         return result
+
+    def summary_history(self, dir):
+        project_root = self._params.PROJECT_ROOT
+        save_path = "{}/results/{}".format(project_root, dir)
+
+        K = len("_history.npz")
+        result = {}
+        for result_file in os.listdir(save_path):
+            ext_name = os.path.splitext(result_file)[1]
+            slice_id = result_file[:-K]
+
+            if ext_name == ".npz" and "_history.npz" in result_file:
+                # print("loading data : {}".format(slice_id))
+                result = np.load("{}/{}".format(save_path, result_file), allow_pickle=True)
+                x1 = result["x1"]
+                y1 = result["y1"]
+                x2 = result["x2"]
+                y2 = result["y2"]
+                coordinate_scale = result["scale"]
+                assert coordinate_scale == 1.25, "Scale is Error!"
+
+                history = result["history"].item()
+
+                count = len(history.keys())
+                area = (y2 - y1) * (x2 - x1)
+                print("{}\t{}\t{}".format(slice_id, area, count))
+
 
 class Sparse_Image_Dataset(Dataset):
     def __init__(self, x_set, y_set):
