@@ -22,8 +22,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # JSON_PATH = "D:/CloudSpace/WorkSpace/PatholImage/config/justin2.json"
-JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
-# JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
+# JSON_PATH = "E:/Justin/WorkSpace/PatholImage/config/justin_m.json"
+JSON_PATH = "H:/Justin/PatholImage/config/justin3.json"
 
 class Test_cnn_classifier(unittest.TestCase):
 
@@ -325,6 +325,9 @@ class Test_cnn_classifier(unittest.TestCase):
         cnn.evaluate_model(samples_name=samples[0], model_file=None, batch_size=100)
         # i5-7500, GTX 1060 6G
         # acc, acc20, acc40, speed，len: 0.9723953695458593 0.9702034385916843 0.9520515103774231 235.46774193548387 14599
+
+        # i7-8700，GTX 1080 8G
+        # acc, acc20, acc40, speed: 0.9723953695458593 0.9702034385916843 0.9520515103774231 286.2549019607843
 
     def test_class_centers(self):
         c = Params()

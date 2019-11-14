@@ -39,25 +39,38 @@ class BasePredictor(object):
             y.extend(label_data)
             np.savez_compressed(filename, x=x, y=y, )
 
-    def save_model(self, clf, typename, X_test, y_test):
+    def save_model(self, clf,typename, X_train, y_train, X_test, y_test):
         print(clf)
+        y_pred = clf.predict_proba(X_train)
+        prob = y_pred[:,1]
+
+        false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(y_train, prob)
+        train_roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
+
+        y_train[y_train == -1] = 0 # for S3VM
+        pred = prob > 0.5
+        accu = metrics.accuracy_score(y_train,pred)
+        recall = metrics.recall_score(y_train,pred)
+        f1 = metrics.f1_score(y_train,pred)
+        print("Train roc auc  = {:.4f}, accu = {:.4f}, recall = {:.4f}, f1 = {:.4f}".format(train_roc_auc,accu, recall, f1), )
+
         y_pred = clf.predict_proba(X_test)
         prob = y_pred[:,1]
 
         false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(y_test, prob)
-        roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
+        test_roc_auc = metrics.auc(false_positive_rate, true_positive_rate)
 
         y_test[y_test == -1] = 0 # for S3VM
         pred = prob > 0.5
         accu = metrics.accuracy_score(y_test,pred)
         recall = metrics.recall_score(y_test,pred)
         f1 = metrics.f1_score(y_test,pred)
-        print("roc auc  = {:.4f}, accu = {:.4f}, recall = {:.4f}, f1 = {:.4f}".format(roc_auc,accu, recall, f1), )
+        print("Test roc auc  = {:.4f}, accu = {:.4f}, recall = {:.4f}, f1 = {:.4f}".format(test_roc_auc,accu, recall, f1), )
 
-        if roc_auc > 0.8:
+        if train_roc_auc > 0.98 and test_roc_auc > 0.98:
             model_file = self._params.PROJECT_ROOT + "/models/{}_{}_{:.4f}_{:.4f}.model".format(self.predictor_name,
                                                                                                 typename,
-                                                                                                roc_auc,
+                                                                                                test_roc_auc,
                                                                                                 accu)
             joblib.dump(clf, model_file)
             print("saved : ", model_file)
@@ -73,7 +86,7 @@ class BasePredictor(object):
         filename = "{}/data/{}".format(self._params.PROJECT_ROOT, test_filename)
         result = np.load(filename, allow_pickle=True)
         if mode == 1:
-            rand = random.randint(1, 100)
+            rand = random.randint(1, 10000)
             # rand = 100
             print("rand", rand)
             x = np.append(x, result["x"], axis=0)
@@ -84,6 +97,12 @@ class BasePredictor(object):
             tx = result["x"]
             ty = result["y"]
             X_train, X_test, y_train, y_test = x, tx, y, ty
+        elif mode==3:
+            rand = random.randint(1, 100)
+            # rand = 100
+            print("rand", rand)
+            X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2,
+                                                              random_state=rand)
         else:
             tx = result["x"]
             ty = result["y"]
@@ -99,7 +118,7 @@ class SlidePredictor(BasePredictor):
         super(SlidePredictor, self).__init__(params, "slide_predictor")
         self.model = None
 
-    def extract_slide_features(self, tag =0, normal_names = None, tumor_names = None):
+    def extract_slide_features(self, tag =0, normal_names = None, tumor_names = None, DIM = 5):
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
 
@@ -130,7 +149,7 @@ class SlidePredictor(BasePredictor):
                 assert coordinate_scale == 1.25, "Scale is Error!"
 
                 history = result["history"].item()
-                feature = self.calculate_slide_features(history, x1, y1, x2, y2)
+                feature = self.calculate_slide_features(history, x1, y1, x2, y2, DIM)
 
                 print(slice_id, ":\t", feature)
 
@@ -143,7 +162,7 @@ class SlidePredictor(BasePredictor):
 
         return feature_data, label_data
 
-    def calculate_slide_features(self, history, x1, y1, x2, y2):
+    def calculate_slide_features(self, history, x1, y1, x2, y2, DIM = 5):
         mode = 2
         if mode == 1: # by cancer map
             cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
@@ -159,7 +178,7 @@ class SlidePredictor(BasePredictor):
 
         data = data[data >=0.5]
 
-        DIM = 5
+        # DIM = 18
         L = len(data)
         if L > 0:
             max_prob = np.max(data)
@@ -170,39 +189,6 @@ class SlidePredictor(BasePredictor):
         else:
             return np.zeros((DIM,))
 
-    # def train_svm(self,file_name, test_name):
-    #     X_test, X_train, y_test, y_train = self.read_data(file_name, test_name, mode=1)
-    #
-    #     max_iter = 5000
-    #     model_params = [{'C': 0.0001}, {'C': 0.001}, {'C': 0.01}, {'C': 0.1},
-    #                     {'C': 0.5}, {'C': 1.0}, {'C': 1.2}, {'C': 1.5},
-    #                     {'C': 2.0}, {'C': 10.0},]
-    #
-    #     result = {'pred': None, 'score': 0, 'clf': None}
-    #
-    #     feature_num = len(X_train[0])
-    #     for params in model_params:
-    #         # 'linear', 'poly', 'rbf', 'sigmoid'
-    #         clf = svm.SVC(**params,kernel='linear', class_weight={0:1, 1:1}, probability=True, gamma=1e-1,
-    #                       max_iter=max_iter, verbose=0, ) # class_weight='balanced', class_weight={0:1, 1:1}
-    #         clf.fit(X_train, y_train)
-    #         y_pred = clf.predict(X_train)
-    #         score = metrics.accuracy_score(y_train, y_pred)
-    #         print('feature num = {}, C={:8f} => score={:5f}'.format(feature_num, params['C'], score))
-    #
-    #         if score > result["score"]:
-    #             result = {'pred': y_pred, 'score': score, 'clf': clf}
-    #
-    #     print("the best score = {}".format(result["score"]))
-    #
-    #     target_names = ['normal', 'cancer']
-    #     report = metrics.classification_report(y_train, result["pred"], target_names=target_names, digits = 4, output_dict=True)
-    #     print("Confusion matrix:\n%s" % metrics.confusion_matrix(y_train, result["pred"]))
-    #
-    #     self.save_model(result["clf"], "linearsvm", X_test, y_test)
-    #
-    #     return
-
     def train_test(self, file_name, test_name):
         X_test, X_train, y_test, y_train = self.read_data(file_name,test_name, mode = 1)
 
@@ -210,7 +196,7 @@ class SlidePredictor(BasePredictor):
         clf = naive_bayes.MultinomialNB(alpha=0.01)
         clf.fit(X_train, y_train)
 
-        self.save_model(clf, "MNB", X_test, y_test)
+        self.save_model(clf, "MNB", X_train, y_train, X_test, y_test)
 
     def train_s3vm(self,file_name, test_name):
         X_test, X_train, y_test, y_train = self.read_data(file_name, test_name, mode=1)
@@ -236,7 +222,7 @@ class SlidePredictor(BasePredictor):
                                           batch_size=2000,
                                           rdm=rdm)
 
-        self.save_model(lagr_s3vc, "S3VM", X_test, y_test)
+        self.save_model(lagr_s3vc, "S3VM", X_train, y_train, X_test, y_test)
 
     def data_augment(self, file_name, output_filename, count):
         def merge(fa, fb):
@@ -314,7 +300,7 @@ class SlidePredictor(BasePredictor):
               % (grid.best_params_, grid.best_score_))
 
         clf = grid.best_estimator_
-        self.save_model(clf, "linearsvm", X_test, y_test)
+        self.save_model(clf, "linearsvm", X_train, y_train, X_test, y_test)
 
         return
 

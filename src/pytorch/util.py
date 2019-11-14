@@ -50,47 +50,6 @@ def get_image_blocks_itor(src_img, fScale, seeds, nWidth, nHeight, batch_size, n
         yield img_tensor
 
 
-# def get_image_blocks_batch_normalize_itor(src_img, fScale, seeds, nWidth, nHeight, batch_size, normalization):
-#     '''
-#     获得以种子点为图块的迭代器，使用全部种子点图块的归一化参数计算和归一化过程
-#     :param src_img: 切片图像
-#     :param fScale: 倍镜数
-#     :param seeds: 中心点集合
-#     :param nWidth: 图块的宽
-#     :param nHeight: 图块的高
-#     :param batch_size: 每批的数量
-#     :param normalization: 归一化算法 的类
-#     :return: 返回图块集合的迭代器
-#     '''
-#     assert normalization is not None, "Normalization is None!"
-#
-#     images = []
-#     for x, y in seeds:
-#         block = src_img.get_image_block(fScale, x, y, nWidth, nHeight)
-#         img = block.get_img()
-#         images.append(img)
-#
-#     normalization.prepare(images)
-#     norm_images = normalization.normalize_on_batch(images)
-#
-#     transform = torchvision.transforms.ToTensor()
-#     images = []
-#     n = 0
-#     for img in norm_images:
-#         tmp_img = transform(img).type(torch.FloatTensor)
-#         images.append(tmp_img)
-#         n = n + 1
-#         if n >= batch_size:
-#             img_tensor = torch.stack(images)
-#             yield img_tensor
-#
-#             images = []
-#             n = 0
-#
-#     if n > 0:
-#         img_tensor = torch.stack(images)
-#         yield img_tensor
-
 def get_image_blocks_batch_normalize_itor(src_img, fScale, seeds, nWidth, nHeight, batch_size, normalization, dynamic_update):
     '''
     获得以种子点为图块的迭代器，使用每批次图块的归一化参数计算和归一化过程

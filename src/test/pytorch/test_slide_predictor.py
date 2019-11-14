@@ -23,9 +23,9 @@ class TestSlidePredictor(unittest.TestCase):
 
         Tumor_names = ["Tumor_{:0>3d}".format(i) for i in range(1, 112)] # 1, 112
         Normal_names = ["Normal_{:0>3d}".format(i) for i in range(1, 161)] # 1, 161
-
-        feature_data, label_data = sp.extract_slide_features(tag=0, normal_names=Normal_names, tumor_names=Tumor_names)
-        sp.save_train_data(feature_data, label_data, filename="slide_predictor_data_h5.npz", append=False)
+        dim = 18
+        feature_data, label_data = sp.extract_slide_features(tag=0, normal_names=Normal_names, tumor_names=Tumor_names, DIM=dim)
+        sp.save_train_data(feature_data, label_data, filename="slide_predictor_data_h{}.npz".format(dim), append=False)
 
     def test_train_svm(self):
         c = Params()
@@ -48,9 +48,9 @@ class TestSlidePredictor(unittest.TestCase):
                  82, 84, 90, 94, 97, 99, 102, 104, 105, 108, 110, 113, 116, 117, 121, 122]
         Tumor_names = ["Test_{:0>3d}".format(i) for i in Tumor]
         Normal_names = ["Test_{:0>3d}".format(i) for i in Noraml]
-
-        feature_data, label_data = sp.extract_slide_features(tag=0, normal_names=Normal_names, tumor_names=Tumor_names)
-        sp.save_train_data(feature_data, label_data, filename="slide_predictor_testdata_h5.npz", append=False)
+        dim = 18
+        feature_data, label_data = sp.extract_slide_features(tag=0, normal_names=Normal_names, tumor_names=Tumor_names, DIM=dim)
+        sp.save_train_data(feature_data, label_data, filename="slide_predictor_testdata_h{}.npz".format(dim), append=False)
 
 
     def test_train_test(self):

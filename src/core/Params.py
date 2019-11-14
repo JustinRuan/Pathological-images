@@ -10,15 +10,10 @@ import json
 from core.util import get_project_root
 
 # # 注意设置 项目的工作目录为src的上一级目录
-# CONFIG_PATH = os.getcwd() + "\\config\\"
-
 
 class Params(object):
     def __init__(self):
-        # self.EXTRACT_SCALE = 0
         self.GLOBAL_SCALE = 0
-        # self.PATCH_SIZE_HIGH = 0
-        # self.PATCH_SIZE_LOW = 0
 
     def load_config_file(self, filename):
         '''
@@ -33,7 +28,7 @@ class Params(object):
 
         self.KFB_SDK_PATH = data[1]['KFB_SDK_PATH']
         self.SLICES_ROOT_PATH = data[1]['SLICES_ROOT_PATH']
-        # self.PATCHS_ROOT_PATH = data[1]['PATCHS_ROOT_PATH']
+
         self.PROJECT_ROOT = get_project_root()
 
         self.PATCHS_ROOT_PATH = dict(data[2])
@@ -70,3 +65,19 @@ class Params(object):
             json.dump(data, f)
 
         return
+
+    def load_param(self, GLOBAL_SCALE, SLICES_ROOT_PATH, PATCHS_DICT, NUM_WORKERS):
+        '''
+        参数加载
+        :param GLOBAL_SCALE: 全局视野下所使用的倍镜数，x1.25 = Level 5，x20 = Level 1， x40 = Level 0
+        :param SLICES_ROOT_PATH: WSI切片所在的目录
+        :param PATCHS_DICT: 训练集所在的目录
+        :param NUM_WORKERS: CPU的工作线程数
+        :return:
+        '''
+        self.GLOBAL_SCALE = GLOBAL_SCALE
+        self.SLICES_ROOT_PATH = SLICES_ROOT_PATH
+        self.PROJECT_ROOT = get_project_root()
+        self.PATCHS_ROOT_PATH = PATCHS_DICT
+        self.NUM_WORKERS = NUM_WORKERS
+

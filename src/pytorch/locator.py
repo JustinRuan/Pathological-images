@@ -6,68 +6,21 @@ __mtime__ = '2019-06-18'
 
 """
 
-import numpy as np
-import os
-from skimage import measure
-from skimage.measure import find_contours, approximate_polygon, \
-    subdivide_polygon
-from sklearn import metrics
-from skimage import morphology
 import csv
-from core import *
-from sklearn import svm
-from sklearn.model_selection import train_test_split
-import joblib
-from skimage.morphology import extrema, local_maxima, square
-from skimage import filters, transform
-from pytorch.cancer_map import CancerMapBuilder
+import os
+
+import numpy as np
 from scipy.spatial import distance
-from sklearn.cluster import KMeans
-from skimage import filters
+from skimage.morphology import extrema, square
+
+from pytorch.cancer_map import CancerMapBuilder
 from pytorch.slide_predictor import BasePredictor
-from sklearn.model_selection import GridSearchCV
 from pytorch.slide_predictor import SlidePredictor
+
 
 class Locator(BasePredictor):
     def __init__(self, params):
         super(Locator, self).__init__(params, "Locator")
-
-    # def output_result_csv(self, sub_path, tag, chosen = None):
-    #     '''
-    #     生成用于FROC检测用的CSV文件
-    #     :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
-    #     :return:
-    #     '''
-    #     project_root = self._params.PROJECT_ROOT
-    #     save_path = "{}/results".format(project_root)
-    #
-    #     if tag == 0:
-    #         code = "_history.npz"
-    #     else:
-    #         code = "_history_v{}.npz".format(tag)
-    #
-    #     K = len(code)
-    #
-    #     for result_file in os.listdir(save_path):
-    #         ext_name = os.path.splitext(result_file)[1]
-    #         slice_id = result_file[:-K]
-    #         if chosen is not None and slice_id not in chosen:
-    #             continue
-    #
-    #         if ext_name == ".npz" and code in result_file:
-    #             history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id)
-    #
-    #             candidated_result = self.search_local_extremum_points_fusion(history, label_map, x1, y1, x2, y2)
-    #             print("count =", len(candidated_result))
-    #
-    #             csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
-    #             with open(csv_filename, 'w', newline='')as f:
-    #                 f_csv = csv.writer(f)
-    #                 for item in candidated_result:
-    #                     f_csv.writerow([item["prob"], item["x"], item["y"]])
-    #
-    #             print("完成 ", slice_id)
-    #     return
 
     def output_result_csv(self, sub_path, tag, chosen = None):
         '''
@@ -101,8 +54,6 @@ class Locator(BasePredictor):
 
                 candidated_result = []
                 if is_Tumor:
-                    # candidated_result = self.search_local_extremum_points_fusion(history, label_map, x1, y1, x2, y2)
-                    # candidated_result = self.search_local_extremum_points(history, x1, y1, x2, y2)
                     candidated_result = self.search_local_extremum_points_max3(history, x1, y1, x2, y2)
 
                 print("candidated count =", len(candidated_result))
@@ -113,48 +64,7 @@ class Locator(BasePredictor):
                     for item in candidated_result:
                         f_csv.writerow([item["prob"], item["x"], item["y"]])
 
-                print("完成 ", slice_id)
-        return
-
-    def output_result_csv_method2(self, sub_path, tag, chosen = None):
-        '''
-        生成用于FROC检测用的CSV文件
-        :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
-        :return:
-        '''
-        project_root = self._params.PROJECT_ROOT
-        save_path = "{}/results".format(project_root)
-
-        model_file = self._params.PROJECT_ROOT + "/models/Locator_svm_0.8536_0.7725.model"
-
-        clf = joblib.load(model_file)
-
-        if tag == 0:
-            code = "_history.npz"
-        else:
-            code = "_history_v{}.npz".format(tag)
-
-        K = len(code)
-
-        for result_file in os.listdir(save_path):
-            ext_name = os.path.splitext(result_file)[1]
-            slice_id = result_file[:-K]
-            if chosen is not None and slice_id not in chosen:
-                continue
-
-            if ext_name == ".npz" and code in result_file:
-                history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id)
-
-                candidated_result = self.search_local_extremum_points_predict(clf, history, label_map, x1, y1, x2, y2)
-                print("count =", len(candidated_result))
-
-                csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
-                with open(csv_filename, 'w', newline='')as f:
-                    f_csv = csv.writer(f)
-                    for item in candidated_result:
-                        f_csv.writerow([item["prob"], item["x"], item["y"]])
-
-                print("完成 ", slice_id)
+                print("Completed ", slice_id)
         return
 
     def load_history_labelmap(self, result_file, slice_id, is_load_label_map = True):
@@ -200,69 +110,6 @@ class Locator(BasePredictor):
 
         return mask_img
 
-
-    def search_local_extremum_points_max2(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
-        # for train set: t,c,h = -0.5, 50, 0.02
-        t_thresh = 0  # -0.5
-        c_thresh = 50  # 50
-        h_param = 0.02 # 0.02
-        low_prob_thresh, high_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t = t_thresh)
-        print("low_prob_thresh = {:.4f}, high_prob_thresh = {:.4f}".format(low_prob_thresh, high_prob_thresh))
-
-        cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
-        cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
-                                                    self._params.GLOBAL_SCALE)
-
-        # cancer_map = filters.gaussian(cancer_map, sigma=0.2)
-
-        h = h_param
-        h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
-        xy = np.nonzero(h_maxima)
-
-        sorted_points = []
-        for y, x in zip(xy[0], xy[1]):
-            prob = cancer_map[y, x]
-            if prob > low_prob_thresh:
-                sorted_points.append((prob, x, y))
-        sorted_points.sort(key=lambda x: (x[0]), reverse=True)
-
-        resolution = 0.243
-        level = 5
-        Threshold = 3 * 75 / (resolution * pow(2, level) * 2) # 3
-        result = []
-        while len(sorted_points) > 0:
-            m = sorted_points.pop(0)
-            mx = m[1]
-            my = m[2]
-            mprob = m[0]
-            tx = [mx]
-            ty = [my]
-            temp = []
-            for prob, x, y in sorted_points:
-                dist = distance.euclidean([mx, my], [x, y])
-                # if dist > Threshold or mprob - prob > 0.15:
-                if dist > Threshold:
-                    temp.append((prob, x, y))
-                else:
-                    tx.append(x)
-                    ty.append(y)
-
-            mx = np.rint(np.mean(np.array(tx))).astype(np.int)
-            my = np.rint(np.mean(np.array(ty))).astype(np.int)
-
-            result.append((mprob, mx, my))
-            sorted_points = temp
-
-        candidated = []
-        count = 0
-        for prob, x, y in result:
-            if prob > high_prob_thresh or (prob > low_prob_thresh and count < c_thresh):
-                x = x + x_letftop
-                y = y + y_lefttop
-                candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
-                count += 1
-
-        return candidated
     def search_local_extremum_points_max3(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
         # for train set: t,c,h = -0.5, 50, 0.02
         t_thresh = 0  # -0.5
@@ -324,175 +171,6 @@ class Locator(BasePredictor):
                 y = y + y_lefttop
                 candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
                 count += 1
-
-        return candidated
-
-    # def search_local_extremum_points_max3(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
-    #     # for train set: t,c,h = -0.5, 50, 0.02
-    #     t_thresh = -0.2  # -0.5
-    #     c_thresh = 50  # 50
-    #     h_param = 0.02 # 0.02
-    #     low_prob_thresh, high_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t = t_thresh)
-    #     print("low_prob_thresh = {:.4f}, high_prob_thresh = {:.4f}".format(low_prob_thresh, high_prob_thresh))
-    #
-    #     cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
-    #     cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
-    #                                                 self._params.GLOBAL_SCALE)
-    #
-    #     # cancer_map = filters.gaussian(cancer_map, sigma=0.2)
-    #
-    #     h = h_param
-    #     h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
-    #     xy = np.nonzero(h_maxima)
-    #
-    #     sorted_points = []
-    #     for y, x in zip(xy[0], xy[1]):
-    #         prob = cancer_map[y, x]
-    #         if prob > low_prob_thresh:
-    #             sorted_points.append((prob, x, y))
-    #     sorted_points.sort(key=lambda x: (x[0]), reverse=True)
-    #
-    #     resolution = 0.243
-    #     level = 5
-    #     Threshold = 3 * 75 / (resolution * pow(2, level) * 2) # 3
-    #     result = []
-    #     while len(sorted_points) > 0:
-    #         m = sorted_points.pop(0)
-    #         mx = m[1]
-    #         my = m[2]
-    #         mprob = m[0]
-    #         tx = [mx]
-    #         ty = [my]
-    #         temp = []
-    #         for prob, x, y in sorted_points:
-    #             dist = distance.euclidean([mx, my], [x, y])
-    #             if dist > Threshold:
-    #                 temp.append((prob, x, y))
-    #             else:
-    #                 tx.append(x)
-    #                 ty.append(y)
-    #
-    #         mx = np.rint(np.mean(np.array(tx))).astype(np.int)
-    #         my = np.rint(np.mean(np.array(ty))).astype(np.int)
-    #
-    #         result.append((mprob, mx, my))
-    #         sorted_points = temp
-    #
-    #     result.sort(key=lambda x: (x[0]), reverse=True)
-    #
-    #     candidated = []
-    #     count = 0
-    #     for prob, x, y in result:
-    #         # if prob > high_prob_thresh or (prob > low_prob_thresh and count < c_thresh):
-    #             x = x + x_letftop
-    #             y = y + y_lefttop
-    #             candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
-    #             count += 1
-    #
-    #     return candidated
-
-    # 模式4：
-    def search_local_extremum_points_fusion(self, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
-
-        c_thresh = 50
-
-        low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, 0.5)
-
-        cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
-        cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
-                                                    self._params.GLOBAL_SCALE)
-
-        h = 0.02
-        h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
-        xy = np.nonzero(h_maxima)
-
-        sobel_img = filters.sobel(cancer_map)
-        feat_thresh = 0.5  # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
-        grad_thresh = 0.05
-        f_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
-        g_properties = measure.regionprops(label_map, intensity_image=sobel_img, cache=True, coordinates='rc')
-
-        candidated_region = {}
-        regions_extres = {}
-        for y, x in zip(xy[0], xy[1]):
-            region_id = label_map[y, x]
-            if region_id not in regions_extres.keys():
-                regions_extres[region_id] = (x, y)
-            else:
-                new_prob = cancer_map[y, x]
-                old_x, old_y = regions_extres[region_id]
-                old_prob = cancer_map[old_y, old_x]
-                if new_prob > old_prob:
-                    regions_extres[region_id] = (x, y)
-
-        max_label = np.amax(label_map)
-        print("max label =", max_label,)
-
-        for index in range(1, max_label + 1):
-            if index in regions_extres.keys():
-                x, y = regions_extres[index]
-                candidated_region[index] = (x, y)
-            else:
-                p = f_properties[index - 1]
-                g = g_properties[index - 1]
-                max_prob = p.max_intensity
-                max_grad = g.max_intensity
-                assert p.label == index, "Error: p.label != index"
-                if max_prob >= feat_thresh and max_grad >= grad_thresh:
-                    y, x = p.weighted_centroid
-                    if not (np.isnan(x) or np.isnan(y)):
-                        candidated_region[index] = (int(x), int(y))
-
-        sorted_points = []
-        for x, y in candidated_region.values():
-            prob = cancer_map[y, x]
-            if prob > low_prob_thresh:
-                sorted_points.append((prob, x, y))
-        sorted_points.sort(key=lambda x: (x[0]), reverse=True)
-
-        resolution = 0.243
-        level = 5
-        Threshold = 3 * 75 / (resolution * pow(2, level) * 2)
-        result = []
-        while len(sorted_points) > 0:
-            m = sorted_points.pop(0)
-            mx = m[1]
-            my = m[2]
-            mprob = m[0]
-            tx = [mx]
-            ty = [my]
-            temp = []
-            for prob, x, y in sorted_points:
-                dist = distance.euclidean([mx, my], [x, y])
-                if dist > Threshold or mprob - prob > 0.15:
-                    temp.append((prob, x, y))
-                else:
-                    tx.append(x)
-                    ty.append(y)
-
-            mx = np.rint(np.mean(np.array(tx))).astype(np.int)
-            my = np.rint(np.mean(np.array(ty))).astype(np.int)
-
-            result.append((mprob, mx, my))
-            sorted_points = temp
-
-        candidated = []
-        count = 0
-        for prob, x, y in result:
-            if count < c_thresh:
-                x = x + x_letftop
-                y = y + y_lefttop
-                candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
-                count += 1
-
-
-        # candidated = []
-        # for x, y in candidated_region.values():
-        #     prob = cancer_map[y, x]
-        #     if prob > low_prob_thresh:
-        #         x = x + x_letftop
-        #         y = y + y_lefttop
-        #         candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
 
         return candidated
 
@@ -923,5 +601,304 @@ class Locator(BasePredictor):
     #
     #     return candidated
 
+    # def output_result_csv_method2(self, sub_path, tag, chosen = None):
+    #     '''
+    #     生成用于FROC检测用的CSV文件
+    #     :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
+    #     :return:
+    #     '''
+    #     project_root = self._params.PROJECT_ROOT
+    #     save_path = "{}/results".format(project_root)
+    #
+    #     model_file = self._params.PROJECT_ROOT + "/models/Locator_svm_0.8536_0.7725.model"
+    #
+    #     clf = joblib.load(model_file)
+    #
+    #     if tag == 0:
+    #         code = "_history.npz"
+    #     else:
+    #         code = "_history_v{}.npz".format(tag)
+    #
+    #     K = len(code)
+    #
+    #     for result_file in os.listdir(save_path):
+    #         ext_name = os.path.splitext(result_file)[1]
+    #         slice_id = result_file[:-K]
+    #         if chosen is not None and slice_id not in chosen:
+    #             continue
+    #
+    #         if ext_name == ".npz" and code in result_file:
+    #             history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id)
+    #
+    #             candidated_result = self.search_local_extremum_points_predict(clf, history, label_map, x1, y1, x2, y2)
+    #             print("count =", len(candidated_result))
+    #
+    #             csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
+    #             with open(csv_filename, 'w', newline='')as f:
+    #                 f_csv = csv.writer(f)
+    #                 for item in candidated_result:
+    #                     f_csv.writerow([item["prob"], item["x"], item["y"]])
+    #
+    #             print("完成 ", slice_id)
+    #     return
 
 
+    # def output_result_csv(self, sub_path, tag, chosen = None):
+    #     '''
+    #     生成用于FROC检测用的CSV文件
+    #     :param chosen: 选择哪些切片的结果将都计算，如果为None，则目录下所有的npz对应的结果将被计算
+    #     :return:
+    #     '''
+    #     project_root = self._params.PROJECT_ROOT
+    #     save_path = "{}/results".format(project_root)
+    #
+    #     if tag == 0:
+    #         code = "_history.npz"
+    #     else:
+    #         code = "_history_v{}.npz".format(tag)
+    #
+    #     K = len(code)
+    #
+    #     for result_file in os.listdir(save_path):
+    #         ext_name = os.path.splitext(result_file)[1]
+    #         slice_id = result_file[:-K]
+    #         if chosen is not None and slice_id not in chosen:
+    #             continue
+    #
+    #         if ext_name == ".npz" and code in result_file:
+    #             history, label_map, x1, x2, y1, y2 = self.load_history_labelmap(result_file, slice_id)
+    #
+    #             candidated_result = self.search_local_extremum_points_fusion(history, label_map, x1, y1, x2, y2)
+    #             print("count =", len(candidated_result))
+    #
+    #             csv_filename = "{0}/{1}/{2}.csv".format(save_path,sub_path, slice_id)
+    #             with open(csv_filename, 'w', newline='')as f:
+    #                 f_csv = csv.writer(f)
+    #                 for item in candidated_result:
+    #                     f_csv.writerow([item["prob"], item["x"], item["y"]])
+    #
+    #             print("完成 ", slice_id)
+    #     return
+
+    # def search_local_extremum_points_max3(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+    #     # for train set: t,c,h = -0.5, 50, 0.02
+    #     t_thresh = -0.2  # -0.5
+    #     c_thresh = 50  # 50
+    #     h_param = 0.02 # 0.02
+    #     low_prob_thresh, high_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t = t_thresh)
+    #     print("low_prob_thresh = {:.4f}, high_prob_thresh = {:.4f}".format(low_prob_thresh, high_prob_thresh))
+    #
+    #     cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+    #     cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
+    #                                                 self._params.GLOBAL_SCALE)
+    #
+    #     # cancer_map = filters.gaussian(cancer_map, sigma=0.2)
+    #
+    #     h = h_param
+    #     h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
+    #     xy = np.nonzero(h_maxima)
+    #
+    #     sorted_points = []
+    #     for y, x in zip(xy[0], xy[1]):
+    #         prob = cancer_map[y, x]
+    #         if prob > low_prob_thresh:
+    #             sorted_points.append((prob, x, y))
+    #     sorted_points.sort(key=lambda x: (x[0]), reverse=True)
+    #
+    #     resolution = 0.243
+    #     level = 5
+    #     Threshold = 3 * 75 / (resolution * pow(2, level) * 2) # 3
+    #     result = []
+    #     while len(sorted_points) > 0:
+    #         m = sorted_points.pop(0)
+    #         mx = m[1]
+    #         my = m[2]
+    #         mprob = m[0]
+    #         tx = [mx]
+    #         ty = [my]
+    #         temp = []
+    #         for prob, x, y in sorted_points:
+    #             dist = distance.euclidean([mx, my], [x, y])
+    #             if dist > Threshold:
+    #                 temp.append((prob, x, y))
+    #             else:
+    #                 tx.append(x)
+    #                 ty.append(y)
+    #
+    #         mx = np.rint(np.mean(np.array(tx))).astype(np.int)
+    #         my = np.rint(np.mean(np.array(ty))).astype(np.int)
+    #
+    #         result.append((mprob, mx, my))
+    #         sorted_points = temp
+    #
+    #     result.sort(key=lambda x: (x[0]), reverse=True)
+    #
+    #     candidated = []
+    #     count = 0
+    #     for prob, x, y in result:
+    #         # if prob > high_prob_thresh or (prob > low_prob_thresh and count < c_thresh):
+    #             x = x + x_letftop
+    #             y = y + y_lefttop
+    #             candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+    #             count += 1
+    #
+    #     return candidated
+
+    # 模式4：
+    # def search_local_extremum_points_fusion(self, history, label_map, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+    #
+    #     c_thresh = 50
+    #
+    #     low_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, 0.5)
+    #
+    #     cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+    #     cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
+    #                                                 self._params.GLOBAL_SCALE)
+    #
+    #     h = 0.02
+    #     h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
+    #     xy = np.nonzero(h_maxima)
+    #
+    #     sobel_img = filters.sobel(cancer_map)
+    #     feat_thresh = 0.5  # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
+    #     grad_thresh = 0.05
+    #     f_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
+    #     g_properties = measure.regionprops(label_map, intensity_image=sobel_img, cache=True, coordinates='rc')
+    #
+    #     candidated_region = {}
+    #     regions_extres = {}
+    #     for y, x in zip(xy[0], xy[1]):
+    #         region_id = label_map[y, x]
+    #         if region_id not in regions_extres.keys():
+    #             regions_extres[region_id] = (x, y)
+    #         else:
+    #             new_prob = cancer_map[y, x]
+    #             old_x, old_y = regions_extres[region_id]
+    #             old_prob = cancer_map[old_y, old_x]
+    #             if new_prob > old_prob:
+    #                 regions_extres[region_id] = (x, y)
+    #
+    #     max_label = np.amax(label_map)
+    #     print("max label =", max_label,)
+    #
+    #     for index in range(1, max_label + 1):
+    #         if index in regions_extres.keys():
+    #             x, y = regions_extres[index]
+    #             candidated_region[index] = (x, y)
+    #         else:
+    #             p = f_properties[index - 1]
+    #             g = g_properties[index - 1]
+    #             max_prob = p.max_intensity
+    #             max_grad = g.max_intensity
+    #             assert p.label == index, "Error: p.label != index"
+    #             if max_prob >= feat_thresh and max_grad >= grad_thresh:
+    #                 y, x = p.weighted_centroid
+    #                 if not (np.isnan(x) or np.isnan(y)):
+    #                     candidated_region[index] = (int(x), int(y))
+    #
+    #     sorted_points = []
+    #     for x, y in candidated_region.values():
+    #         prob = cancer_map[y, x]
+    #         if prob > low_prob_thresh:
+    #             sorted_points.append((prob, x, y))
+    #     sorted_points.sort(key=lambda x: (x[0]), reverse=True)
+    #
+    #     resolution = 0.243
+    #     level = 5
+    #     Threshold = 3 * 75 / (resolution * pow(2, level) * 2)
+    #     result = []
+    #     while len(sorted_points) > 0:
+    #         m = sorted_points.pop(0)
+    #         mx = m[1]
+    #         my = m[2]
+    #         mprob = m[0]
+    #         tx = [mx]
+    #         ty = [my]
+    #         temp = []
+    #         for prob, x, y in sorted_points:
+    #             dist = distance.euclidean([mx, my], [x, y])
+    #             if dist > Threshold or mprob - prob > 0.15:
+    #                 temp.append((prob, x, y))
+    #             else:
+    #                 tx.append(x)
+    #                 ty.append(y)
+    #
+    #         mx = np.rint(np.mean(np.array(tx))).astype(np.int)
+    #         my = np.rint(np.mean(np.array(ty))).astype(np.int)
+    #
+    #         result.append((mprob, mx, my))
+    #         sorted_points = temp
+    #
+    #     candidated = []
+    #     count = 0
+    #     for prob, x, y in result:
+    #         if count < c_thresh:
+    #             x = x + x_letftop
+    #             y = y + y_lefttop
+    #             candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+    #             count += 1
+    #
+    #     return candidated
+
+    # def search_local_extremum_points_max2(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+    #     # for train set: t,c,h = -0.5, 50, 0.02
+    #     t_thresh = 0  # -0.5
+    #     c_thresh = 50  # 50
+    #     h_param = 0.02 # 0.02
+    #     low_prob_thresh, high_prob_thresh = CancerMapBuilder.calc_probability_threshold(history, t = t_thresh)
+    #     print("low_prob_thresh = {:.4f}, high_prob_thresh = {:.4f}".format(low_prob_thresh, high_prob_thresh))
+    #
+    #     cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
+    #     cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,
+    #                                                 self._params.GLOBAL_SCALE)
+    #
+    #     # cancer_map = filters.gaussian(cancer_map, sigma=0.2)
+    #
+    #     h = h_param
+    #     h_maxima = extrema.h_maxima(cancer_map, h, selem=square(7))
+    #     xy = np.nonzero(h_maxima)
+    #
+    #     sorted_points = []
+    #     for y, x in zip(xy[0], xy[1]):
+    #         prob = cancer_map[y, x]
+    #         if prob > low_prob_thresh:
+    #             sorted_points.append((prob, x, y))
+    #     sorted_points.sort(key=lambda x: (x[0]), reverse=True)
+    #
+    #     resolution = 0.243
+    #     level = 5
+    #     Threshold = 3 * 75 / (resolution * pow(2, level) * 2) # 3
+    #     result = []
+    #     while len(sorted_points) > 0:
+    #         m = sorted_points.pop(0)
+    #         mx = m[1]
+    #         my = m[2]
+    #         mprob = m[0]
+    #         tx = [mx]
+    #         ty = [my]
+    #         temp = []
+    #         for prob, x, y in sorted_points:
+    #             dist = distance.euclidean([mx, my], [x, y])
+    #             # if dist > Threshold or mprob - prob > 0.15:
+    #             if dist > Threshold:
+    #                 temp.append((prob, x, y))
+    #             else:
+    #                 tx.append(x)
+    #                 ty.append(y)
+    #
+    #         mx = np.rint(np.mean(np.array(tx))).astype(np.int)
+    #         my = np.rint(np.mean(np.array(ty))).astype(np.int)
+    #
+    #         result.append((mprob, mx, my))
+    #         sorted_points = temp
+    #
+    #     candidated = []
+    #     count = 0
+    #     for prob, x, y in result:
+    #         if prob > high_prob_thresh or (prob > low_prob_thresh and count < c_thresh):
+    #             x = x + x_letftop
+    #             y = y + y_lefttop
+    #             candidated.append({"x": 32 * x, "y": 32 * y, "prob": prob})
+    #             count += 1
+    #
+    #     return candidated

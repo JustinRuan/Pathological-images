@@ -6,27 +6,15 @@ __mtime__ = '2018-10-14'
 
 """
 
-import time
 import os
-import shutil
 import random
-from sklearn.svm import SVC
-from sklearn.externals import joblib
-from sklearn import metrics
+
 import numpy as np
-from feature import FeatureExtractor
-from skimage import io
-from sklearn.model_selection import train_test_split
-from core.util import read_csv_file
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import chi2
-from sklearn import preprocessing
-from sklearn.preprocessing import StandardScaler
-from preparation.normalization import HistNormalization
+
 from core.Block import Block
 from core.ImageCone import ImageCone
 from core.open_slide import Open_Slide
-import matplotlib.pyplot as plt
+
 
 class PatchPack(object):
     def __init__(self, params):
@@ -210,55 +198,6 @@ class PatchPack(object):
 
         return data_tag
 
-    # ###############################################################################################################
-    # # Multiple scale combination (MSC)
-    # ###############################################################################################################
-    # def create_train_test_data_MSC(self, scale_tag, data_tag, train_size, test_size, file_tag):
-    #     if (train_size + test_size > 1):
-    #         return
-    #
-    #     dir_x10 = scale_tag[10]
-    #     dir_x20 = scale_tag[20]
-    #     dir_x40 = scale_tag[40]
-    #
-    #     dir_x10_tag = {}
-    #     for key, value in data_tag.items():
-    #         full_dir_x10 = "{}_{}".format(dir_x10, key)
-    #         dir_x10_tag[full_dir_x10] = value
-    #
-    #     data_x10_tag = self.initialize_sample_tags(dir_x10_tag)
-    #     random.shuffle(data_x10_tag)
-    #
-    #     data_x20_tag = self.get_msc_filenames(dir_x10, dir_x20, data_x10_tag, 2)
-    #     data_x40_tag = self.get_msc_filenames(dir_x10, dir_x40, data_x10_tag, 4)
-    #
-    #     new_file_tag = "{}_{}".format(file_tag, dir_x10)
-    #     self.create_train_test_data(data_x10_tag, train_size, test_size, new_file_tag, suffle=False)
-    #
-    #     new_file_tag = "{}_{}".format(file_tag, dir_x20)
-    #     self.create_train_test_data(data_x20_tag, train_size, test_size, new_file_tag, suffle=False)
-    #
-    #     new_file_tag = "{}_{}".format(file_tag, dir_x40)
-    #     self.create_train_test_data(data_x40_tag, train_size, test_size, new_file_tag, suffle=False)
-    #
-    #     return
-    #
-    # def get_msc_filenames(self, scale_x10_tag, scale_other_tag, data_x10_tag, multiple):
-    #     data_tag = []
-    #     temp_block = Block()
-    #     for pathname, tag in data_x10_tag:
-    #         [dirname, filename]=os.path.split(pathname)
-    #         dirname = dirname.replace(scale_x10_tag, scale_other_tag)
-    #         temp_block.decoding(filename, 256, 256)
-    #         temp_block.x = int(multiple * temp_block.x)
-    #         temp_block.y = int(multiple * temp_block.y)
-    #         temp_block.scale = multiple * temp_block.scale
-    #         new_filename = "{}/{}.jpg".format(dirname, temp_block.encoding())
-    #         data_tag.append((new_filename, tag))
-    #
-    #     return data_tag
-
-
     def calc_patch_cancer_ratio(self, patches_code, directory_list):
         self.patches_code = patches_code
         root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
@@ -307,27 +246,6 @@ class PatchPack(object):
 
         np.save('{}/patch_mask_ratio.npy'.format(root_path), patch_db)
         return
-
-    # def get_filename_mask_ratio(self, full_dir,):
-    #     root_path = self._params.PATCHS_ROOT_PATH[self.patches_code]
-    #
-    #     if self.patch_db is None:
-    #         data = np.load('{}/patch_mask_ratio.npy'.format(root_path), allow_pickle=True)
-    #         self.patch_db = data[()]
-    #
-    #     right_len = len(root_path) + 1
-    #     L = []
-    #     for root, dirs, files in os.walk(full_dir):
-    #         for file in files:
-    #             if os.path.splitext(file)[1] in ['.jpg', '.png'] :
-    #                 file_path = os.path.join(root, file)
-    #                 rfile = file_path.replace('\\', '/')[right_len:]
-    #                 left = rfile.rfind("/")
-    #                 filename = rfile[left + 1:]
-    #                 mask_ratio = self.patch_db.get(filename, 0)
-    #                 new_tag = self._create_multidim_label(mask_ratio)
-    #                 L.append((rfile, new_tag))
-    #     return L
 
     def _create_multidim_label(self, mask_ratio):
         # if mask_ratio is None:
@@ -432,18 +350,3 @@ class PatchPack(object):
             target_file.close()
 
         return
-
-    # def get_msc_filenames(self, scale_x10_tag, scale_other_tag, data_x10_tag, multiple):
-    #     data_tag = []
-    #     temp_block = Block()
-    #     for pathname, tag in data_x10_tag:
-    #         [dirname, filename]=os.path.split(pathname)
-    #         dirname = dirname.replace(scale_x10_tag, scale_other_tag)
-    #         temp_block.decoding(filename, 256, 256)
-    #         temp_block.x = int(multiple * temp_block.x)
-    #         temp_block.y = int(multiple * temp_block.y)
-    #         temp_block.scale = multiple * temp_block.scale
-    #         new_filename = "{}/{}.jpg".format(dirname, temp_block.encoding())
-    #         data_tag.append((new_filename, tag))
-    #
-    #     return data_tag

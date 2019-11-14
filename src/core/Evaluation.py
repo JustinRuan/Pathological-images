@@ -16,8 +16,8 @@ from skimage import measure
 from skimage import morphology
 from skimage.measure import approximate_polygon
 from skimage.segmentation import mark_boundaries
-from sklearn import metrics
 from skimage.transform import resize
+from sklearn import metrics
 
 from core import *
 from pytorch.cancer_map import CancerMapBuilder
@@ -27,9 +27,9 @@ class Evaluation(object):
     def __init__(self, params):
         self._params = params
 
-###################################################################################################
-##############   单个切片的ROC检测
-###################################################################################################
+    ###################################################################################################
+    ##############   单个切片的ROC检测
+    ###################################################################################################
     @staticmethod
     def calculate_dice_coef(y_true, y_pred):
         smooth = 1.
@@ -57,7 +57,9 @@ class Evaluation(object):
             dice = Evaluation.calculate_dice_coef(mask_tag, cancer_tag)
 
             print("Threshold = {:.3f}, Classification report for classifier: \n{}".format(threshold,
-                                            metrics.classification_report(mask_tag, predicted_tags, digits=4)))
+                                                                                          metrics.classification_report(
+                                                                                              mask_tag, predicted_tags,
+                                                                                              digits=4)))
             print("############################################################")
             # print("Confusion matrix:\n%s" % metrics.confusion_matrix(mask_tag, predicted_tags))
 
@@ -72,7 +74,7 @@ class Evaluation(object):
         print("\n ROC auc: %s" % roc_auc)
         return false_positive_rate, true_positive_rate, roc_auc, dice_result
 
-    def save_result_xml(self, slice_id, x1, y1, coordinate_scale, cancer_map, threshold_list,):
+    def save_result_xml(self, slice_id, x1, y1, coordinate_scale, cancer_map, threshold_list, ):
         '''
         生成在ASAP中能显示的癌变概率的等高线
         :param slice_id: 切片编号
@@ -95,7 +97,7 @@ class Evaluation(object):
             contours_x40 = []
             for n, contour in enumerate(contours):
                 contour = approximate_polygon(np.array(contour), tolerance=0.01)
-                c = scale * np.array(contour)  + np.array([y1, x1]) * scale2
+                c = scale * np.array(contour) + np.array([y1, x1]) * scale2
                 contours_x40.append(c)
 
             contours_set[threshold] = contours_x40
@@ -155,13 +157,12 @@ class Evaluation(object):
         doc.writexml(f, encoding="utf-8")
         f.close()
 
-    def calculate_ROC(self, slice_dirname, tag, chosen, p_thresh = 0.5):
+    def calculate_ROC(self, slice_dirname, tag, chosen, p_thresh=0.5):
 
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
         mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
 
-        # imgCone = ImageCone(self._params, Open_Slide())
         result_auc = []
         if tag == 0:
             code = "_history.npz"
@@ -192,10 +193,11 @@ class Evaluation(object):
                 cancer_map = cmb.generating_probability_map(history, x1, y1, x2, y2, 1.25)
                 h, w = cancer_map.shape
 
-                mask_filename = "{}/{}_true_mask.npy".format(mask_path, slice_id)
+                mask_filename = "{}/{}_true_mask.npz".format(mask_path, slice_id)
                 if os.path.exists(mask_filename):
-                    mask_img = np.load(mask_filename)
-                    mask_img = mask_img[y1:y1+h, x1:x1+w]
+                    result = np.load(mask_filename, allow_pickle=True)
+                    mask_img = result["mask"]
+                    mask_img = mask_img[y1:y1 + h, x1:x1 + w]
                     area = np.sum(mask_img)
                     _, count = morphology.label(mask_img, neighbors=8, connectivity=2, return_num=True)
                 else:
@@ -212,9 +214,11 @@ class Evaluation(object):
                 dice = Evaluation.calculate_dice_coef(mask_img, pred)
                 accu = metrics.accuracy_score(mask_img, pred)
                 recall = metrics.recall_score(mask_img, pred, average='micro')
-                f1 = metrics.f1_score(mask_img, pred, average='weighted') # Here, f1 = dice，average='micro'
+                # print(set(np.unique(mask_img)) - set(np.unique(pred)))
+                f1 = metrics.f1_score(mask_img, pred, average='weighted')  # Here, f1 = dice，average='micro'
 
-                temp = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, p_thresh, dice, accu, recall, f1,roc_auc)
+                temp = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(slice_id, area, count, p_thresh, dice, accu, recall,
+                                                                   f1, roc_auc)
                 result_auc.append(temp)
                 print(temp)
 
@@ -225,7 +229,7 @@ class Evaluation(object):
         return
 
     @staticmethod
-    def save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, save_path, tag = 0):
+    def save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, save_path, tag=0):
         fig, axes = plt.subplots(1, 2, figsize=(16, 16), dpi=150)
         ax = axes.ravel()
         shape = mask_img.shape
@@ -253,7 +257,6 @@ class Evaluation(object):
         plt.savefig("{}/result_{}_v{}.png".format(save_path, slice_id, tag), dpi=150, format="png")
 
         plt.close(fig)
-
 
     def save_result_pictures(self, slice_dirname, tag, chosen):
         project_root = self._params.PROJECT_ROOT
@@ -308,9 +311,9 @@ class Evaluation(object):
                 Evaluation.save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels,
                                                pic_path, tag)
 
-###################################################################################################
-##############   多个切片的FROC检测的计算过程
-###################################################################################################
+    ###################################################################################################
+    ##############   多个切片的FROC检测的计算过程
+    ###################################################################################################
     def create_true_mask_file(self, slice_dirname, slice_list, ):
         imgCone = ImageCone(self._params, Open_Slide())
         mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
@@ -326,7 +329,8 @@ class Evaluation(object):
 
             mask_img = imgCone.create_mask_image(self._params.GLOBAL_SCALE, 0)
             mask_img = mask_img['C']
-            np.save("{}/{}_true_mask.npy".format(mask_path, code), mask_img, allow_pickle=True)
+            # np.save("{}/{}_true_mask.npy".format(mask_path, code), mask_img, allow_pickle=True)
+            np.savez("{}/{}_true_mask.npz".format(mask_path, code), mask=mask_img, allow_pickle=True)
         return
 
     def is_tumor_by_code(self, code):
@@ -335,7 +339,7 @@ class Evaluation(object):
             return True
         elif tag == "Normal":
             return False
-        else:#"Test_001"
+        else:  # "Test_001"
             id = int(code[-3:])
             if id in [1, 2, 4, 8, 10, 11, 13, 16, 21, 26, 27, 29, 30, 33, 38, 40, 46, 48, 51, 52,
                       61, 64, 65, 66, 68, 69, 71, 73, 74, 75, 79,
@@ -344,8 +348,7 @@ class Evaluation(object):
             else:
                 return False
 
-
-    def evaluation_FROC(self, mask_folder, result_folder, level = 5):
+    def evaluation_FROC(self, mask_folder, result_folder, level=5):
 
         result_file_list = []
         result_file_list += [each for each in os.listdir(result_folder) if each.endswith('.csv')]
@@ -370,7 +373,7 @@ class Evaluation(object):
             is_tumor = self.is_tumor_by_code(case[0:-4])
             if (is_tumor):
                 # maskDIR = os.path.join(mask_folder, case[0:-4]) + '_Mask.tif'
-                maskDIR = "{}/{}_true_mask.npy".format(mask_folder, case[0:-4])
+                maskDIR = "{}/{}_true_mask.npz".format(mask_folder, case[0:-4])
                 evaluation_mask = self.computeEvaluationMask(maskDIR, L0_RESOLUTION, EVALUATION_MASK_LEVEL)
                 ITC_labels = self.computeITCList(evaluation_mask, L0_RESOLUTION, EVALUATION_MASK_LEVEL)
             else:
@@ -382,10 +385,12 @@ class Evaluation(object):
             detection_summary[0][caseNum] = case
             FROC_data[1][caseNum], FROC_data[2][caseNum], FROC_data[3][caseNum], \
             detection_summary[1][caseNum], FP_summary[1][caseNum] = \
-                self.compute_FP_TP_Probs(Ycorr, Xcorr, Probs, is_tumor, evaluation_mask, ITC_labels, EVALUATION_MASK_LEVEL)
+                self.compute_FP_TP_Probs(Ycorr, Xcorr, Probs, is_tumor, evaluation_mask, ITC_labels,
+                                         EVALUATION_MASK_LEVEL)
 
-            stats[case[0:-4]] = self.calc_statistics(FROC_data[1][caseNum], FROC_data[2][caseNum], FROC_data[3][caseNum],
-                                 detection_summary[1][caseNum])
+            stats[case[0:-4]] = self.calc_statistics(FROC_data[1][caseNum], FROC_data[2][caseNum],
+                                                     FROC_data[3][caseNum],
+                                                     detection_summary[1][caseNum])
             caseNum += 1
 
         # Compute FROC curve
@@ -401,7 +406,7 @@ class Evaluation(object):
 
         print("ID, FP_count, TP_count, num_of_tumors, hitted, missed")
         for id, values in stats.items():
-            print("{}, {}, {}, {}, {}, {}".format(id, values[0], values[1],values[2],values[3],values[4]))
+            print("{}, {}, {}, {}, {}, {}".format(id, values[0], values[1], values[2], values[3], values[4]))
 
         # plot FROC curve
         self.plotFROC(total_FPs, total_sensitivity)
@@ -418,13 +423,14 @@ class Evaluation(object):
         Returns:
             evaluation_mask
         """
-        pixelarray = np.load(mask_file)
+        result = np.load(mask_file, allow_pickle=True)
+        pixelarray = result["mask"]
         if level > 5:
             r, c = pixelarray.shape
             m = np.power(2, level - 5)
-            pixelarray = resize(pixelarray, (r // m, c //m))
+            pixelarray = resize(pixelarray, (r // m, c // m))
 
-        Threshold = 75/(resolution * pow(2, level) * 2)  # 75µm is the equivalent size of 5 tumor cells
+        Threshold = 75 / (resolution * pow(2, level) * 2)  # 75µm is the equivalent size of 5 tumor cells
 
         distance = nd.distance_transform_edt(255 * (1 - pixelarray))
         binary = distance < Threshold
@@ -455,7 +461,7 @@ class Evaluation(object):
         max_label = np.amax(evaluation_mask)
         properties = measure.regionprops(evaluation_mask, coordinates='rc')
         Isolated_Tumor_Cells = []
-        threshold = 275/ (resolution * pow(2, level))
+        threshold = 275 / (resolution * pow(2, level))
         for i in range(0, max_label):
             if properties[i].major_axis_length < threshold:
                 Isolated_Tumor_Cells.append(i + 1)
@@ -610,10 +616,3 @@ class Evaluation(object):
 
         for fp, tp in zip(total_FPs, total_sensitivity):
             print(fp, '\t', tp)
-
-
-
-
-
-
-

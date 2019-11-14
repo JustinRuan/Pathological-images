@@ -6,13 +6,13 @@ __mtime__ = '2018-10-14'
 
 """
 
-import numpy as np
-from skimage import color, morphology
-from skimage.morphology import square
 import os
+
+import numpy as np
+
 # from preparation import PatchFeature
-from feature import feature_extractor
 from core.util import get_seeds, transform_coordinate
+
 
 class PatchSampler(object):
     def __init__(self, params):
