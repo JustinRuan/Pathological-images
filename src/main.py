@@ -57,9 +57,9 @@ class TestModel(unittest.TestCase):
 
             history = detector.adaptive_detect(x1, y1, x2, y2, 1.25, extract_scale=40, patch_size=256,
                                                max_iter_nums=20, batch_size=10,
-                                               limit_sampling_density=2, enhanced=True,
+                                               limit_sampling_density=1, enhanced=True,
                                                superpixel_area=1000,
-                                               superpixels_boundaries_spacing=60)
+                                               superpixels_boundaries_spacing=120)
 
             detector.save_result_history(x1, y1, x2, y2, 1.25, history)
 
