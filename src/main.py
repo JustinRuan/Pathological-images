@@ -25,13 +25,11 @@ class TestModel(unittest.TestCase):
                                 PATCHS_DICT={"P0619":"D:/Data/Patches/P0619",}, NUM_WORKERS=0)
 
     def test_patch_openslide_cancer_2k4k(self):
-        c = Params()
-        c.load_config_file(JSON_PATH)
-        imgCone = ImageCone(c, Open_Slide())
+        imgCone = ImageCone(self._params, Open_Slide())
         patch_size = 256
         extract_scale = 40
 
-        ps = PatchSampler(c)
+        ps = PatchSampler(self._params)
 
         patch_spacing = 400
 
@@ -68,14 +66,12 @@ class TestModel(unittest.TestCase):
         return
 
     def test_patch_openslide_normal(self):
-        c = Params()
-        c.load_config_file(JSON_PATH)
-        imgCone = ImageCone(c, Open_Slide())
+        imgCone = ImageCone(self._params, Open_Slide())
 
         patch_size = 256
         extract_scale = 40
 
-        ps = PatchSampler(c)
+        ps = PatchSampler(self._params)
 
         patch_spacing = 1000
 
@@ -99,10 +95,7 @@ class TestModel(unittest.TestCase):
         return
 
     def test_pack_samples_4k2k_256(self):
-        c = Params()
-        c.load_config_file(JSON_PATH)
-
-        pack = PatchPack(c)
+        pack = PatchPack(self._params)
         data_tag = pack.initialize_sample_tags_byMask("P0619", ["S4000_256_cancer", "S4000_256_normal",
                                                          "S4000_256_normal2", "S4000_256_edgeinner",
                                                          "S4000_256_edgeouter"])
