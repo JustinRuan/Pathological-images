@@ -113,6 +113,19 @@ class Segmentation(object):
         return label_map
 
     def create_superpixels_slic(self, x1, y1, x2, y2, scale, extract_scale, K, M, iter_num = 10):
+        '''
+        使用SLIC算法进行分割
+        :param x1: 左上角x
+        :param y1: 左上角y
+        :param x2: 右下角x
+        :param y2: 右下角y
+        :param scale: 上面四个坐标的所用的倍镜数
+        :param extract_scale: 提取图块用的倍镜数
+        :param K: 超像素的数量
+        :param M: SLIC的参数
+        :param iter_num:
+        :return:
+        '''
 
         GLOBAL_SCALE = self._params.GLOBAL_SCALE
 
@@ -132,6 +145,15 @@ class Segmentation(object):
         return label_map
 
     def get_seeds_at_boundaries(self, label_img, x1, y1, coordinate_scale, spacing = 60):
+        '''
+        从超像素的边缘均匀提取种子点
+        :param label_img:分割的结果
+        :param x1:左上角x
+        :param y1:左上角y
+        :param coordinate_scale: 上面两个坐标的倍镜数
+        :param spacing: 采样点的间距，在1.25x下的
+        :return: 采样种子点的坐标集合
+        '''
         boundaries = find_boundaries(label_img,)
 
         s = 4

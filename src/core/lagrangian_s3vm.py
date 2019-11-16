@@ -3,6 +3,7 @@ from scipy.sparse import vstack
 from scipy.sparse.csr import csr_matrix
 import numpy as np
 
+# https://github.com/fbagattini/lagrangean-s3vm
 
 def lagrangian_s3vm_train(xtrain_l,
                           ytrain_l,

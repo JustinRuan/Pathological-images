@@ -158,6 +158,14 @@ class Evaluation(object):
         f.close()
 
     def calculate_ROC(self, slice_dirname, tag, chosen, p_thresh=0.5):
+        '''
+        计算每张切片的pixel级的ROC
+        :param slice_dirname: slice的路径，现在不需要了，直接读取Mask的存盘文件
+        :param tag: input size of Slide Filter
+        :param chosen: list of slide ID
+        :param p_thresh: tumor probability threshold
+        :return:
+        '''
 
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
@@ -230,6 +238,19 @@ class Evaluation(object):
 
     @staticmethod
     def save_result_picture(slice_id, src_img, mask_img, cancer_map, history, roc_auc, levels, save_path, tag=0):
+        '''
+
+        :param slice_id: slide ID
+        :param src_img: slide的缩略图
+        :param mask_img: Ground Truth
+        :param cancer_map: probability map
+        :param history: predictions results (coordinates。 probability)
+        :param roc_auc: AUC
+        :param levels: 概率等高线的列表
+        :param save_path: 存盘文件路径
+        :param tag: 内部标志
+        :return:
+        '''
         fig, axes = plt.subplots(1, 2, figsize=(16, 16), dpi=150)
         ax = axes.ravel()
         shape = mask_img.shape
@@ -250,15 +271,24 @@ class Evaluation(object):
         print(disp_text)
         for a in ax.ravel():
             a.axis('off')
-        # ax[0].axis("on")
-        # fig.colorbar(ax0, ax=ax[0])
-        fig.colorbar(ax1, ax=ax[1], shrink=0.5)
-        fig.tight_layout()
+
+        fig.subplots_adjust(right=0.85)
+        #  [left, bottom, width, height]
+        cbar_ax = fig.add_axes([0.9, 0.2, 0.05, 0.6])
+        fig.colorbar(ax1, cax=cbar_ax)
+
         plt.savefig("{}/result_{}_v{}.png".format(save_path, slice_id, tag), dpi=150, format="png")
 
         plt.close(fig)
 
     def save_result_pictures(self, slice_dirname, tag, chosen):
+        '''
+
+        :param slice_dirname: slide id
+        :param tag: 内部标志，对应于Slide filter的input size
+        :param chosen: 被选择处理的slide id列表
+        :return:
+        '''
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
         pic_path = "{}/results/cancer_pic".format(project_root)
@@ -315,6 +345,12 @@ class Evaluation(object):
     ##############   多个切片的FROC检测的计算过程
     ###################################################################################################
     def create_true_mask_file(self, slice_dirname, slice_list, ):
+        '''
+
+        :param slice_dirname: slide 所在路径
+        :param slice_list:需要处理的slide的id
+        :return:
+        '''
         imgCone = ImageCone(self._params, Open_Slide())
         mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
 
@@ -334,6 +370,11 @@ class Evaluation(object):
         return
 
     def is_tumor_by_code(self, code):
+        '''
+
+        :param code:slide id
+        :return: 是否是Tumor case
+        '''
         tag = code[0:-4]
         if tag == "Tumor":
             return True
@@ -349,6 +390,13 @@ class Evaluation(object):
                 return False
 
     def evaluation_FROC(self, mask_folder, result_folder, level=5):
+        '''
+
+        :param mask_folder: Mask文件所在路径，保存了Level 5下的Ground Truth
+        :param result_folder: 生成包含坐标和概率的CSV文件的路径
+        :param level:评估所用的Level，Level 5对应于1.25x倍镜
+        :return:
+        '''
 
         result_file_list = []
         result_file_list += [each for each in os.listdir(result_folder) if each.endswith('.csv')]

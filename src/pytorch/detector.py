@@ -127,6 +127,9 @@ class BaseDetector(object, metaclass=ABCMeta):
         np.savez_compressed(save_filename, x1=x1, y1=y1, x2=x2, y2=y2, scale=coordinate_scale, history=history)
         print(">>> >>> ", save_filename," saved!")
 
+    ##################################################################################################################
+    ##########   均匀、金字塔式的采样，全切片扫描    #################
+    ##################################################################################################################
 class Detector(BaseDetector):
     def __init__(self, params, src_image):
         super(Detector, self).__init__(params, src_image)
@@ -340,6 +343,16 @@ class Detector(BaseDetector):
         return result_cancer
 
     def process(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
+        '''
+        金字塔式的采样
+        :param x1: 左上角x
+        :param y1:  左上角y
+        :param x2:  右下角x
+        :param y2:  右下角y
+        :param coordinate_scale: 上述坐标所在的倍镜数
+        :param kwargs: 参数
+        :return:
+        '''
         interval = kwargs["interval"]
 
         seeds, predictions = self.detect_region(x1, y1, x2, y2, 1.25, 5, 128, interval=interval)
@@ -379,6 +392,10 @@ class AdaptiveDetector(BaseDetector):
         self.eff_zone = None
 
     def get_detection_rectangle(self,):
+        '''
+        获得检测区域的矩形
+        :return: 左上角，右下角的坐标
+        '''
         self.eff_zone = self._imgCone.get_effective_zone(self._params.GLOBAL_SCALE)
         x1, y1, x2, y2 = self._imgCone.get_mask_min_rect(self.eff_zone)
         return x1, y1, x2, y2
@@ -536,12 +553,22 @@ class AdaptiveDetector(BaseDetector):
         return history
 
     def adaptive_detect(self, x1, y1, x2, y2, coordinate_scale, **kwargs):
-        max_iter_nums = kwargs["max_iter_nums"]
-        batch_size = kwargs["batch_size"]
-        limit_sampling_density = kwargs["limit_sampling_density"]
-        enhanced = kwargs["enhanced"]
-        superpixel_area = kwargs["superpixel_area"]
-        superpixels_boundaries_spacing = kwargs["superpixels_boundaries_spacing"]
+        '''
+
+        :param x1: 左上角x
+        :param y1: 左上角y
+        :param x2: 右上角x
+        :param y2: 右上角y
+        :param coordinate_scale: 上述坐标所用的倍镜数
+        :param kwargs: 参数列表
+        :return:
+        '''
+        max_iter_nums = kwargs["max_iter_nums"]#最大迭代次数，一般10次之间可收敛
+        batch_size = kwargs["batch_size"]#每批读数图块对的数量
+        limit_sampling_density = kwargs["limit_sampling_density"]#局部采样密度阈值，取值为1或2
+        enhanced = kwargs["enhanced"]#是否进行局部超像素区域的扫描
+        superpixel_area = kwargs["superpixel_area"]#每个超像素的大概面积设定
+        superpixels_boundaries_spacing = kwargs["superpixels_boundaries_spacing"] #初始化时，采样间距
 
         normal_func = None
 
@@ -853,6 +880,13 @@ class AdaptiveDetector(BaseDetector):
 
     # def filter_seeds_by_effective_area(self, x1, y1, new_seeds, history, regions_count, label_map):
     def filter_seeds_by_effective_area(self, x1, y1, new_seeds):
+        '''
+
+        :param x1:
+        :param y1:
+        :param new_seeds:
+        :return:
+        '''
         #通过有效区域进行过滤,
         if self.eff_zone is not None:
             eff_seeds = []
@@ -882,7 +916,15 @@ class AdaptiveDetector(BaseDetector):
         return eff_seeds
 
     def cacl_sampling_density(self, x1, y1, new_seeds, old_seeds, r = 8):
+        '''
 
+        :param x1:
+        :param y1:
+        :param new_seeds:
+        :param old_seeds:
+        :param r:
+        :return:
+        '''
         if not old_seeds:
             return 0.0
 
@@ -899,7 +941,16 @@ class AdaptiveDetector(BaseDetector):
         return np.mean(result)
 
     def cacl_sampling_density_with_superpixels(self, regions_count, label_map, cancer_map, sobel_img, region_density, limit_sampling_density):
-
+        '''
+        计算 超像素范围内的采样点的个数（采样密度）
+        :param regions_count: 采样过程中已经计算了的各个区域内的采样点的个数
+        :param label_map: 分割结果对应的label map
+        :param cancer_map: tumor probability map
+        :param sobel_img: 概率图所对应的梯度图
+        :param region_density: 各个区域内的采样密度
+        :param limit_sampling_density: 采样密度的阈值
+        :return: 更新后的region_density
+        '''
         feat_thresh = -1  # feat = -1对应概率0.27, feat = -0.5 对应0.38，feat = -0.2 对应0.45
         grad_thresh = 0.1
         f_properties = measure.regionprops(label_map, intensity_image=cancer_map, cache=True, coordinates='rc')
@@ -1092,6 +1143,13 @@ class AdaptiveDetector(BaseDetector):
     #         return region_density
 
     def update_status_map(self, label_map, region_density, history):
+        '''
+        更新当前有效的 超像素区域
+        :param label_map: 超像素区域所对应的label map
+        :param region_density: 各个区域中的采样点的数量
+        :param history: 预测结果
+        :return: 更新后的有效区域
+        '''
         status_map = np.zeros(label_map.shape, dtype=np.bool)
         # select_label = []
         # select_label.extend(list(region_density[1].keys()))
@@ -1558,6 +1616,17 @@ class AdaptiveDetector(BaseDetector):
         return list(zip(x, y))
 
     def genrating_superpixels(self, seg, x1, y1, x2, y2, coordinate_scale, superpixel_area = 1000):
+        '''
+        进行SLIC的分割
+        :param seg: SLIC算法
+        :param x1: 左上角x
+        :param y1:  左上角y
+        :param x2:  右上角x
+        :param y2:  右上角y
+        :param coordinate_scale: 上述四个坐标所用倍镜数
+        :param superpixel_area: 每个超像素的面积
+        :return: label map
+        '''
         seeds_scale = self._params.GLOBAL_SCALE
 
         self.setting_detected_area(x1, y1, x2, y2, coordinate_scale)

@@ -242,35 +242,35 @@ class TestPatchSampler(unittest.TestCase):
         # 提取Normal切片的编号：1~50
 
 
-def test_patch_openslide_normal(self):
-    c = Params()
-    c.load_config_file(JSON_PATH)
-    imgCone = ImageCone(c, Open_Slide())
+    def test_patch_openslide_normal(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        imgCone = ImageCone(c, Open_Slide())
 
-    patch_size = 256
-    extract_scale = 40
+        patch_size = 256
+        extract_scale = 40
 
-    ps = PatchSampler(c)
+        ps = PatchSampler(c)
 
-    patch_spacing = 1000
+        patch_spacing = 1000
 
-    for i in range(1, 161):
-        code = "{:0>3d}".format(i)
-        print("processing ", code, " ... ...")
+        for i in range(1, 161):
+            code = "{:0>3d}".format(i)
+            print("processing ", code, " ... ...")
 
-        # 读取数字全扫描切片图像
-        # code = "001"
-        tag = imgCone.open_slide("Train_Normal/Normal_{}.tif".format(code),
-                                 None, "Normal_{}".format(code))
-        self.assertTrue(tag)
+            # 读取数字全扫描切片图像
+            # code = "001"
+            tag = imgCone.open_slide("Train_Normal/Normal_{}.tif".format(code),
+                                     None, "Normal_{}".format(code))
+            self.assertTrue(tag)
 
-        if tag:
-            n_seeds = ps.detect_normal_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
-            print("slide code = ", code, ", normal_seeds = ", len(n_seeds))
+            if tag:
+                n_seeds = ps.detect_normal_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
+                print("slide code = ", code, ", normal_seeds = ", len(n_seeds))
 
-            seeds_dict = ps.get_multi_scale_seeds([20], n_seeds, extract_scale)
-            # seeds_dict = ps.get_multi_scale_seeds([], n_seeds, extract_scale)
-            ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal2", "P0619")
+                seeds_dict = ps.get_multi_scale_seeds([20], n_seeds, extract_scale)
+                # seeds_dict = ps.get_multi_scale_seeds([], n_seeds, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal2", "P0619")
 
-            print("%s 完成" % code)
-    return
+                print("%s 完成" % code)
+        return

@@ -37,7 +37,16 @@ class CancerMapBuilder(object):
         self.selem_size = int(0.5 * patch_size / amplify)
 
     def generating_probability_map(self, history, x1, y1, x2, y2, scale):
-
+        '''
+        生成 tumor probability heatmap
+        :param history: 预测的结果（坐标，概率）
+        :param x1: 检测区域的左上角x
+        :param y1: 检测区域的左上角y
+        :param x2: 检测区域的右下角x
+        :param y2: 检测区域的右下角y
+        :param scale:  上述坐标的倍镜数
+        :return:
+        '''
         GLOBAL_SCALE = self._params.GLOBAL_SCALE
         xx1, yy1, xx2, yy2 = np.rint(np.array([x1, y1, x2, y2]) * GLOBAL_SCALE / scale).astype(np.int)
         valid_area_width = xx2 - xx1
@@ -58,6 +67,12 @@ class CancerMapBuilder(object):
 
     @staticmethod
     def calc_probability_threshold(history, t = 0):
+        '''
+
+        :param history: 预测的结果（坐标，概率）
+        :param t: 筛选正样本用的阈值
+        :return: 高低两个阈值
+        '''
         value = np.array(list(history.values()))
         tag = value > t
         positive_part = np.reshape(value[tag], (-1, 1))
@@ -256,6 +271,15 @@ class SlideFilter(object):
 
 
     def train(self, data_filename, class_weight, batch_size, loss_weight, epochs):
+        '''
+        滤波器 训练
+        :param data_filename: 样本文件名
+        :param class_weight:类权重
+        :param batch_size: batch size
+        :param loss_weight: center loss的权重
+        :param epochs: epochs
+        :return:
+        '''
         filename = "{}/data/{}".format(self._params.PROJECT_ROOT, data_filename)
         D = np.load(filename, allow_pickle=True)
         X = D['x']
@@ -370,6 +394,16 @@ class SlideFilter(object):
 
 
     def predict(self, x1, y1, x2, y2, history, batch_size):
+        '''
+        使用Slide Filter进行滤波过程
+        :param x1: 检测区域的左上角x
+        :param y1: 检测区域的左上角y
+        :param x2: 检测区域的右下角x
+        :param y2: 检测区域的右下角y
+        :param history: 预测的结果（坐标，概率）
+        :param batch_size:
+        :return:
+        '''
         valid_area_width = x2 - x1
         valid_area_height = y2 - y1
         cancer_map = np.zeros((valid_area_height, valid_area_width),dtype=np.float)
@@ -439,7 +473,12 @@ class SlideFilter(object):
         return new_history
 
     def counting_history_changes(self, old_history, new_history):
-
+        '''
+        统计被翻转的预测结果的数量
+        :param old_history: old predictions
+        :param new_history: corrected predictions
+        :return:
+        '''
         count = 0
         sum = 0
         for (x, y), old_pred in old_history.items():
@@ -454,7 +493,16 @@ class SlideFilter(object):
         return count
 
     def bulid_train_data(self, x1, y1, x2, y2, history, ground_truth, ):
-
+        '''
+        生成训练Slide Filter的训练样本集
+        :param x1: 检测区域的左上角x
+        :param y1: 检测区域的左上角y
+        :param x2: 检测区域的右下角x
+        :param y2: 检测区域的右下角y
+        :param history: 预测的结果
+        :param ground_truth: mask image
+        :return:
+        '''
         valid_area_width = x2 - x1
         valid_area_height = y2 - y1
         cancer_map = np.zeros((valid_area_height, valid_area_width),dtype=np.float)
@@ -483,6 +531,14 @@ class SlideFilter(object):
         return X_data, Y_data
 
     def read_train_data(self, slice_dirname, chosen, np_ratio = 1.0, p_ratio = 1.0):
+        '''
+        读取预测结果，并生成训练样本
+        :param slice_dirname:
+        :param chosen: slide id的列表
+        :param np_ratio: negative与positive样本的比例
+        :param p_ratio: 包含positive样本占全部正样本的比例（有可能数据大于2GB不能存为npz文件，所以进行一些缩减）
+        :return:
+        '''
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
         mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
@@ -544,6 +600,12 @@ class SlideFilter(object):
         return
 
     def update_history(self, chosen, batch_size):
+        '''
+        使用Slide filter进行微调
+        :param chosen: slide id列表
+        :param batch_size:
+        :return:
+        '''
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
 
@@ -577,6 +639,12 @@ class SlideFilter(object):
                 print(">>> >>> ", save_filename, " saved!")
 
     def fine_tuning(self, old_history, new_history):
+        '''
+        对预测 特征进行加权平均
+        :param old_history: 直接预测的结果
+        :param new_history: 滤波器处理后的结果
+        :return: 在概率上加权平均后的结果
+        '''
         result = {}
         for (x, y), old_pred in old_history.items():
             new_pred = new_history[(x, y)]
@@ -587,6 +655,11 @@ class SlideFilter(object):
         return result
 
     def summary_history(self, dir):
+        '''
+        统计 预测结果信息
+        :param dir: 结果文件所在路径
+        :return:
+        '''
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results/{}".format(project_root, dir)
 

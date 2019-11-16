@@ -27,6 +27,14 @@ class BasePredictor(object):
         self._params = params
 
     def save_train_data(self, feature_data, label_data, filename, append = False):
+        '''
+
+        :param feature_data: 特征向量的集合
+        :param label_data: label
+        :param filename: 存盘的文件名
+        :param append: 是否追加到已存盘的数据文件中
+        :return:
+        '''
         print("len =", len(feature_data), len(label_data))
         filename = "{}/data/{}".format(self._params.PROJECT_ROOT, filename)
         if not append:
@@ -40,6 +48,16 @@ class BasePredictor(object):
             np.savez_compressed(filename, x=x, y=y, )
 
     def save_model(self, clf,typename, X_train, y_train, X_test, y_test):
+        '''
+
+        :param clf: 分类顺
+        :param typename: 它的名字
+        :param X_train: 训练集x
+        :param y_train: 训练集y
+        :param X_test: 测试集x
+        :param y_test: 测试集y
+        :return:
+        '''
         print(clf)
         y_pred = clf.predict_proba(X_train)
         prob = y_pred[:,1]
@@ -79,6 +97,13 @@ class BasePredictor(object):
 
 
     def read_data(self, file_name, test_filename, mode):
+        '''
+        从存盘文件中加载样本数据
+        :param file_name: 训练样本数据文件名
+        :param test_filename: 测试样本数据文件名
+        :param mode: 数据模式
+        :return:
+        '''
         filename = "{}/data/{}".format(self._params.PROJECT_ROOT, file_name)
         result = np.load(filename, allow_pickle=True)
         x = result["x"]
@@ -119,6 +144,14 @@ class SlidePredictor(BasePredictor):
         self.model = None
 
     def extract_slide_features(self, tag =0, normal_names = None, tumor_names = None, DIM = 5):
+        '''
+
+        :param tag: 使用何种尺寸滤波器的输出的预测结果
+        :param normal_names: normal样本的ID
+        :param tumor_names: tumor的ID
+        :param DIM: 提取特征的维数
+        :return: 特征向量，标注
+        '''
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
 
@@ -163,6 +196,16 @@ class SlidePredictor(BasePredictor):
         return feature_data, label_data
 
     def calculate_slide_features(self, history, x1, y1, x2, y2, DIM = 5):
+        '''
+        提取特征向量
+        :param history: 预测结果（坐标，概率）
+        :param x1: 左上角x
+        :param y1: 左上角y
+        :param x2: 右上角x
+        :param y2: 右上角主
+        :param DIM: 特征的维数
+        :return:
+        '''
         mode = 2
         if mode == 1: # by cancer map
             cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
@@ -190,6 +233,12 @@ class SlidePredictor(BasePredictor):
             return np.zeros((DIM,))
 
     def train_test(self, file_name, test_name):
+        '''
+        训练 分类器
+        :param file_name: 训练样本的存盘文件
+        :param test_name:  测试样本的存盘文件
+        :return:
+        '''
         X_test, X_train, y_test, y_train = self.read_data(file_name,test_name, mode = 1)
 
         # clf = naive_bayes.GaussianNB(var_smoothing=1e-3)
@@ -283,6 +332,12 @@ class SlidePredictor(BasePredictor):
         return
 
     def train_svm(self,file_name, test_name):
+        '''
+        训练SVM
+        :param file_name: 训练样本的存盘文件
+        :param test_name:  测试样本的存盘文件
+        :return:
+        '''
         X_test, X_train, y_test, y_train = self.read_data(file_name, test_name, mode=1)
 
         max_iter = 10000
@@ -305,6 +360,15 @@ class SlidePredictor(BasePredictor):
         return
 
     def predict(self, history, x1, y1, x2, y2):
+        '''
+        对样本进行扩增
+        :param history: 预测结果
+        :param x1: 左上角x（检测区域的）
+        :param y1: 左上角y
+        :param x2: 右上角x
+        :param y2: 右上角y
+        :return:
+        '''
         feature = self.calculate_slide_features(history, x1, y1, x2, y2)
         if self.model is None:
             model_file = self._params.PROJECT_ROOT + "/models/slide_predictor_S3VM_0.9961_0.9500.model"

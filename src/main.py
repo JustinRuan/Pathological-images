@@ -6,7 +6,9 @@ from sklearn import svm
 from sklearn.model_selection import train_test_split, GridSearchCV
 
 from core import *
+from preparation import *
 from pytorch.cancer_map import CancerMapBuilder, SlideFilter
+from pytorch.cnn_classifier import DMC_Classifier
 from pytorch.detector import AdaptiveDetector
 from pytorch.locator import Locator
 from pytorch.slide_predictor import SlidePredictor
@@ -21,6 +23,109 @@ class TestModel(unittest.TestCase):
         # self._params.load_config_file(JSON_PATH)
         self._params.load_param(GLOBAL_SCALE=1.25, SLICES_ROOT_PATH="D:/Data/CAMELYON16",
                                 PATCHS_DICT={"P0619":"D:/Data/Patches/P0619",}, NUM_WORKERS=0)
+
+    def test_patch_openslide_cancer_2k4k(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        imgCone = ImageCone(c, Open_Slide())
+        patch_size = 256
+        extract_scale = 40
+
+        ps = PatchSampler(c)
+
+        patch_spacing = 400
+
+        for i in range(1, 112):
+            code = "{:0>3d}".format(i)
+            print("processing ", code, " ... ...")
+
+            # 读取数字全扫描切片图像
+            tag = imgCone.open_slide("Train_Tumor/Tumor_{}.tif".format(code),
+                                     'Train_Tumor/tumor_{}.xml'.format(code), "Tumor_{}".format(code))
+            self.assertTrue(tag)
+
+            if tag:
+                c_seeds, ei_seeds, eo_seeds, n_seeds = ps.detect_cancer_patches_with_scale(imgCone, extract_scale,
+                                                                                           patch_size,
+                                                                                           patch_spacing, edge_width=8)
+                print("slide_id = ", imgCone.slice_id, ", cancer_seeds = ", len(c_seeds), ", normal_seeds = ",
+                      len(n_seeds),
+                      ", inner edge_seeds = ", len(ei_seeds), ", outer edge_seeds = ", len(eo_seeds))
+
+                seeds_dict = ps.get_multi_scale_seeds([20], c_seeds, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "cancer", "P0619")
+
+                seeds_dict4 = ps.get_multi_scale_seeds([20], n_seeds, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict4, patch_size, "noraml", "P0619")
+
+                seeds_dict2 = ps.get_multi_scale_seeds([20], ei_seeds, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict2, patch_size, "edgeinner", "P0619")
+
+                seeds_dict3 = ps.get_multi_scale_seeds([20], eo_seeds, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict3, patch_size, "edgeouter", "P0619")
+
+                print("%s 完成" % code)
+        return
+
+    def test_patch_openslide_normal(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+        imgCone = ImageCone(c, Open_Slide())
+
+        patch_size = 256
+        extract_scale = 40
+
+        ps = PatchSampler(c)
+
+        patch_spacing = 1000
+
+        for i in range(1, 161):
+            code = "{:0>3d}".format(i)
+            print("processing ", code, " ... ...")
+
+            # 读取数字全扫描切片图像
+            tag = imgCone.open_slide("Train_Normal/Normal_{}.tif".format(code),
+                                     None, "Normal_{}".format(code))
+            self.assertTrue(tag)
+
+            if tag:
+                n_seeds = ps.detect_normal_patches_with_scale(imgCone, extract_scale, patch_size, patch_spacing)
+                print("slide code = ", code, ", normal_seeds = ", len(n_seeds))
+
+                seeds_dict = ps.get_multi_scale_seeds([20], n_seeds, extract_scale)
+                ps.extract_patches_multi_scale(imgCone, seeds_dict, patch_size, "normal2", "P0619")
+
+                print("%s 完成" % code)
+        return
+
+    def test_pack_samples_4k2k_256(self):
+        c = Params()
+        c.load_config_file(JSON_PATH)
+
+        pack = PatchPack(c)
+        data_tag = pack.initialize_sample_tags_byMask("P0619", ["S4000_256_cancer", "S4000_256_normal",
+                                                         "S4000_256_normal2", "S4000_256_edgeinner",
+                                                         "S4000_256_edgeouter"])
+        Samples_name = "T3_P0619_4000_256"
+        # 生成40倍镜下的样本列表
+        pack.create_train_test_data(data_tag, 0.95, 0.05, Samples_name, need_balance=True)
+        # 扩展到双倍镜下
+        pack.create_train_test_data_DSC("P0619", ["S2000_256_cancer", "S2000_256_normal",
+                                                         "S2000_256_normal2", "S2000_256_edgeinner",
+                                                         "S2000_256_edgeouter"], Samples_name, 40, 20)
+
+
+    def test_DSC_train_model(self):
+        model_name = "dsc_densenet_40"
+        sample_name = "2040_256"
+
+        samples = [("P0619","T1_P0619_4000_2000_256"), ]
+        cnn = DMC_Classifier(self._params, model_name, sample_name)
+
+        cnn.train_model(samples_name=samples[1], class_weight=None,
+                        batch_size=20, epochs = 10)
+        cnn.train_model_A3(samples_name=samples[1], class_weight=None,
+                        batch_size=20, loss_weight=0.001, epochs = 5)
 
     def test_detect(self):
 

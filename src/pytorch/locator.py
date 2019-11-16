@@ -68,6 +68,13 @@ class Locator(BasePredictor):
         return
 
     def load_history_labelmap(self, result_file, slice_id, is_load_label_map = True):
+        '''
+        加载 预测结果，分割结果
+        :param result_file: 预测结果文件
+        :param slice_id: 切片的ID
+        :param is_load_label_map: 是否加载超像素分割的结果
+        :return: 预测结果， 分割结果，左上角，右下角的坐标
+        '''
         project_root = self._params.PROJECT_ROOT
         save_path = "{}/results".format(project_root)
 
@@ -97,6 +104,15 @@ class Locator(BasePredictor):
         return history, label_map, x1, x2, y1, y2
 
     def load_true_mask(self, slice_id, x1, y1, x2, y2):
+        '''
+        加载Ground Truth
+        :param slice_id: 切片的ID
+        :param x1: 左上角x
+        :param y1: 左上角y
+        :param x2: 右上角x
+        :param y2: 右上角y
+        :return: GT的二值图
+        '''
         mask_path = "{}/data/true_masks".format(self._params.PROJECT_ROOT)
 
         mask_filename = "{}/{}_true_mask.npy".format(mask_path, slice_id)
@@ -111,6 +127,16 @@ class Locator(BasePredictor):
         return mask_img
 
     def search_local_extremum_points_max3(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+        '''
+        提取关键点
+        :param history: 预测的结果
+        :param x_letftop:
+        :param y_lefttop:
+        :param x_rightbottom:
+        :param y_rightbottom:
+        :return: 坐标集合，与应用的概率
+        '''
+
         # for train set: t,c,h = -0.5, 50, 0.02
         t_thresh = 0  # -0.5
         c_thresh = 300  # 50
@@ -175,6 +201,15 @@ class Locator(BasePredictor):
         return candidated
 
     def search_local_extremum_points(self, history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom):
+        '''
+        实现Google Brain的算法，用来提取关键点
+        :param history: 预测结果
+        :param x_letftop:
+        :param y_lefttop:
+        :param x_rightbottom:
+        :param y_rightbottom:
+        :return: 坐标集合，与应用的概率
+        '''
         c_thresh = 50
         cmb = CancerMapBuilder(self._params, extract_scale=40, patch_size=256)
         cancer_map = cmb.generating_probability_map(history, x_letftop, y_lefttop, x_rightbottom, y_rightbottom,

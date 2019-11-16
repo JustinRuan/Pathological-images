@@ -5,6 +5,7 @@ __author__ = 'Justin'
 __mtime__ = '2019-05-20'
 
 """
+# https://github.com/YirongMao/softmax_variants
 
 import torch
 import torch.nn as nn
