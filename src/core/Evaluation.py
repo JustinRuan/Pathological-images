@@ -391,7 +391,7 @@ class Evaluation(object):
 
     def evaluation_FROC(self, mask_folder, result_folder, level=5):
         '''
-
+        The lesion level detection performance evaluation
         :param mask_folder: Mask文件所在路径，保存了Level 5下的Ground Truth
         :param result_folder: 生成包含坐标和概率的CSV文件的路径
         :param level:评估所用的Level，Level 5对应于1.25x倍镜

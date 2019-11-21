@@ -361,8 +361,8 @@ class SlidePredictor(BasePredictor):
 
     def predict(self, history, x1, y1, x2, y2):
         '''
-        对样本进行扩增
-        :param history: 预测结果
+        对切片是否包括肿瘤区域 进行预测
+        :param history: 采样的预测结果
         :param x1: 左上角x（检测区域的）
         :param y1: 左上角y
         :param x2: 右上角x
