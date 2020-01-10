@@ -369,26 +369,6 @@ class Evaluation(object):
             np.savez("{}/{}_true_mask.npz".format(mask_path, code), mask=mask_img, allow_pickle=True)
         return
 
-    def is_tumor_by_code(self, code):
-        '''
-
-        :param code:slide id
-        :return: 是否是Tumor case
-        '''
-        tag = code[0:-4]
-        if tag == "Tumor":
-            return True
-        elif tag == "Normal":
-            return False
-        else:  # "Test_001"
-            id = int(code[-3:])
-            if id in [1, 2, 4, 8, 10, 11, 13, 16, 21, 26, 27, 29, 30, 33, 38, 40, 46, 48, 51, 52,
-                      61, 64, 65, 66, 68, 69, 71, 73, 74, 75, 79,
-                      82, 84, 90, 94, 97, 99, 102, 104, 105, 108, 110, 113, 116, 117, 121, 122]:
-                return True
-            else:
-                return False
-
     def evaluation_FROC(self, mask_folder, result_folder, level=5):
         '''
         The lesion level detection performance evaluation
@@ -418,7 +398,7 @@ class Evaluation(object):
             Probs, Xcorr, Ycorr = self.readCSVContent(csvDIR)
 
             # is_tumor = case[0:5] == 'Tumor'
-            is_tumor = self.is_tumor_by_code(case[0:-4])
+            is_tumor = util.is_tumor_by_code(case[0:-4])
             if (is_tumor):
                 # maskDIR = os.path.join(mask_folder, case[0:-4]) + '_Mask.tif'
                 maskDIR = "{}/{}_true_mask.npz".format(mask_folder, case[0:-4])

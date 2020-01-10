@@ -170,3 +170,23 @@ def get_project_root():
     pos = path.find("src")
 
     return path[:pos - 1]
+
+def is_tumor_by_code(code):
+    '''
+
+    :param code:slide id
+    :return: 是否是Tumor case
+    '''
+    tag = code[0:-4]
+    if tag == "Tumor":
+        return True
+    elif tag == "Normal":
+        return False
+    else:  # "Test_001"
+        id = int(code[-3:])
+        if id in [1, 2, 4, 8, 10, 11, 13, 16, 21, 26, 27, 29, 30, 33, 38, 40, 46, 48, 51, 52,
+                  61, 64, 65, 66, 68, 69, 71, 73, 74, 75, 79,
+                  82, 84, 90, 94, 97, 99, 102, 104, 105, 108, 110, 113, 116, 117, 121, 122]:
+            return True
+        else:
+            return False
