@@ -157,15 +157,15 @@ class Test_detector(unittest.TestCase):
 
         print("\n x5 低倍镜下的结果：")
         t1 = 0.8
-        false_positive_rate_x5, true_positive_rate_x5, roc_auc_x5 = detector.evaluate(t1, cancer_map, mask_img)
+        false_positive_rate_x5, true_positive_rate_x5, roc_auc_x5 = detector.predict(t1, cancer_map, mask_img)
 
         print("\n x20 高倍镜下增强的结果：")
         t2 = 0.8
-        false_positive_rate_x20, true_positive_rate_x20, roc_auc_x20 = detector.evaluate(t2, cancer_map2, mask_img)
+        false_positive_rate_x20, true_positive_rate_x20, roc_auc_x20 = detector.predict(t2, cancer_map2, mask_img)
 
         print("\n x40 高倍镜下增强的结果：")
         t3 = 0.5
-        false_positive_rate_x40, true_positive_rate_x40, roc_auc_x40 = detector.evaluate(t3, cancer_map3, mask_img)
+        false_positive_rate_x40, true_positive_rate_x40, roc_auc_x40 = detector.predict(t3, cancer_map3, mask_img)
 
         fig, axes = plt.subplots(2, 5, figsize=(100, 40), dpi=100)
         ax = axes.ravel()
